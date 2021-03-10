@@ -1,0 +1,16 @@
+/build
+*.tsbuildinfo
+.node_modules
+node_modules
+package-lock.json
+.vscode
+.cache
+log/*.log
+src/**/.*
+.idea
+.project
+.settings
+yarn-error.log
+built/*
+.*.bak
+yarn.lock

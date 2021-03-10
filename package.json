@@ -1,0 +1,51 @@
+{
+  "name": "@bfchain/pkgm",
+  "version": "0.0.1-alpha.1",
+  "description": "",
+  "main": "build/index.js",
+  "bin": {
+    "bfsp": "build/bin/bfsp.js"
+  },
+  "files": [
+    "build",
+    "assets"
+  ],
+  "scripts": {
+    "up": "yarn upgrade-interactive --latest",
+    "p1": "bdk-p1 & npm publ & npm i -g @bfchain/pkgm",
+    "dev": "tsc -w"
+  },
+  "author": "Gaubee",
+  "license": "CC-BY-NC-SA-4.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/BioforestChain/pkgm"
+  },
+  "dependencies": {
+    "@bfchain/util-decorator": "^0.0.1-alpha.1",
+    "@bfchain/util-dep-inject": "^0.0.1-alpha.1",
+    "@bfchain/util-extends-promise": "^0.0.1-alpha.1",
+    "@bfchain/util-extends-promise-out": "^0.0.1-alpha.1",
+    "@bfchain/util-typings": "^0.0.1-alpha.1",
+    "@rollup/plugin-commonjs": "^17.1.0",
+    "@rollup/plugin-inject": "^4.0.2",
+    "@rollup/plugin-node-resolve": "^11.2.0",
+    "chokidar": "^3.5.1",
+    "console-pro": "^3.3.13",
+    "esbuild": "^0.8.31",
+    "execa": "^5.0.0",
+    "json5": "^2.2.0",
+    "prettier": "^2.2.1",
+    "rollup": "^2.39.0",
+    "rollup-plugin-node-polyfills": "^0.2.1",
+    "rxjs": "^6.6.3",
+    "semver": "^7.3.4",
+    "validate-npm-package-name": "^3.0.0",
+    "yaml": "^1.10.0"
+  },
+  "devDependencies": {
+    "@bfchain/devkit": "^0.0.1-alpha.1",
+    "@types/json5": "^0.0.30",
+    "@types/prettier": "^2.1.5"
+  }
+}
