@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm",
-  "version": "0.0.1-alpha.1",
+  "version": "0.0.1-alpha.3",
   "description": "",
   "main": "build/index.js",
   "bin": {
@@ -22,11 +22,11 @@
     "url": "https://github.com/BioforestChain/pkgm"
   },
   "dependencies": {
-    "@bfchain/util-decorator": "^0.0.1-alpha.1",
-    "@bfchain/util-dep-inject": "^0.0.1-alpha.1",
-    "@bfchain/util-extends-promise": "^0.0.1-alpha.1",
-    "@bfchain/util-extends-promise-out": "^0.0.1-alpha.1",
-    "@bfchain/util-typings": "^0.0.1-alpha.1",
+    "@bfchain/util-decorator": "^0.0.1-alpha.3",
+    "@bfchain/util-dep-inject": "^0.0.1-alpha.3",
+    "@bfchain/util-extends-promise": "^0.0.1-alpha.3",
+    "@bfchain/util-extends-promise-out": "^0.0.1-alpha.3",
+    "@bfchain/util-typings": "^0.0.1-alpha.3",
     "@rollup/plugin-commonjs": "^17.1.0",
     "@rollup/plugin-inject": "^4.0.2",
     "@rollup/plugin-node-resolve": "^11.2.0",
@@ -44,7 +44,7 @@
     "yaml": "^1.10.0"
   },
   "devDependencies": {
-    "@bfchain/devkit": "^0.0.1-alpha.1",
+    "@bfchain/devkit": "^0.0.1-alpha.3",
     "@types/json5": "^0.0.30",
     "@types/prettier": "^2.1.5"
   }
