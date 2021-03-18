@@ -58,17 +58,20 @@ export class Publer {
     });
 
     const SHADOW_DIR = this.bfsProject.rootShadownDirpath;
-    this.writer.writeFile(
-      this.path.join(SHADOW_DIR, './tsconfig.publ.json'),
-      JSON.stringify({ include: [], references: refs }, null, 2)
-    );
-    if (opts.version) {
-      const v = opts.version;
-      this._updateBfspVersion(pkg, v);
-      subProjects.forEach((x) => {
-        this._updateBfspVersion(x, v);
-      });
-    }
+    this.writer.writeFile(this.path.join(SHADOW_DIR, './tsconfig.publ.json'), {
+      include: [],
+      references: refs,
+    });
+    const checkAndUpdateVersion = (type: 'bfsp' | 'npm') => {
+      if (opts.version) {
+        const v = opts.version;
+        this._updateVersion(pkg, v, type);
+        subProjects.forEach((x) => {
+          this._updateVersion(x, v, type);
+        });
+      }
+    };
+    checkAndUpdateVersion('bfsp');
     const c = Complier.from({ bfsProject: this.bfsProject }, moduleMap);
     await c.doComplie({
       watch: false,
@@ -77,29 +80,22 @@ export class Publer {
       clean: false,
       publ: true,
       tscBuildFinish: () => {
-        if (opts.version) {
-          const v = opts.version;
-          this._updateNpmPackageVersion(pkg, v);
-          subProjects.forEach((x) => {
-            this._updateNpmPackageVersion(x, v);
-          });
-        }
+        checkAndUpdateVersion('npm');
         this._publishToNpm(subProjects, opts.registry);
       },
     });
   }
-  private _updateBfspVersion(p: BFSProject, version: string) {
-    const packageJsonFile = p.projectFilepath;
-    const pkg = JSON.parse(String(this.reader.readFile(packageJsonFile)));
+
+  private _updateVersion(p: BFSProject, version: string, type: 'bfsp' | 'npm') {
+    let path = p.projectFilepath;
+    if (type === 'npm') {
+      path = this.path.join(p.packageDirpath, 'package.json');
+    }
+    const pkg = JSON.parse(String(this.reader.readFile(path)));
     pkg.version = version;
-    this.writer.writeFile(packageJsonFile, JSON.stringify(pkg, null, 2));
+    this.writer.writeFile(path, pkg);
   }
-  private _updateNpmPackageVersion(p: BFSProject, version: string) {
-    const packageJsonFile = this.path.join(p.packageDirpath, 'package.json');
-    const pkg = JSON.parse(String(this.reader.readFile(packageJsonFile)));
-    pkg.version = version;
-    this.writer.writeFile(packageJsonFile, JSON.stringify(pkg, null, 2));
-  }
+
   private _publishToNpm(projects: Map<string, BFSProject>, registry?: string) {
     projects.forEach((x) => {
       let cmd = `npm publish ${x.packageDirpath}`;
