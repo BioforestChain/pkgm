@@ -73,6 +73,7 @@ export class Complier {
     clean?: boolean;
     rollup?: boolean;
     publ?: boolean;
+    tscBuildFinish?:()=>void
   }) {
     if (opts.clean) {
       this.doClean();
@@ -159,6 +160,7 @@ export class Complier {
           }
           /// 如果tsc结束输出了，也意味着编译结束
           afterTscBuild.resolve(isSuccess);
+          opts.tscBuildFinish&&opts.tscBuildFinish()
         } else {
           this.logger.error('no .stdout');
         }

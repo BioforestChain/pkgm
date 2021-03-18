@@ -130,17 +130,27 @@ if (require.main === module) {
       break;
     case 'publ':
       {
-        const packageName = argv.shift();
-        if(!packageName){
-          throw new Error('no package to be published')
+        let registry = '';
+        let version = '';
+
+        let asString = (s: string | boolean) => s as string;
+        parseArgv(argv, [
+          buildArgParserEmitter('registry', asString, (v) => (registry = v)),
+          buildArgParserEmitter('version', asString, (v) => (version = v)),
+        ]);
+
+        let packageName = argv.shift();
+        while (packageName?.startsWith('--')) {
+          packageName = argv.shift();
         }
+
         const publer = Publer.from(
           {
             bfsProject: BFSProject.from({ autoInit: false }),
           },
           moduleMap
         );
-        publer.publish(packageName)
+        publer.publish({ packageName, registry, version });
       }
       break;
     default:
