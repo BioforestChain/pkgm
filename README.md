@@ -53,5 +53,12 @@ npm i -g @bfchian/pkgm
    ```shell
    bfsp publ example-package --registry=http://localhost:4873 --version=0.0.1-alpha.1
    ```
+6. bfsp use packageName --version=x.x.x
+   > 设置项目下所有以`packageName`开头的依赖版本为`^x.x.x`
+   ```shell
+   bfsp use @bfs/core --version=0.0.1-alpha.1
+   ```
+   项目下所有bfsp.json文件内的dependencies中以`@bfs/core`开头的依赖都会被改成`^0.0.1-alpha.1`
+   
 ## License - 许可
 <a rel="license" href="https://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br/>本作品采用 <a rel="license" href="https://creativecommons.org/licenses/by-na-sa/4.0/">知识共享署名-非商业性许可-相同方式共享 4.0 国际许可协议</a> 进行许可。

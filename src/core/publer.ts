@@ -9,6 +9,7 @@ import execa from 'execa';
 import { Reader } from '../helper/reader';
 import { Initer } from './initer';
 import { Logger } from '../helper/logger';
+type ProjectType = 'bfsp' | 'npm';
 /**
  * 推送者，将项目的某一版本正式对外发布出去
  */
@@ -45,7 +46,7 @@ export class Publer {
       map.set(x.projectConfig.name, x);
     });
     if (nameSpecified && !map.has(packageName)) {
-      console.error(`package ${packageName} not found!`);
+      this.logger.error(`package ${packageName} not found!`);
       return;
     }
     const pkg = map.get(packageName)!;
@@ -66,12 +67,16 @@ export class Publer {
       include: [],
       references: refs,
     });
-    const checkAndUpdateVersion = (type: 'bfsp' | 'npm') => {
+    const checkAndUpdateVersion = (
+      type: ProjectType,
+      updateType: { self: boolean; deps: boolean }
+    ) => {
       if (opts.version) {
         const v = opts.version;
-        this._updateVersion(pkg, v, type, packageName);
+        // subProjects默认会包含pkg
+        // this._updateVersion(pkg, v, type, packageName);
         subProjects.forEach((x) => {
-          this._updateVersion(x, v, type, packageName);
+          this.updateVersion(x, v, type, packageName, updateType);
         });
       }
     };
@@ -85,26 +90,46 @@ export class Publer {
       clean: true,
       publ: true,
       tscBuildFinish: () => {
-        checkAndUpdateVersion('bfsp');
-        checkAndUpdateVersion('npm');
+        checkAndUpdateVersion('bfsp', { self: true, deps: true });
+        checkAndUpdateVersion('npm', { self: true, deps: true });
         this._publishToNpm(subProjects, opts.registry);
       },
     });
   }
 
-  private _updateVersion(
+  updateVersion(
     p: BFSProject,
     version: string,
-    type: 'bfsp' | 'npm',
-    packageName: string
+    type: ProjectType,
+    packageName: string,
+    updateType: { self: boolean; deps: boolean }
   ) {
+    if (!updateType.self && !updateType.deps) {
+      return;
+    }
     let path = p.projectFilepath;
     if (type === 'npm') {
       path = this.path.join(p.packageDirpath, 'package.json');
     }
 
     const pkg = JSON.parse(String(this.reader.readFile(path)));
-    // update dependencies
+    if (updateType.deps) {
+      // update dependencies
+      this.updateDepsVersion(pkg, version, type, packageName);
+    }
+    if (updateType.self) {
+      pkg.version = version;
+    }
+
+    this.writer.writeFile(path, pkg);
+  }
+  updateDepsVersion(
+    pkg: PKGM.Config.Package | PKGM.Config.BfsProject,
+    version: string,
+    type: ProjectType,
+    packageName: string
+  ) {
+    const { name } = pkg;
     switch (type) {
       case 'bfsp':
         {
@@ -126,6 +151,7 @@ export class Publer {
 
           deps.forEach((dep) => {
             if (dep[0].startsWith(packageName)) {
+              this.logger.info(`\t[bfsp.json] ${name} dep:\t${dep[0]} => ${version}`);
               dep[1] = `^${version}`;
             }
           });
@@ -134,9 +160,10 @@ export class Publer {
         break;
       case 'npm':
         {
-          const deps = pkg.dependencies || {};
+          const deps = pkg.dependencies as PKGM.Config.DEPS;
           Object.keys(deps).forEach((x) => {
             if (x.startsWith(packageName)) {
+              this.logger.info(`\t[package.json] ${name} dep:\t${x} => ${version}`);
               deps[x] = `^${version}`;
             }
           });
@@ -144,10 +171,6 @@ export class Publer {
         }
         break;
     }
-
-    pkg.version = version;
-
-    this.writer.writeFile(path, pkg);
   }
 
   private _publishToNpm(projects: Map<string, BFSProject>, registry?: string) {

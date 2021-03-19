@@ -153,6 +153,33 @@ if (require.main === module) {
         publer.publish({ packageName, registry, version });
       }
       break;
+    case 'use':
+      {
+        let version = '';
+
+        let asString = (s: string | boolean) => s as string;
+        parseArgv(argv, [buildArgParserEmitter('version', asString, (v) => (version = v))]);
+
+        let packageName = argv.shift();
+        while (packageName?.startsWith('--')) {
+          packageName = argv.shift();
+        }
+        if (!packageName) {
+          throw new Error('package name is not specified');
+        }
+        console.log(`update version of deps prefixed with ${packageName} to ${version}`)
+        const bfsProject = BFSProject.from({ autoInit: false });
+        const publer = Publer.from(
+          {
+            bfsProject,
+          },
+          moduleMap
+        );
+        bfsProject.readAllProjectList().forEach((x) => {
+          publer.updateVersion(x, version, 'bfsp', packageName!, { self: false, deps: true });
+        });
+      }
+      break;
     default:
       console.error(`unknown cmd: '${cmd}'`);
   }
