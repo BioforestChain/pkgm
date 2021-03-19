@@ -38,12 +38,20 @@ npm i -g @bfchian/pkgm
 
 1. bfsp init
    > 项目初始化模式
-1. bfsp dev
+2. bfsp dev
    > 进入开发模式，支持 tsc 插件编译输出。
    >
    > > 对于 typescript 的版本，你可能没有选择的权力，因为我们提供了修改版的 tsc 和 tsserver 来统一 bfsp 生态下 ts 的定制化编译，并确保所有项目的配置一致性
-1. bfsp build
+3. bfsp build
    > 进入编译模式，支持 rollup 插件的编译输出
-
+4. bfsp fix
+   > 检查项目依赖，会提示项目的依赖问题
+5. bfsp publ
+   > 发布指定的包到npm上，包名可选，如果不指定包名则表示发布当前bfs项目
+   
+   **注意**：**若使用了--version参数，则子项目也将使用指定的版本**
+   ```shell
+   bfsp publ example-package --registry=http://localhost:4873 --version=0.0.1-alpha.1
+   ```
 ## License - 许可
 <a rel="license" href="https://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br/>本作品采用 <a rel="license" href="https://creativecommons.org/licenses/by-na-sa/4.0/">知识共享署名-非商业性许可-相同方式共享 4.0 国际许可协议</a> 进行许可。
