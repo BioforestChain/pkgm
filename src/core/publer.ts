@@ -34,7 +34,12 @@ export class Publer {
     moduleMap.set(Publer.ARGS.BFS_PROJECT, args.bfsProject);
     return Resolve(Publer, moduleMap);
   }
-  async publish(opts: { packageName?: string; registry?: string; version?: string }) {
+  async publish(opts: {
+    packageName?: string;
+    registry?: string;
+    version?: string;
+    clean?: boolean;
+  }) {
     const nameSpecified = opts.packageName !== undefined;
     const packageName = opts.packageName || this.bfsProject.projectConfig.name;
 
@@ -58,7 +63,10 @@ export class Publer {
 
     subProjects.forEach((x) => {
       refs.unshift({
-        path: `./${this.config.shadownRootPackageDirname}/${x.sourceConfig.name}/tsconfig.json`,
+        path: `./${this.config.shadownRootPackageDirname}/${x.sourceConfig.name}/tsconfig.cjs.json`,
+      });
+      refs.unshift({
+        path: `./${this.config.shadownRootPackageDirname}/${x.sourceConfig.name}/tsconfig.esm.json`,
       });
     });
 
@@ -87,7 +95,7 @@ export class Publer {
       watch: false,
       rollup: false,
       mode: 'prod',
-      clean: true,
+      clean: opts.clean,
       publ: true,
       tscBuildFinish: () => {
         checkAndUpdateVersion('bfsp', { self: true, deps: true });
@@ -135,9 +143,9 @@ export class Publer {
         {
           const deps = (pkg.dependencies || []) as any[];
           deps.forEach((x, index) => {
-            let name = '';
+            let depName = '';
             if (Array.isArray(x)) {
-              name = x[0];
+              depName = x[0];
             } else {
               switch (typeof x) {
                 case 'string':
@@ -149,29 +157,29 @@ export class Publer {
                     let idx = x.lastIndexOf('@');
                     if (idx <= 0) {
                       // 没有指定版本
-                      name = x;
+                      depName = x;
                     } else {
-                      name = x.substring(0, idx);
+                      depName = x.substring(0, idx);
                     }
                     idx = x.lastIndexOf(':');
                     if (idx < 0) {
                       // 没有指定版本
-                      name = x;
+                      depName = x;
                     } else {
-                      name = x.substring(0, idx);
+                      depName = x.substring(0, idx);
                     }
                   }
                   break;
                 case 'object':
                   {
-                    name = x.name;
+                    depName = x.name;
                   }
                   break;
               }
             }
-            if (name.startsWith(packageName)) {
-              this.logger.info(`\t[bfsp.json] ${name} dep:\t${name} => ${version}`);
-              deps[index] = [name, `^${version}`];
+            if (depName.startsWith(packageName)) {
+              this.logger.info(`\t[bfsp.json] ${name} dep:\t${depName} => ${version}`);
+              deps[index] = [depName, `^${version}`];
             }
           });
 

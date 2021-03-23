@@ -132,11 +132,13 @@ if (require.main === module) {
       {
         let registry = '';
         let version = '';
+        let clean = false;
 
         let asString = (s: string | boolean) => s as string;
         parseArgv(argv, [
           buildArgParserEmitter('registry', asString, (v) => (registry = v)),
           buildArgParserEmitter('version', asString, (v) => (version = v)),
+          buildArgParserEmitter('clean', boolValueFormater, (v) => (clean = v)),
         ]);
 
         let packageName = argv.shift();
@@ -150,7 +152,7 @@ if (require.main === module) {
           },
           moduleMap
         );
-        publer.publish({ packageName, registry, version });
+        publer.publish({ packageName, registry, version, clean });
       }
       break;
     case 'use':
@@ -167,7 +169,7 @@ if (require.main === module) {
         if (!packageName) {
           throw new Error('package name is not specified');
         }
-        console.log(`update version of deps prefixed with ${packageName} to ${version}`)
+        console.log(`update version of deps prefixed with ${packageName} to ${version}`);
         const bfsProject = BFSProject.from({ autoInit: false });
         const publer = Publer.from(
           {
