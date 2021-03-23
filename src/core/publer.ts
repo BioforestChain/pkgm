@@ -133,28 +133,48 @@ export class Publer {
     switch (type) {
       case 'bfsp':
         {
-          const deps = ((pkg.dependencies || []) as any[])
-            .map((x) => {
-              if (Array.isArray(x)) {
-                return [x[0], x.length > 1 ? x[1] : '*'];
-              }
+          const deps = (pkg.dependencies || []) as any[];
+          deps.forEach((x, index) => {
+            let name = '';
+            if (Array.isArray(x)) {
+              name = x[0];
+            } else {
               switch (typeof x) {
                 case 'string':
-                  return [x, '*'];
-                case 'object':
-                  return [x.name, x.version || '*'];
-                default:
-                  return null; //can not parse
-              }
-            })
-            .filter((x) => x) as [name: string, version: string][];
+                  {
+                    // 有些项是带版本的
+                    // 比如 socket.io-client:~1.7.4
+                    // 或者 @bfchain/util@1.2.9
 
-          deps.forEach((dep) => {
-            if (dep[0].startsWith(packageName)) {
-              this.logger.info(`\t[bfsp.json] ${name} dep:\t${dep[0]} => ${version}`);
-              dep[1] = `^${version}`;
+                    let idx = x.lastIndexOf('@');
+                    if (idx <= 0) {
+                      // 没有指定版本
+                      name = x;
+                    } else {
+                      name = x.substring(0, idx);
+                    }
+                    idx = x.lastIndexOf(':');
+                    if (idx < 0) {
+                      // 没有指定版本
+                      name = x;
+                    } else {
+                      name = x.substring(0, idx);
+                    }
+                  }
+                  break;
+                case 'object':
+                  {
+                    name = x.name;
+                  }
+                  break;
+              }
+            }
+            if (name.startsWith(packageName)) {
+              this.logger.info(`\t[bfsp.json] ${name} dep:\t${name} => ${version}`);
+              deps[index] = [name, `^${version}`];
             }
           });
+
           pkg.dependencies = deps;
         }
         break;
