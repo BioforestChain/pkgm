@@ -169,7 +169,7 @@ if (require.main === module) {
         if (!packageName) {
           throw new Error('package name is not specified');
         }
-        console.log(`update version of deps prefixed with ${packageName} to ${version}`);
+        console.log(`update version of deps that is sub projects of ${packageName} to ${version}`);
         const bfsProject = BFSProject.from({ autoInit: false });
         const publer = Publer.from(
           {
@@ -177,8 +177,24 @@ if (require.main === module) {
           },
           moduleMap
         );
-        bfsProject.readAllProjectList().forEach((x) => {
-          publer.updateVersion(x, version, 'bfsp', packageName!, { self: false, deps: true });
+        const subProjectNames: string[] = [];
+        const subProjects = bfsProject.readAllProjectList();
+        let target: BFSProject | null = null;
+        for (const x of subProjects) {
+          if (x[1].projectConfig.name === packageName) {
+            target = x[1];
+            break;
+          }
+        }
+        if (!target) {
+          throw new Error(`${packageName} not found`);
+        }
+
+        target.readAllProjectList().forEach((x) => {
+          subProjectNames.push(x.projectConfig.name);
+        });
+        subProjects.forEach((x) => {
+          publer.updateVersion(x, version, 'bfsp', subProjectNames, { self: false, deps: true });
         });
       }
       break;
