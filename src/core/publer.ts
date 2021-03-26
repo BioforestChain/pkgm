@@ -28,7 +28,6 @@ export class Publer {
     private logger: Logger,
     private config: Config
   ) {}
-  pendingProjectMap = new Map<string, BFSProject>();
 
   static from(args: { bfsProject: BFSProject }, moduleMap = new ModuleStroge()) {
     moduleMap.set(Publer.ARGS.BFS_PROJECT, args.bfsProject);
@@ -60,13 +59,14 @@ export class Publer {
       // 如果已经指定了名字，那么需要读取对应pkg的子项目
       subProjects = pkg.readAllProjectList();
     }
-
+    const subProjectNames: string[] = [];
     subProjects.forEach((x) => {
+      subProjectNames.push(x.projectConfig.name);
       refs.unshift({
-        path: `./${this.config.shadownRootPackageDirname}/${x.sourceConfig.name}/tsconfig.cjs.json`,
+        path: `./${this.config.shadownRootPackageDirname}/${x.projectConfig.name}/tsconfig.cjs.json`,
       });
       refs.unshift({
-        path: `./${this.config.shadownRootPackageDirname}/${x.sourceConfig.name}/tsconfig.esm.json`,
+        path: `./${this.config.shadownRootPackageDirname}/${x.projectConfig.name}/tsconfig.esm.json`,
       });
     });
 
@@ -84,7 +84,7 @@ export class Publer {
         // subProjects默认会包含pkg
         // this._updateVersion(pkg, v, type, packageName);
         subProjects.forEach((x) => {
-          this.updateVersion(x, v, type, packageName, updateType);
+          this.updateVersion(x, v, type, subProjectNames, updateType);
         });
       }
     };
@@ -109,7 +109,7 @@ export class Publer {
     p: BFSProject,
     version: string,
     type: ProjectType,
-    packageName: string,
+    subProjectNames: string[],
     updateType: { self: boolean; deps: boolean }
   ) {
     if (!updateType.self && !updateType.deps) {
@@ -123,7 +123,7 @@ export class Publer {
     const pkg = JSON.parse(String(this.reader.readFile(path)));
     if (updateType.deps) {
       // update dependencies
-      this.updateDepsVersion(pkg, version, type, packageName);
+      this.updateDepsVersion(pkg, version, type, subProjectNames);
     }
     if (updateType.self) {
       pkg.version = version;
@@ -135,7 +135,7 @@ export class Publer {
     pkg: PKGM.Config.Package | PKGM.Config.BfsProject,
     version: string,
     type: ProjectType,
-    packageName: string
+    subProjectNames: string[]
   ) {
     const { name } = pkg;
     switch (type) {
@@ -177,7 +177,7 @@ export class Publer {
                   break;
               }
             }
-            if (depName.startsWith(packageName)) {
+            if (subProjectNames.indexOf(depName) >= 0) {
               this.logger.info(`\t[bfsp.json] ${name} dep:\t${depName} => ${version}`);
               deps[index] = [depName, `^${version}`];
             }
@@ -190,7 +190,7 @@ export class Publer {
         {
           const deps = pkg.dependencies as PKGM.Config.DEPS;
           Object.keys(deps).forEach((x) => {
-            if (x.startsWith(packageName)) {
+            if (subProjectNames.indexOf(x) >= 0) {
               this.logger.info(`\t[package.json] ${name} dep:\t${x} => ${version}`);
               deps[x] = `^${version}`;
             }
