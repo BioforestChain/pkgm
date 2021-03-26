@@ -22,6 +22,7 @@ declare namespace PKGM {
       rollupNodeResolveOptions?: import('@rollup/plugin-node-resolve').RollupNodeResolveOptions;
       rollupProfileOptions: RollupPlugin.ProfileOptions;
       rollupVirtualOptions?: RollupPlugin.VirtualOptions;
+      rollupTerserOptions?: import('rollup-plugin-terser').Options;
     }
   }
 }

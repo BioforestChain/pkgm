@@ -16,6 +16,7 @@ import { RollupTscShimCleaner } from './plugins/tscShimCleaner';
 import { RollupNodePolyfills } from './plugins/nodePolyfills';
 import { RollupAutoPolyfills } from './plugins/autoPolyfill';
 import './@types';
+import { RollupTerser } from './plugins/terser';
 
 @Injectable()
 export class RollupHelper {
@@ -109,6 +110,9 @@ export class RollupHelper {
         if (rollupConfig.rollupNodeResolveOptions) {
           moduleMap.set(RollupNodeResolve.ARGS.OPTIONS, rollupConfig.rollupNodeResolveOptions);
         }
+        if (rollupConfig.rollupTerserOptions) {
+          moduleMap.set(RollupTerser.ARGS.OPTIONS, rollupConfig.rollupTerserOptions);
+        }
         if (rollupConfig.rollupProfileOptions) {
           const { platform, jsRuntime, runtimeMode, channel } = rollupConfig.rollupProfileOptions;
           platform && moduleMap.set(ROLLUP_PRIFILE_ARGS.PLATFORM, platform);
@@ -124,6 +128,7 @@ export class RollupHelper {
         const profileSwitchPlugin = this.getProfileSwitchPlugin(moduleMap);
         const nodePolyfillsPlugin = this.getNodePolyfillsPlugin(moduleMap);
         const autoPolyfillsPlugin = this.getRollupAutoPolyfills(moduleMap);
+        const terserPlugin = this.getTerserPlugin(moduleMap)
 
         /// 这两个垫底，最好不要改动
         const nodeResolvePlugin = this.getNodeResolvePlugin(moduleMap);
@@ -136,6 +141,7 @@ export class RollupHelper {
             cjsToEsmPlugin.toPlugin(),
             profileSwitchPlugin.toPlugin(),
             nodeResolvePlugin.options.preferBuiltins && nodePolyfillsPlugin.toPlugin(),
+            terserPlugin.options && terserPlugin.toPlugin(),
 
             /// 这两个垫底，最好不要改动
             nodeResolvePlugin.toPlugin(),
@@ -187,6 +193,9 @@ export class RollupHelper {
   }
   private getTscShimCleaner(moduleMap: ModuleStroge) {
     return Resolve(RollupTscShimCleaner, moduleMap);
+  }
+  private getTerserPlugin(moduleMap: ModuleStroge) {
+    return Resolve(RollupTerser, moduleMap);
   }
   doCompile(args: {
     watch?: boolean;
