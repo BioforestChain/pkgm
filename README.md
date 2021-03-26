@@ -26,13 +26,19 @@ npm i -g @bfchian/pkgm
    - name: string
    - version: string
    - source: `{mainFilename:file,dirName:dir}`
-1. 分解与依赖
+2. 分解与依赖
    - dependencies: `project-name[]`
      > 所以在 bfsp 直接支持在`dependencies`写入整个项目数中的某一个项目的名词，在项目中拥有源码的情况下，它会自动转化成`projects`，以确保编译的依赖顺序正确。在没有源码的情况下，它会直接使用依赖安装的方式来导入包。
      > 如此一来，如果你现在先将某一个子项目独立出去让其它人开发，现在就可以直接通过`git init`将这个子项目完全隔离出去开发。
    - projects: `dir[]`
      > 子项目。
      > 你可以使用`../SOME_DIR`来将子项目指向父级的某一个文件夹，但不推荐这样做。我仍然建议你在`dependencies`中直接声明依赖。
+3. 插件
+
+   - plugins
+     > 目前支持 2 个插件，bdkTsc 和 rollup ，分别用于自定义编译和打包的选项
+
+   * 代码混淆： 设置 plugins.rollup.rollupTerserOptions 为空对象`{}`即可
 
 ### bfsp 命令行指令
 
@@ -47,18 +53,22 @@ npm i -g @bfchian/pkgm
 4. bfsp fix
    > 检查项目依赖，会提示项目的依赖问题
 5. bfsp publ
-   > 发布指定的包到npm上，包名可选，如果不指定包名则表示发布当前bfs项目
-   
-   **注意**：**若使用了--version参数，则子项目也将使用指定的版本**
+
+   > 发布指定的包到 npm 上，包名可选，如果不指定包名则表示发布当前 bfs 项目
+
+   **注意**：**若使用了--version 参数，则子项目也将使用指定的版本**
+
    ```shell
    bfsp publ example-package --registry=http://localhost:4873 --version=0.0.1-alpha.1
    ```
+
 6. bfsp use packageName --version=x.x.x
    > 设置项目下所有以`packageName`开头的依赖版本为`^x.x.x`
    ```shell
    bfsp use @bfs/core --version=0.0.1-alpha.1
    ```
-   项目下所有bfsp.json文件内的dependencies中以`@bfs/core`开头的依赖都会被改成`^0.0.1-alpha.1`
-   
+   项目下所有 bfsp.json 文件内的 dependencies 中以`@bfs/core`开头的依赖都会被改成`^0.0.1-alpha.1`
+
 ## License - 许可
+
 <a rel="license" href="https://creativecommons.org/licenses/by-nc-sa/4.0/"><img alt="知识共享许可协议" style="border-width:0" src="https://i.creativecommons.org/l/by-nc-sa/4.0/88x31.png" /></a><br/>本作品采用 <a rel="license" href="https://creativecommons.org/licenses/by-na-sa/4.0/">知识共享署名-非商业性许可-相同方式共享 4.0 国际许可协议</a> 进行许可。
