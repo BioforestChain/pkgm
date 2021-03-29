@@ -6,7 +6,7 @@ PKGM 是一个 bfchian 包管理器，目前它主要用于产出 bfsp 这个工
 ## 安装
 
 ```
-npm i -g @bfchian/pkgm
+npm i -g @bfchain/pkgm
 ```
 
 ## BFSP
