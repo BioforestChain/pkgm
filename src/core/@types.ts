@@ -110,6 +110,7 @@ declare namespace PKGM {
         type Script = {
           name: string;
           command: string;
+          description?: string;
           env?: ENVS;
         };
         interface Rollup {

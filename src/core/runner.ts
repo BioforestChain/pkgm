@@ -31,14 +31,39 @@ export class Runner {
     //   this.bfsProject.
   }
 
-  async doRun(scriptname: string, options: { runAll?: boolean; argv?: string[] } = {}) {
+  async doRun(
+    scriptname: string,
+    options: { runAll?: boolean; argv?: string[]; listAll?: boolean } = {}
+  ) {
     let scriptInfoList = this.bfsProject.findScript(scriptname);
-    const { argv = [], runAll = false } = options;
+    const { argv = [], runAll = false, listAll = false } = options;
 
     if (scriptInfoList.length === 0) {
-      throw new Error(
-        `no found script '${scriptname}' in project '${this.bfsProject.projectConfig.name}'`
+      console.error(
+        chalk.red(
+          `no found script '${scriptname}' in project '${this.bfsProject.projectConfig.name}'`
+        )
       );
+      return;
+    }
+
+    if (listAll) {
+      scriptInfoList.forEach((scriptInfo, i) => {
+        // return {
+        //   num: i + 1,
+        //   project: chalk.green(scriptInfo.project.projectConfig.name),
+        //   'command name': scriptInfo.script.name,
+        //   description: scriptInfo.script.description,
+        // };
+        console.log(
+          `${(i + 1).toString().padStart(2, ' ')}. ${chalk.green(
+            scriptInfo.project.projectConfig.name
+          )} ${chalk.blue(scriptInfo.script.name)}${
+            scriptInfo.script.description ? chalk.grey(`\t: ${scriptInfo.script.description}`) : ''
+          }`
+        );
+      });
+      return;
     }
 
     if (runAll === false && scriptInfoList.length > 1) {
@@ -46,7 +71,9 @@ export class Runner {
       const memu = console.menu('select an script to run:');
       scriptInfoList.forEach((scriptInfo, i) => {
         memu.addOption(
-          `${chalk.green(scriptInfo.project.projectConfig.name)} ${scriptInfo.script.name}`,
+          `${chalk.green(scriptInfo.project.projectConfig.name)} ${scriptInfo.script.name}${
+            scriptInfo.script.description ? chalk.grey(` :${scriptInfo.script.description}`) : ''
+          }`,
           i
         );
       });

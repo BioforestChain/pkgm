@@ -303,7 +303,7 @@ export class BFSProject {
   }
   private _nameToMatcher(name: string) {
     if (name.includes('*')) {
-      const reg = RegExp(name.replace('*', '.+?'));
+      const reg = RegExp(name.replace('*', '.*?'));
       return (sname: string) => {
         // sname.
         return reg.test(sname);

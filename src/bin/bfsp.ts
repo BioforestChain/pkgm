@@ -25,7 +25,14 @@ if (require.main === module) {
       if (!scriptname) {
         throw new TypeError('no script name to run.');
       }
-      const arg_runall = cmd === 'runall';
+      let arg_runall = cmd === 'runall';
+      let arg_list = false;
+
+      parseArgv(argv, [
+        buildArgParserEmitter('all', boolValueFormater, (v) => (arg_runall = v)),
+        buildArgParserEmitter('list', boolValueFormater, (v) => (arg_list = v)),
+      ]);
+
       const runner = Runner.from(
         {
           bfsProject: BFSProject.from({}),
@@ -35,6 +42,7 @@ if (require.main === module) {
       runner.doRun(scriptname, {
         runAll: arg_runall,
         argv,
+        listAll: arg_list,
       });
       break;
     case 'clean':
