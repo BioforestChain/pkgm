@@ -1,10 +1,12 @@
-import { Inject, ModuleStroge, Resolve } from '@bfchain/util-dep-inject';
+import { Inject, ModuleStroge, Resolve, Resolvable } from '@bfchain/util-dep-inject';
 import './@types';
 import { Config } from './config';
 import { BFS_PROJECT_ARG } from './const';
 import { PathHelper } from './pathHelper';
 import { BFSProject } from './project';
+import { Reader } from './reader';
 
+@Resolvable()
 export class EnvHelper {
   static ARGS = {
     BFS_PROJECT: BFS_PROJECT_ARG,
@@ -17,33 +19,53 @@ export class EnvHelper {
     @Inject(EnvHelper.ARGS.BFS_PROJECT)
     public readonly rootBfsProject: BFSProject,
     private config: Config,
+    private reader: Reader,
     private path: PathHelper
   ) {}
   getInnerEnv<E>(projectConfig: PKGM.Config.BfsProject, extendsEnv?: E) {
     /// 基础的常量
-    const innerEnv: PKGM.InnerEnv & E = Object.assign(
-      Object.create(null),
-      {
-        BFSP_SHADOWN_DIRNAME: this.config.projectShadowDirname,
-        BFSP_SHADOWN_DIR: this.path.join(
-          this.rootBfsProject.projectDirname,
-          this.config.projectShadowDirname,
-          'node_modules',
-          projectConfig.name
-        ),
-        BFSP_ROOT_DIR: this.rootBfsProject.projectDirname,
-      } as PKGM.InnerEnv,
-      extendsEnv
-    );
-    try {
-      const packageJson = require(this.path.join(innerEnv.BFSP_SHADOWN_DIR, 'package.json'));
-      innerEnv.BFSP_MAINFILE = this.path.join(innerEnv.BFSP_SHADOWN_DIR, packageJson.main);
-      for (const key in packageJson) {
-        const value = packageJson[key];
-        Reflect.set(innerEnv, `NPM_${key.toUpperCase()}`, value);
-      }
-    } catch {}
+    const innerEnv: Partial<PKGM.InnerEnv> & E = Object.assign(Object.create(null), extendsEnv);
 
+    if (innerEnv.BFSP_SHADOWN_DIRNAME === undefined) {
+      innerEnv.BFSP_SHADOWN_DIRNAME = this.config.projectShadowDirname;
+    }
+    if (innerEnv.BFSP_SHADOWN_DIR === undefined) {
+      innerEnv.BFSP_SHADOWN_DIR = this.path.join(
+        this.rootBfsProject.projectDirname,
+        this.config.projectShadowDirname,
+        'node_modules',
+        projectConfig.name
+      );
+    }
+    if (innerEnv.BFSP_DIR === undefined) {
+      innerEnv.BFSP_DIR = this.rootBfsProject.projectDirname;
+    }
+    if (innerEnv.BFSP_ROOT_DIR === undefined) {
+      innerEnv.BFSP_ROOT_DIR =
+        this.rootBfsProject.rootBfsProject?.projectDirname || this.rootBfsProject.projectDirname;
+    }
+    if (innerEnv.PWD === undefined) {
+      innerEnv.PWD = this.path.cwd;
+    }
+    const packageJsonpath = this.path.join(innerEnv.BFSP_SHADOWN_DIR, 'package.json');
+    let BFSP_MAINFILE = this.path.join(innerEnv.BFSP_SHADOWN_DIR, 'index.js');
+
+    if (this.reader.exists(packageJsonpath)) {
+      const packageJsonContent = this.reader.readFile(packageJsonpath, 'utf-8');
+      try {
+        const packageJson = JSON.parse(packageJsonContent);
+        if (packageJson.main !== undefined) {
+          BFSP_MAINFILE = this.path.join(innerEnv.BFSP_SHADOWN_DIR, packageJson.main);
+        }
+        for (const key in packageJson) {
+          let value = packageJson[key];
+          if (typeof value === 'object') {
+            value = JSON.stringify(value);
+          }
+          Reflect.set(innerEnv, `NPM_${key.toUpperCase()}`, value);
+        }
+      } catch {}
+    }
     return innerEnv;
   }
   resolveWithEnv<T>(data: T, env: PKGM.Config.ENVS) {

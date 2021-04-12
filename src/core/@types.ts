@@ -1,13 +1,17 @@
 declare namespace PKGM {
   namespace Config {
-    type ENVS = { [key: string]: string };
-    type DEPS = { [key: string]: string };
-    type Learn = {
+    interface ENVS {
+      [key: string]: string | undefined;
+    }
+    interface DEPS {
+      [key: string]: string | undefined;
+    }
+    interface Learn {
       packages: string[];
       version: string;
-    };
+    }
 
-    type Package = {
+    interface Package {
       name: string;
       version: string;
       private: boolean;
@@ -19,8 +23,8 @@ declare namespace PKGM {
       module?: string;
       dependencies?: DEPS;
       devDependencies?: DEPS;
-    };
-    type TsConfig = {
+    }
+    interface TsConfig {
       files?: string[];
       include?: string[];
       references?: { path: string }[];
@@ -34,9 +38,9 @@ declare namespace PKGM {
         types?: string[];
         lib?: string[];
       };
-    };
+    }
 
-    type BfsProject = {
+    interface BfsProject {
       name: string;
       shortName?: string;
       version: string;
@@ -45,7 +49,7 @@ declare namespace PKGM {
       projects: string[];
       dependencies: _BfsTypedProjectBase['dependencies'];
       plugins?: Partial<BfsProject.Plugins>;
-    };
+    }
 
     interface _BfsTypedProjectBase {
       type: string;

@@ -1,10 +1,11 @@
 declare namespace PKGM {
-  interface InnerEnv {
+  interface InnerEnv extends Config.ENVS {
     BFSP_SHADOWN_DIRNAME: string;
     BFSP_SHADOWN_DIR: string;
+    BFSP_DIR: string;
     BFSP_ROOT_DIR: string;
     BFSP_MAINFILE: string;
-    [key: string]: string;
+    PWD: string;
   }
   namespace Profile {
     type Platform = typeof import('./const').PROFILE_LIST['PLATFORM'][number];
