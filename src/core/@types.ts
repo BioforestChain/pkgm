@@ -46,9 +46,10 @@ declare namespace PKGM {
       version: string;
       vars: ENVS;
       source?: BfsProject.Source;
-      projects: string[];
+      projects: _BfsTypedProjectBase['projects'];
       dependencies: _BfsTypedProjectBase['dependencies'];
       plugins?: Partial<BfsProject.Plugins>;
+      profiles: BfsProject.Profiles;
     }
 
     interface _BfsTypedProjectBase {
@@ -57,9 +58,11 @@ declare namespace PKGM {
       projectDirpath: string;
       packageDirpath: string;
       version: string;
-      projects: string[];
+      projects: Array<string | [name: string, scope?: string] | { name: string; scope?: string }>;
       dependencies: Array<
-        string | [name: string, version?: string] | { name: string; version?: string }
+        | string
+        | [name: string, version?: string, scope?: string]
+        | { name: string; version?: string; scope?: string }
       >;
     }
     interface BfsMultiProject extends _BfsTypedProjectBase {
@@ -118,6 +121,12 @@ declare namespace PKGM {
           outputs: import('rollup').OutputOptions[] | import('rollup').OutputOptions;
         }
       }
+
+      type Profiles = {
+        [type: string]: {
+          scopes: string[];
+        };
+      };
     }
   }
 

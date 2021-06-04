@@ -181,7 +181,13 @@ export class Initer {
     const topSet = new Set<PKGM.Config.BfsMixProjectInfo>(mixProjectInfoList);
     for (const mixProjectInfo of mixProjectInfoList) {
       /// 目前只支持path模式,不支持直接使用name
-      for (const refPath of mixProjectInfo.bfs.projects) {
+      for (const subProject of mixProjectInfo.bfs.projects) {
+        const refPath =
+          typeof subProject === 'string'
+            ? subProject
+            : subProject instanceof Array
+            ? subProject[0]
+            : subProject.name;
         const ref_mixProjectInfo = dirMap.get(
           this.path.join(mixProjectInfo.typed.projectDirpath, refPath)
         );

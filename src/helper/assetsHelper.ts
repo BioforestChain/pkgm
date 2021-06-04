@@ -58,9 +58,15 @@ export class AssetsHelper {
         );
         /// 监听子项目
         {
-          const projectDirList = projectConfig.projects.map((projectName) =>
-            this.path.join(projectDir, projectName)
-          );
+          const projectDirList = projectConfig.projects.map((subProject) => {
+            const projectName =
+              typeof subProject === 'string'
+                ? subProject
+                : subProject instanceof Array
+                ? subProject[0]
+                : subProject.name;
+            return this.path.join(projectDir, projectName);
+          });
           $projectWatcherCacher.putKeys(projectDirList, (subProjectDir) =>
             this.doProjectClone(subProjectDir, opts)
           );

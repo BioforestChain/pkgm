@@ -114,6 +114,7 @@ export class BFSProject {
       projects: references = [],
       dependencies = [],
       plugins,
+      profiles,
     } = sourceConfig;
     // 如果项目名为空,或者已经有父级项目名,那么强制使用命名规则来统一名字
     if (!name || this.parentProjectName) {
@@ -156,6 +157,44 @@ export class BFSProject {
       });
     }
 
+    /// 提供默认的profiles定义
+    if (!profiles) {
+      profiles = this.parentBfsProject
+        ? this.parentBfsProject.projectConfig.profiles
+        : {
+            jsRuntime: {
+              scopes: ['web', 'webworker', 'node', 'nodeworker'],
+            },
+            runtimeMode: {
+              scopes: ['dev', 'prod', 'test'],
+            },
+            platform: {
+              scopes: ['android', 'ios', 'win32', 'darwin', 'linux'],
+            },
+            channel: {
+              scopes: ['alpha', 'beta', 'stable'],
+            },
+          };
+    }
+    if (profiles) {
+      /// 去重检测
+      const allScopes = new Map<string, string>();
+      for (const name in profiles) {
+        const profile = profiles[name];
+        const scopes = new Set(profile.scopes);
+        for (const scope of scopes) {
+          const duplicationProfilename = allScopes.get(scope);
+          if (duplicationProfilename !== undefined) {
+            throw new Error(
+              `Profile Duplication in ${name}: profiles.${duplicationProfilename}.scopes already has scope ${scope}.`
+            );
+          }
+          allScopes.set(scope, name);
+        }
+        profile.scopes = [...scopes];
+      }
+    }
+
     const cleanConfig: PKGM.Config.BfsProject = {
       name,
       shortName,
@@ -165,6 +204,7 @@ export class BFSProject {
       projects: references,
       dependencies: dependencies,
       plugins,
+      profiles,
     };
 
     /// 写回配置文件中
@@ -278,8 +318,14 @@ export class BFSProject {
     const { projectConfig } = this;
     const mySubProjectList: BFSProject[] = [];
     /// 遍历出直属子项目
-    for (const subPackage of projectConfig.projects) {
-      const subPackageBaseDirname = this.path.join(this.projectDirname, subPackage);
+    for (const subProject of projectConfig.projects) {
+      const subPackageName =
+        typeof subProject === 'string'
+          ? subProject
+          : subProject instanceof Array
+          ? subProject[0]
+          : subProject.name;
+      const subPackageBaseDirname = this.path.join(this.projectDirname, subPackageName);
       if (!projectCache.has(subPackageBaseDirname)) {
         const subProject = BFSProject.from(
           {
