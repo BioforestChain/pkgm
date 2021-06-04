@@ -41,6 +41,7 @@ declare namespace PKGM {
     }
 
     interface BfsProject {
+      pm: { name: string; version: string };
       name: string;
       shortName?: string;
       version: string;
