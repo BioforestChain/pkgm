@@ -253,7 +253,6 @@ export class Initer {
     packageConfig.devDependencies = Object.assign({}, packageConfig.devDependencies, {
       '@bfchain/devkit': 'latest',
       learn: 'latest',
-      // '@bfchain/pkgm': 'latest',
       [rootConfig.pm.name]: rootConfig.pm.version,
       '@bfchain/devkit-tsc': 'latest',
     });

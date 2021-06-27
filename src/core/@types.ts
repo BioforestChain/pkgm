@@ -41,7 +41,6 @@ declare namespace PKGM {
     }
 
     interface BfsProject {
-      pm: { name: string; version: string };
       name: string;
       shortName?: string;
       version: string;
@@ -51,8 +50,10 @@ declare namespace PKGM {
       dependencies: _BfsTypedProjectBase['dependencies'];
       plugins?: Partial<BfsProject.Plugins>;
       profiles: BfsProject.Profiles;
+      pm: { name: string; version: string };
     }
 
+    /**基础配置信息，用于构建基础的依赖关系 */
     interface _BfsTypedProjectBase {
       type: string;
       name: string;
@@ -86,7 +87,10 @@ declare namespace PKGM {
       writeBfsProject: () => void;
     };
     namespace BfsProject {
-      type Source = { dirName: string; mainFilename: string };
+      type Source = {
+        dirName: string;
+        mainFilename: string;
+      };
 
       interface Plugins {
         bdkTsc: Plugins.BdkTsc;
@@ -94,6 +98,7 @@ declare namespace PKGM {
         npmPackage: Package;
         assets: (string | Plugins.Asset)[];
         scripts: Plugins.Script[];
+        bundle: Plugins.Bundle | Plugins.Bundle[];
       }
       namespace Plugins {
         type BdkTsc = {
@@ -120,6 +125,25 @@ declare namespace PKGM {
         interface Rollup {
           sourceInputFile: string;
           outputs: import('rollup').OutputOptions[] | import('rollup').OutputOptions;
+        }
+
+        type Bundle = (LibBundle | ExecuteBundle) & {
+          name: string;
+          profile: string[];
+        };
+        interface LibBundle {
+          mode: 'lib';
+          /**lib模式，属于最通用的模式，与通常的npm包是一样的，这里提供一些基本的编译选项 */
+          libOptions: {
+            minify: boolean;
+          };
+        }
+        interface ExecuteBundle {
+          mode: 'execute';
+          /**execute模式，可执行程序模式，可以理解为是iife打包。单文件包含一切依赖，除非主动声明排除。 */
+          programOptions: {
+            excludes: string[];
+          };
         }
       }
 
