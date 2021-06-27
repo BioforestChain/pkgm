@@ -32,9 +32,13 @@ declare namespace PKGM {
       extends?: string;
       mixin?: string[];
       compilerOptions?: {
+        transformPlugins?: string[];
+
         composite?: boolean;
         outDir?: string;
         rootDir?: string;
+        rootDirs?: string[];
+        paths?: { [pattern: string]: string[] };
         types?: string[];
         lib?: string[];
       };

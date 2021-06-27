@@ -76,6 +76,9 @@ export class Initer {
       if (!gitIgnoreLines.has('node_modules')) {
         newGitIgnoreContent += '\nnode_modules';
       }
+      if (!gitIgnoreLines.has('/tsconfig.json')) {
+        newGitIgnoreContent += '\n/tsconfig.json';
+      }
 
       if (newGitIgnoreContent !== gitIgnoreContent) {
         this.writer.writeFile(gitIgnoreFilepath, newGitIgnoreContent.trim());
@@ -336,6 +339,49 @@ export class Initer {
         }
         this.writer.writeOrDeleteFile(tsconfigFilename, tsconfigConfig);
       }
+
+      /// 提供一个根目录下的tsconfig.json，用于语言服务器的解析
+      {
+        const tsconfigDir = this.bfsProject.projectDirpath;
+        const tsconfigFilepath = this.path.join(tsconfigDir, 'tsconfig.json');
+        const tsconfigConfig: Partial<PKGM.Config.TsConfig> = this.reader.exists(tsconfigFilepath)
+          ? this.encoder.encodeByFilepath(tsconfigFilepath)
+          : {};
+
+        Object.assign(tsconfigConfig, tsconfigBase.getTsconfigBase('esm'));
+        const tsCompilerOptions = tsconfigConfig['compilerOptions']!;
+        delete tsCompilerOptions.transformPlugins;
+
+        tsCompilerOptions.rootDirs = [];
+        tsCompilerOptions.paths = {};
+        const rootDirs = tsCompilerOptions.rootDirs;
+        const paths = tsCompilerOptions.paths;
+        const tsRuntimeList = [] as string[];
+        for (const project of mixProjectInfoList) {
+          const relativeSrcDir =
+            './' +
+            this.path
+              .relative(tsconfigDir, this.reader.realpath(project.packageSrcDir))
+              .replace(/\\/g, '/');
+          rootDirs.push(relativeSrcDir);
+          paths[project.bfs.name] = [relativeSrcDir];
+          const tsRuntime = project.bfs.plugins?.bdkTsc?.tsRuntime;
+          if (tsRuntime) {
+            tsRuntimeList.push(...tsRuntime);
+          }
+        }
+        const tsRuntimes = new Set(tsRuntimeList);
+
+        const libTypes = this._tsRuntime2libTypes(
+          tsRuntimes,
+          tsCompilerOptions.lib,
+          tsCompilerOptions.types
+        );
+        tsCompilerOptions.lib = libTypes.lib;
+        tsCompilerOptions.types = libTypes.types;
+
+        this.writer.writeOrDeleteFile(tsconfigFilepath, tsconfigConfig);
+      }
     }
     /**
      * @TODO 插件化
@@ -411,6 +457,30 @@ export class Initer {
   }
   private _clearTsRefInfoCache() {
     this._refDeepMap.clear();
+  }
+
+  private _tsRuntime2libTypes(
+    tsRuntimes: Iterable<string>,
+    _lib?: Iterable<string>,
+    _types?: Iterable<string>
+  ) {
+    const libs = new Set<string>(_lib);
+    const types = new Set<string>(_types);
+    for (const jsr of tsRuntimes) {
+      if (jsr === 'node' || jsr === 'nodeworker') {
+        types.add('node');
+      } else if (jsr === 'web') {
+        libs.add('dom');
+        libs.add('dom.iterable');
+      } else if (jsr === 'webworker') {
+        libs.add('webworker');
+        libs.add('webworker.importscripts');
+        libs.add('webworker.iterable');
+      } else {
+        types.add(jsr);
+      }
+    }
+    return { lib: [...libs], types: [...types] };
   }
 
   async initShadownProjectConfigs(
@@ -602,24 +672,13 @@ export class Initer {
         /// lib和types
         const tsRuntime = bfsProject.plugins?.bdkTsc?.tsRuntime;
         if (tsRuntime) {
-          const libs = new Set(tsCompilerOptions.lib);
-          const types = new Set(tsCompilerOptions.types);
-          for (const jsr of tsRuntime) {
-            if (jsr === 'node' || jsr === 'nodeworker') {
-              types.add('node');
-            } else if (jsr === 'web') {
-              libs.add('dom');
-              libs.add('dom.iterable');
-            } else if (jsr === 'webworker') {
-              libs.add('webworker');
-              libs.add('webworker.importscripts');
-              libs.add('webworker.iterable');
-            } else {
-              types.add(jsr);
-            }
-          }
-          tsCompilerOptions.lib = [...libs];
-          tsCompilerOptions.types = [...types];
+          const libTypes = this._tsRuntime2libTypes(
+            tsRuntime,
+            tsCompilerOptions.lib,
+            tsCompilerOptions.types
+          );
+          tsCompilerOptions.lib = libTypes.lib;
+          tsCompilerOptions.types = libTypes.types;
         }
 
         this.writer.writeFile(tsconfigFilepath, tsconfigConfig, true);
