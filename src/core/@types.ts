@@ -38,6 +38,7 @@ declare namespace PKGM {
         outDir?: string;
         rootDir?: string;
         rootDirs?: string[];
+        baseUrl?: string;
         paths?: { [pattern: string]: string[] };
         types?: string[];
         lib?: string[];

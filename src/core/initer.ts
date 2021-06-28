@@ -354,6 +354,7 @@ export class Initer {
 
         tsCompilerOptions.rootDirs = [];
         tsCompilerOptions.paths = {};
+        tsCompilerOptions.baseUrl = '.';
         const rootDirs = tsCompilerOptions.rootDirs;
         const paths = tsCompilerOptions.paths;
         const tsRuntimeList = [] as string[];
