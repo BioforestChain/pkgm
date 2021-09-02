@@ -36,6 +36,7 @@ export class Publer {
   async publish(opts: {
     packageName?: string;
     registry?: string;
+    access?: string;
     version?: string;
     clean?: boolean;
   }) {
@@ -100,7 +101,7 @@ export class Publer {
       tscBuildFinish: () => {
         checkAndUpdateVersion('bfsp', { self: true, deps: true });
         checkAndUpdateVersion('npm', { self: true, deps: true });
-        this._publishToNpm(subProjects, opts.registry);
+        this._publishToNpm(subProjects, opts.registry, opts.access);
       },
     });
   }
@@ -201,11 +202,14 @@ export class Publer {
     }
   }
 
-  private _publishToNpm(projects: Map<string, BFSProject>, registry?: string) {
+  private _publishToNpm(projects: Map<string, BFSProject>, registry?: string, access?: string) {
     projects.forEach((x) => {
       let cmd = `npm publish ${x.packageDirpath}`;
       if (registry) {
         cmd += ` --registry=${registry}`;
+      }
+      if (access && access === 'public') {
+        cmd += ` --access=public`;
       }
       execa.commandSync(cmd, {
         cwd: x.packageDirpath,

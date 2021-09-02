@@ -141,12 +141,14 @@ if (require.main === module) {
         let registry = '';
         let version = '';
         let clean = false;
+        let access = '';
 
         let asString = (s: string | boolean) => s as string;
         parseArgv(argv, [
           buildArgParserEmitter('registry', asString, (v) => (registry = v)),
           buildArgParserEmitter('version', asString, (v) => (version = v)),
           buildArgParserEmitter('clean', boolValueFormater, (v) => (clean = v)),
+          buildArgParserEmitter('access', asString, (v) => (access = v)),
         ]);
 
         let packageName = argv.shift();
@@ -160,7 +162,7 @@ if (require.main === module) {
           },
           moduleMap
         );
-        publer.publish({ packageName, registry, version, clean });
+        publer.publish({ packageName, registry, access, version, clean });
       }
       break;
     case 'use':
