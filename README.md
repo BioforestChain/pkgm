@@ -59,15 +59,15 @@ npm i -g @bfchain/pkgm
    **注意**：**若使用了--version 参数，则子项目也将使用指定的版本**
 
    ```shell
-   bfsp publ example-package --registry=http://localhost:4873 --version=0.0.1-alpha.1
+   bfsp publ example-package --registry=http://localhost:4873 --version=0.0.1-alpha.1 --access=public
    ```
 
 6. bfsp use packageName --version=x.x.x
    > 设置项目下所有以`packageName`开头的依赖版本为`^x.x.x`
    ```shell
-   bfsp use @bfs/core --version=0.0.1-alpha.1
+   bfsp use @bfcs/core --version=0.0.1-alpha.1
    ```
-   项目下所有 bfsp.json 文件内的 dependencies 中以`@bfs/core`开头的依赖都会被改成`^0.0.1-alpha.1`
+   项目下所有 bfsp.json 文件内的 dependencies 中以`@bfcs/core`开头的依赖都会被改成`^0.0.1-alpha.1`
 
 ## License - 许可
 
