@@ -105,6 +105,7 @@ export class BFSProject {
     const { sourceConfig, projectFilepath, projectDirpath } = this;
 
     let {
+      pm,
       name,
       shortName,
       version = this.defaultVersion,
@@ -195,6 +196,21 @@ export class BFSProject {
       }
     }
 
+    if (!pm) {
+      /// 使用本地版本的信息
+      if (this.parentBfsProject) {
+        pm = this.parentBfsProject.projectConfig.pm;
+      } else {
+        const localPmInfo = require('../../package.json');
+        pm = {
+          name: localPmInfo.name,
+          version: localPmInfo.version,
+        };
+      }
+    } else {
+      // 如果有配置pm，那么基于配置，继承或者保持独立
+    }
+
     const cleanConfig: PKGM.Config.BfsProject = {
       name,
       shortName,
@@ -205,6 +221,7 @@ export class BFSProject {
       dependencies: dependencies,
       plugins,
       profiles,
+      pm,
     };
 
     /// 写回配置文件中
