@@ -101,7 +101,7 @@ export class Publer {
       tscBuildFinish: () => {
         checkAndUpdateVersion('bfsp', { self: true, deps: true });
         checkAndUpdateVersion('npm', { self: true, deps: true });
-        this._publishToNpm(subProjects, opts.registry, opts.access);
+        this._publishToNpm(packageName, map, opts.registry, opts.access);
       },
     });
   }
@@ -202,9 +202,49 @@ export class Publer {
     }
   }
 
-  private _publishToNpm(projects: Map<string, BFSProject>, registry?: string, access?: string) {
+  private _publishToNpm(
+    packageName: string,
+    map: Map<string /*name*/, BFSProject>,
+    registry?: string,
+    access?: string
+  ) {
+    const stack = [] as string[];
+    const projects = [] as { name: string; path: string }[];
+    let hasCircularRef = false;
+
+    const dfsSearch = (name: string) => {
+      if (projects.some((x) => x.name === name)) {
+        // circular ref
+        this.logger.warn(`found circular reference: ${name} <=> ${projects[0].name}`);
+        hasCircularRef = true;
+        return;
+      }
+      const p = map.get(name);
+      if (!p) {
+        // not project to be published
+        return;
+      }
+      const pkg = require(this.path.join(p.packageDirpath, 'package.json'));
+      if (!pkg) {
+        // unmet dependency
+        this.logger.warn(`found unmet dependency: ${name}`);
+        return;
+      }
+      projects.unshift({ name, path: p.projectDirpath });
+
+      const deps = Object.keys(pkg.dependencies);
+      // push dependencies aren't  visited yet
+      stack.push(...deps.filter((d) => !projects.some((x) => x.name === d)));
+
+      const next = stack.pop();
+      if (!next) {
+        return;
+      }
+      dfsSearch(next);
+    };
+    dfsSearch(packageName);
     projects.forEach((x) => {
-      let cmd = `npm publish ${x.packageDirpath}`;
+      let cmd = `npm publish ${x.path}`;
       if (registry) {
         cmd += ` --registry=${registry}`;
       }
@@ -212,7 +252,7 @@ export class Publer {
         cmd += ` --access=public`;
       }
       execa.commandSync(cmd, {
-        cwd: x.packageDirpath,
+        cwd: x.path,
         stdio: 'inherit',
       });
     });
