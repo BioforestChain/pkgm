@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "dependencies": {
+    "@bfchain/pkgm": "^2.0.0"
+  }
+}

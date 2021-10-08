@@ -1,0 +1,28 @@
+{
+  "name": "@bfchain/pkgm",
+  "version": "2.0.0",
+  "description": "",
+  "type": "module",
+  "types": "./src/index.ts",
+  "main": "./dist/index.mjs",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "node": "./dist/index.mjs",
+      "require": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "dev": "vite build --watch --minify=false",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@chialab/esbuild-plugin-meta-url": "^0.12.15",
+    "@types/node": "^16.10.3",
+    "typescript": "^4.3.2",
+    "vite": "^2.6.5"
+  }
+}
