@@ -30,13 +30,9 @@ export default defineConfig((info) => {
   return {
     build: {
       target: "es2020",
-      //   lib: {
-      //     entry: input.index,
-      //     formats: ["es"],
-      //   },
       rollupOptions: {
         preserveEntrySignatures: "strict",
-        external: [/^node:.*/, "vite", "esbuild", "*"],
+        external: [/^node:.*/, "vite", "esbuild", "ava", "*"],
         input,
         output: {
           entryFileNames: `[name]${extension}`,

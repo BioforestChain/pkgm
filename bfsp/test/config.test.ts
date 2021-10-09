@@ -1,11 +1,13 @@
-/// test
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { getBfspConfig } from "../src/toolkit";
-// if(import.meta.)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-(async () => {
+import { getBfspUserConfig } from "../src/toolkit";
+import test from "ava";
+// import {  } from 'jest'
+test("could no get user config in 'demo' project", async (t) => {
+  // if(import.meta.)
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
   //   console.log("demoUrl", demoUrl);
-  console.log("GG", await getBfspConfig(resolve(__dirname, "../../demo")));
-})();
+  const config = await getBfspUserConfig(resolve(__dirname, "../../demo"));
+  t.is(config, undefined);
+});
