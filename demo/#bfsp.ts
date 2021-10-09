@@ -1,4 +1,4 @@
-import { Bfsp } from "@bfchain/pkgm";
-export default Bfsp.defineConfig((info) => {
+import { defineConfig } from "@bfchain/pkgm";
+export default defineConfig((info) => {
   return { name: "demo" };
 });
