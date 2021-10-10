@@ -1,9 +1,9 @@
-import { walkFiles, notGitIgnored } from "./toolkit";
-import type { BfspUserConfig } from "./userConfig";
+import { walkFiles, notGitIgnored } from "../toolkit";
+import type { BfspUserConfig } from "../userConfig";
 import path from "node:path";
 
 // import type {} from "typescript";
-export const generateTsconfig = async (
+export const generateTsConfig = async (
   projectDirpath: string,
   config?: BfspUserConfig
 ) => {
@@ -48,4 +48,14 @@ export const generateTsconfig = async (
       .toArray(),
   };
   return tsConfig;
+};
+
+export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
+import { resolve } from "node:path";
+import { fileIO } from "../toolkit";
+export const writeTsConfig = (projectDirpath: string, tsConfig: $TsConfig) => {
+  return fileIO.set(
+    resolve(projectDirpath, "tsconfig.json"),
+    Buffer.from(JSON.stringify(tsConfig, null, 2))
+  );
 };

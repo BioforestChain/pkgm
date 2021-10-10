@@ -1,4 +1,4 @@
-import { readdir, stat, readFile } from "node:fs/promises";
+import { readdir, stat, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {} from "@bfchain/util";
 import ignore, { Ignore } from "ignore";
@@ -7,21 +7,52 @@ import ignore, { Ignore } from "ignore";
  * 一个通用的基于时间的缓存器
  */
 abstract class CacheGetter<K, V> {
-  private _cache = new Map<K, { time: number; value: V }>();
+  constructor() {
+    const doClear = () => {
+      const now = Date.now();
+      const minTime = now - this.cacheTime;
+      for (const [key, value] of this._cache) {
+        if (value.time < minTime) {
+          this._cache.delete(key);
+        }
+      }
+      /// 内存清理在10s~1s之间，残留越多，下一次清理的时间越快
+      setTimeout(doClear, 1e3 + 9e3 * (1 / (Math.sqrt(this._cache.size) + 1)));
+    };
+    setTimeout(doClear, 1e4);
+  }
+  protected _cache = new Map<K, { time: number; value: V }>();
   cacheTime = 1e3; // 默认缓存1s
   async get(key: K) {
     let cache = this._cache.get(key);
     const now = Date.now();
     if (cache === undefined || now - cache.time > this.cacheTime) {
       if (cache === undefined) {
-        cache = { time: now, value: await this.val(key) };
+        cache = { time: now, value: await this.getVal(key) };
       }
       this._cache.set(key, cache);
     }
     return cache.value;
   }
-  abstract val(key: K): BFChainUtil.PromiseMaybe<V>;
+  abstract getVal(key: K): BFChainUtil.PromiseMaybe<V>;
 }
+abstract class CacheWetter<K, V> extends CacheGetter<K, V> {
+  abstract setVal(key: K, val: V): BFChainUtil.PromiseMaybe<boolean>;
+  async set(key: K, val: V) {
+    if (await this.setVal(key, val)) {
+      let cache = this._cache.get(key);
+      const now = Date.now();
+      if (cache) {
+        cache.value = val;
+        cache.time = now;
+      } else {
+        this._cache.set(key, { time: now, value: val });
+      }
+    }
+  }
+}
+
+//#region gitignore 的匹配规则
 
 /**缓存gitignore的规则 */
 type GitIgnore = {
@@ -32,10 +63,10 @@ export const gitignoreListCache = new (class GitignoreCache extends CacheGetter<
   string,
   GitIgnore[]
 > {
-  async val(dir: string) {
+  async getVal(dir: string) {
     const gitginoreList: GitIgnore[] = [];
     while (true) {
-      const names = await readdirCache.get(dir);
+      const names = await folderIO.get(dir);
       if (names.includes(".gitignore")) {
         const filepath = path.join(dir, ".gitignore");
 
@@ -68,7 +99,7 @@ export const ignoresCache = new (class IgnoreCache extends CacheGetter<
   string,
   (somepath: string) => boolean
 > {
-  async val(dir: string) {
+  async getVal(dir: string) {
     const gitginoreList = await gitignoreListCache.get(dir);
     const ignoresList = gitginoreList.map((gitignore) => {
       const ig = ignore();
@@ -89,18 +120,16 @@ export const notGitIgnored = async (somepath: string) => {
   const ignores = await ignoresCache.get(path.dirname(somepath));
   return ignores(somepath) === false;
 };
+//#endregion
 
-const readdirCache = new (class ReaddirCache {
-  private _cache = new Map<string, { time: number; names: string[] }>();
-  cacheTime = 1e3; // 默认缓存1s
-  async get(dirpath: string) {
-    let cache = this._cache.get(dirpath);
-    const now = Date.now();
-    if (cache === undefined || now - cache.time > this.cacheTime) {
-      cache = { time: now, names: await readdir(dirpath) };
-      this._cache.set(dirpath, cache);
-    }
-    return cache.names;
+//#region 文件功能的扩展
+
+export const folderIO = new (class ReaddirCache extends CacheGetter<
+  string,
+  string[]
+> {
+  getVal(dirpath: string) {
+    return readdir(dirpath);
   }
   clear(pathbase: string) {
     for (const dirpath of this._cache.keys()) {
@@ -112,7 +141,7 @@ const readdirCache = new (class ReaddirCache {
 })();
 
 export async function* walkFiles(dirpath: string) {
-  for (const filename of await readdirCache.get(dirpath)) {
+  for (const filename of await folderIO.get(dirpath)) {
     const filepath = path.resolve(dirpath, filename);
     console.log("walk", filepath);
     if ((await stat(filepath)).isFile()) {
@@ -120,6 +149,22 @@ export async function* walkFiles(dirpath: string) {
     }
   }
 }
+
+export const fileIO = new (class FileIoCache extends CacheWetter<
+  string,
+  Buffer
+> {
+  getVal(filepath: string) {
+    return readFile(filepath);
+  }
+  async setVal(filepath: string, content: Buffer) {
+    await writeFile(filepath, content);
+    return true;
+  }
+})();
+//#endregion
+
+//#region 扩展AsyncGenerator的原型链
 
 export async function* AG_Map<T, R>(
   asyncGenerator: AsyncGenerator<T>,
@@ -153,6 +198,7 @@ export async function AG_ToArray<T>(asyncGenerator: AsyncGenerator<T>) {
 }
 
 import "./@types.toolkit";
+import { fstat } from "node:fs";
 
 const AGP = Object.getPrototypeOf(
   Object.getPrototypeOf((async function* () {})())
@@ -166,3 +212,4 @@ AGP.filter = function (filter: any) {
 AGP.toArray = function () {
   return AG_ToArray(this);
 };
+//#endregion

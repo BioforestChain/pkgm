@@ -1,8 +1,8 @@
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import {
-  generateTsconfig,
-  getBfspUserConfig,
+  getBfspProjectConfig,
+  writeBfspProjectConfig,
   gitignoreListCache,
 } from "../src/";
 import test from "ava";
@@ -12,12 +12,12 @@ const __dirname = dirname(__filename);
 const pkgmProjectPath = resolve(__dirname, "../../");
 const demoProjectPath = resolve(pkgmProjectPath, "demo");
 
-test("get  config in 'demo' project", async (t) => {
-  const config = await getBfspUserConfig(demoProjectPath);
+test("get config in 'demo' project", async (t) => {
+  const config = await getBfspProjectConfig(demoProjectPath);
   t.truthy(config);
-  const tsconfig = await generateTsconfig(demoProjectPath, config);
 
-  console.log(tsconfig.files);
+  console.log(config);
+  writeBfspProjectConfig(config!);
 });
 
 test("get gitignore rules", async (t) => {

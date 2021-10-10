@@ -1,4 +1,10 @@
-import { defineConfig } from "@bfchain/pkgm";
+import { defineConfig, BfspUserConfig } from "@bfchain/pkgm";
 export default defineConfig((info) => {
-  return { name: "demo" };
+  const config: BfspUserConfig = {
+    name: "demo",
+    exports: {
+      ".": "./index.ts",
+    },
+  };
+  return config;
 });

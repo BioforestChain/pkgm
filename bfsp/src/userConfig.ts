@@ -1,11 +1,12 @@
-import { readdir, readFile, unlink } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
+import { folderIO, fileIO } from "./toolkit";
 
 export interface BfspUserConfig {
   name: string;
-  exports?: {
+  exports: {
     [path in `.` | `./${string}`]: string;
   };
 }
@@ -28,7 +29,7 @@ export const defineConfig = (
 };
 
 export const getBfspUserConfig = async (dirname = process.cwd()) => {
-  for (const filename of await readdir(dirname)) {
+  for (const filename of await folderIO.get(dirname)) {
     if (filename === "#bfsp.ts") {
       const cache_filename = `#bfsp.mjs`;
       const cache_filepath = resolve(dirname, cache_filename);
@@ -54,7 +55,7 @@ export const getBfspUserConfig = async (dirname = process.cwd()) => {
     }
     if (filename === "#bfsp.json") {
       return JSON.parse(
-        await readFile(resolve(dirname, filename), "utf-8")
+        (await fileIO.get(resolve(dirname, filename))).toString("utf-8")
       ) as BfspUserConfig;
     }
   }

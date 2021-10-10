@@ -32,7 +32,15 @@ export default defineConfig((info) => {
       target: "es2020",
       rollupOptions: {
         preserveEntrySignatures: "strict",
-        external: [/^node:.*/, "vite", "esbuild", "ava", "*"],
+        external: [
+          /^node:.*/,
+          "vite",
+          "esbuild",
+          "rollup",
+          "typescript",
+          "ava",
+          "*",
+        ],
         input,
         output: {
           entryFileNames: `[name]${extension}`,

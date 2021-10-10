@@ -1,13 +1,8 @@
 {
-  "main": "dist/index.cjs",
-  "types": "./index.ts",
+  "main": "*.cjs",
+  "types": "*.ts",
   "type": "module",
-  "exports": {
-    ".": {
-      "require": "dist/index.cjs",
-      "import": "dist/index.mjs"
-    }
-  },
+  "exports": {},
   "imports": {},
   "scripts": {
     "dev": "yarn dev:esm",
@@ -21,6 +16,5 @@
   },
   "devDependencies": {
     "@bfchain/pkgm": "^2.0.0"
-  },
-  "name": "demo"
+  }
 }
