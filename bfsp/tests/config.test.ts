@@ -4,7 +4,7 @@ import {
   getBfspProjectConfig,
   writeBfspProjectConfig,
   gitignoreListCache,
-} from "../src/";
+} from "../src";
 import test from "ava";
 // import {  } from 'jest'
 const __filename = fileURLToPath(import.meta.url);
@@ -16,8 +16,8 @@ test("get config in 'demo' project", async (t) => {
   const config = await getBfspProjectConfig(demoProjectPath);
   t.truthy(config);
 
-  console.log(config);
-  writeBfspProjectConfig(config!);
+  // console.log(config);
+  await writeBfspProjectConfig(config!);
 });
 
 test("get gitignore rules", async (t) => {

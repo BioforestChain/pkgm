@@ -4,22 +4,17 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { folderIO, fileIO } from "./toolkit";
 
-export interface BfspUserConfig {
-  name: string;
-  exports: {
-    [path in `.` | `./${string}`]: string;
-  };
-}
-export interface BfspConfigEnvInfo {
-  mode: BUILD_MODE;
-}
+// export const enum BUILD_MODE {
+//   DEVELOPMENT = "development",
+//   PRODUCTION = "production",
+// }
+
 export const enum BUILD_MODE {
   DEVELOPMENT = "development",
   PRODUCTION = "production",
 }
-
 export const defineConfig = (
-  cb: (info: BfspConfigEnvInfo) => BfspUserConfig
+  cb: (info: Bfsp.ConfigEnvInfo) => Bfsp.UserConfig
 ) => {
   return cb({
     mode: process.env.mode?.startsWith("prod")
@@ -48,7 +43,7 @@ export const getBfspUserConfig = async (dirname = process.cwd()) => {
         const { default: config } = await import(
           pathToFileURL(cache_filepath).href
         );
-        return config as BfspUserConfig;
+        return config as Bfsp.UserConfig;
       } finally {
         await unlink(cache_filepath);
       }
@@ -56,7 +51,7 @@ export const getBfspUserConfig = async (dirname = process.cwd()) => {
     if (filename === "#bfsp.json") {
       return JSON.parse(
         (await fileIO.get(resolve(dirname, filename))).toString("utf-8")
-      ) as BfspUserConfig;
+      ) as Bfsp.UserConfig;
     }
   }
   //   throw "no found bfsp config";

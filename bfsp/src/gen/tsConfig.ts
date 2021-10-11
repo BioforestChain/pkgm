@@ -1,21 +1,38 @@
 import { walkFiles, notGitIgnored } from "../toolkit";
-import type { BfspUserConfig } from "../userConfig";
 import path from "node:path";
 
 // import type {} from "typescript";
 export const generateTsConfig = async (
   projectDirpath: string,
-  config?: BfspUserConfig
+  config?: Bfsp.UserConfig
 ) => {
+  const allTsFiles = await walkFiles(projectDirpath)
+    .filter((filepath) => {
+      return (
+        (filepath.endsWith(".ts") ||
+          filepath.endsWith(".tsx") ||
+          filepath.endsWith(".cts") ||
+          filepath.endsWith(".mts") ||
+          filepath.endsWith(".ctsx") ||
+          filepath.endsWith(".mtsx")) &&
+        filepath.endsWith("#bfsp.ts") === false &&
+        notGitIgnored(filepath) /* promise<boolean> */
+      );
+    })
+    .map((filepath) => path.relative(projectDirpath, filepath))
+    .toArray();
   const tsConfig = {
     compilerOptions: {
+      composite: true,
+      noEmit: true,
+      declaration: true,
+      sourceMap: false,
       target: "es2020",
       module: "es2020",
       lib: ["ES2020"],
-      noEmit: true,
-      incremental: true,
+      outDir: "./node_modules/.bfsp/",
       importHelpers: true,
-      isolatedModules: false,
+      isolatedModules: true,
       strict: true,
       noImplicitAny: true,
       strictNullChecks: true,
@@ -25,37 +42,49 @@ export const generateTsConfig = async (
       noImplicitThis: true,
       alwaysStrict: true,
       moduleResolution: "node",
-      experimentalDecorators: true,
-      emitDecoratorMetadata: true,
+      resolveJsonModule: true,
+      baseUrl: "./",
+      types: ["node"],
       esModuleInterop: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
     },
-    files: await walkFiles(projectDirpath)
-      .filter((filepath) => {
-        return (
-          (filepath.endsWith(".ts") ||
-            filepath.endsWith(".tsx") ||
-            filepath.endsWith(".cts") ||
-            filepath.endsWith(".mts") ||
-            filepath.endsWith(".ctsx") ||
-            filepath.endsWith(".mtsx")) &&
-          filepath.endsWith("#bfsp.ts") === false &&
-          notGitIgnored(filepath) /* promise<boolean> */
-        );
-      })
-      .map((filepath) => path.relative(projectDirpath, filepath))
-      .toArray(),
+    references: [
+      {
+        path: "./tsconfig.prod.json",
+      },
+    ],
+    files: allTsFiles.filter(
+      (file) => !file.endsWith(".type.ts") && !file.startsWith("typings/")
+    ),
   };
-  return tsConfig;
+  const tsProdConfig = {
+    extends: "./tsconfig.json",
+    compilerOptions: {
+      isolatedModules: false,
+      outDir: "./node_modules/.bfsp/tsc",
+      noEmit: false,
+    },
+    files: allTsFiles,
+    references: [],
+  };
+
+  return { tsConfig, tsProdConfig };
 };
 
 export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
 import { resolve } from "node:path";
 import { fileIO } from "../toolkit";
-export const writeTsConfig = (projectDirpath: string, tsConfig: $TsConfig) => {
-  return fileIO.set(
-    resolve(projectDirpath, "tsconfig.json"),
-    Buffer.from(JSON.stringify(tsConfig, null, 2))
-  );
+export const writeTsConfig = (projectDirpath: string, config: $TsConfig) => {
+  console.log("write to tsconfig")
+  return Promise.all([
+    fileIO.set(
+      resolve(projectDirpath, "tsconfig.json"),
+      Buffer.from(JSON.stringify(config.tsConfig, null, 2))
+    ),
+    fileIO.set(
+      resolve(projectDirpath, "tsconfig.prod.json"),
+      Buffer.from(JSON.stringify(config.tsProdConfig, null, 2))
+    ),
+  ]);
 };

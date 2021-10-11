@@ -12,6 +12,12 @@
       "require": "./dist/index.mjs"
     }
   },
+  "bin": {
+    "bfsp-dev": "./dist/dev.bin.mjs",
+    "bfsp-build": "./dist/build.bin.mjs",
+    "bfsp-fmt": "./dist/fmt.bin.mjs",
+    "bfsp-test": "./dist/test.bin.mjs"
+  },
   "scripts": {
     "dev": "vite build --watch --minify=false --sourcemap=true",
     "test": "ava"

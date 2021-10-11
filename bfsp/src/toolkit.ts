@@ -59,10 +59,7 @@ type GitIgnore = {
   basedir: string;
   rules: string[];
 };
-export const gitignoreListCache = new (class GitignoreCache extends CacheGetter<
-  string,
-  GitIgnore[]
-> {
+class GitignoreCache extends CacheGetter<string, GitIgnore[]> {
   async getVal(dir: string) {
     const gitginoreList: GitIgnore[] = [];
     while (true) {
@@ -93,12 +90,10 @@ export const gitignoreListCache = new (class GitignoreCache extends CacheGetter<
     }
     return gitginoreList;
   }
-})();
+}
+export const gitignoreListCache = new GitignoreCache();
 
-export const ignoresCache = new (class IgnoreCache extends CacheGetter<
-  string,
-  (somepath: string) => boolean
-> {
+class IgnoreCache extends CacheGetter<string, (somepath: string) => boolean> {
   async getVal(dir: string) {
     const gitginoreList = await gitignoreListCache.get(dir);
     const ignoresList = gitginoreList.map((gitignore) => {
@@ -110,7 +105,8 @@ export const ignoresCache = new (class IgnoreCache extends CacheGetter<
     return (somepath: string) =>
       ignoresList.some((ignores) => ignores(somepath));
   }
-})();
+}
+export const ignoresCache = new IgnoreCache();
 
 export const isGitIgnored = async (somepath: string) => {
   const ignores = await ignoresCache.get(path.dirname(somepath));
@@ -124,10 +120,7 @@ export const notGitIgnored = async (somepath: string) => {
 
 //#region 文件功能的扩展
 
-export const folderIO = new (class ReaddirCache extends CacheGetter<
-  string,
-  string[]
-> {
+class ReaddirCache extends CacheGetter<string, string[]> {
   getVal(dirpath: string) {
     return readdir(dirpath);
   }
@@ -138,22 +131,20 @@ export const folderIO = new (class ReaddirCache extends CacheGetter<
       }
     }
   }
-})();
+}
+export const folderIO = new ReaddirCache();
 
 export async function* walkFiles(dirpath: string) {
   for (const filename of await folderIO.get(dirpath)) {
     const filepath = path.resolve(dirpath, filename);
-    console.log("walk", filepath);
+    // console.log("walk", filepath);
     if ((await stat(filepath)).isFile()) {
       yield filepath;
     }
   }
 }
 
-export const fileIO = new (class FileIoCache extends CacheWetter<
-  string,
-  Buffer
-> {
+class FileIoCache extends CacheWetter<string, Buffer> {
   getVal(filepath: string) {
     return readFile(filepath);
   }
@@ -161,7 +152,8 @@ export const fileIO = new (class FileIoCache extends CacheWetter<
     await writeFile(filepath, content);
     return true;
   }
-})();
+}
+export const fileIO = new FileIoCache();
 //#endregion
 
 //#region 扩展AsyncGenerator的原型链
@@ -171,7 +163,7 @@ export async function* AG_Map<T, R>(
   map: (i: T) => R
 ) {
   for await (const item of asyncGenerator) {
-    console.log("map", item);
+    // console.log("map", item);
     yield (await map(item)) as BFChainUtil.PromiseType<R>;
   }
 }
@@ -182,7 +174,7 @@ export async function* AG_Filter<T, R = T>(
 ) {
   for await (const item of asyncGenerator) {
     if (await filter(item)) {
-      console.log("filter", item);
+      // console.log("filter", item);
       yield item as unknown as R;
     }
   }
@@ -191,14 +183,11 @@ export async function* AG_Filter<T, R = T>(
 export async function AG_ToArray<T>(asyncGenerator: AsyncGenerator<T>) {
   const result: T[] = [];
   for await (const item of asyncGenerator) {
-    console.log("arr", item);
+    // console.log("arr", item);
     result.push(item);
   }
   return result;
 }
-
-import "./@types.toolkit";
-import { fstat } from "node:fs";
 
 const AGP = Object.getPrototypeOf(
   Object.getPrototypeOf((async function* () {})())

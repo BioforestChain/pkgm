@@ -1,17 +1,22 @@
 import { walkFiles, notGitIgnored, fileIO } from "../toolkit";
-import type { BfspUserConfig } from "../userConfig";
+
+export const defaultGitIgnores = new Set([
+  ".npm",
+  ".vscode",
+  ".bfsp",
+  ".gitignore",
+  "*.tsbuildinfo",
+  ".npmignore",
+  "package.json",
+  "tsconfig.prod.json",
+  "tsconfig.json",
+]);
+
 export const generateGitIgnore = async (
   projectDirpath: string,
-  config?: BfspUserConfig
+  config?: Bfsp.UserConfig
 ) => {
-  return [
-    ".npm",
-    ".vscode",
-    ".gitignore",
-    "package.json",
-    "tsconfig.json",
-    "vite.config.ts",
-  ];
+  return effectConfigIgnores(defaultGitIgnores, config?.gitignore);
 };
 
 export type $GitIgnore = BFChainUtil.PromiseReturnType<
@@ -19,12 +24,13 @@ export type $GitIgnore = BFChainUtil.PromiseReturnType<
 >;
 
 import { resolve } from "node:path";
+import { effectConfigIgnores } from "./commonIgnore";
 export const writeGitIgnore = (
   projectDirpath: string,
   gitIgnore: $GitIgnore
 ) => {
   return fileIO.set(
     resolve(projectDirpath, ".gitignore"),
-    Buffer.from(gitIgnore.join("\n"))
+    Buffer.from([...gitIgnore].join("\n"))
   );
 };

@@ -14,6 +14,7 @@
     "build": "tsc && yarn build:esm && yarn build:cjs",
     "test": "ava"
   },
+  "files": ["!test"],
   "devDependencies": {
     "@bfchain/pkgm": "^2.0.0"
   }

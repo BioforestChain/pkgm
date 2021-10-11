@@ -1,10 +1,9 @@
-import type { BfspUserConfig } from "../userConfig";
 import type { $ViteConfig } from "./viteConfig";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 export const generatePackageJson = async (
   projectDirpath: string,
   viteConfig: $ViteConfig,
-  config?: BfspUserConfig
+  config?: Bfsp.UserConfig
 ) => {
   const packageJson = JSON.parse(packageJsonTemplate);
   if (config) {

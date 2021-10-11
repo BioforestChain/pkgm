@@ -1,10 +1,9 @@
-import type { BfspUserConfig } from "../userConfig";
 import path from "node:path";
 // import viteConfigTemplate from "../../assets/vite.config.template.ts?raw";
 
 export const generateViteConfig = async (
   projectDirpath: string,
-  config?: BfspUserConfig
+  config?: Bfsp.UserConfig
 ) => {
   // let viteConfigContent = viteConfigTemplate;
 

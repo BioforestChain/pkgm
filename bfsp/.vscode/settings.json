@@ -1,0 +1,19 @@
+{
+    "vsicons.presets.tsOfficial": false,
+    "vsicons.associations.files": [
+        {
+            "icon": "typescriptdef",
+            "extensions": [
+                ".type.ts"
+            ],
+            "format": "svg"
+        },
+        {
+            "icon": "tsconfig",
+            "extensions": [
+                ".tsconfig.json"
+            ],
+            "format": "svg"
+        }
+    ]
+}

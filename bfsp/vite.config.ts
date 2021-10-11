@@ -7,10 +7,10 @@ const libFormat = (process.argv
 
 export const input: InputOption = {
   index: "src/index.ts",
-  "dev.bin": "bin/dev.ts",
-  "fmt.bin": "bin/fmt.ts",
-  "test.bin": "bin/test.ts",
-  "config.test": "test/config.test.ts",
+  "dev.bin": "bin/dev.bin.ts",
+  "fmt.bin": "bin/fmt.bin.ts",
+  "test.bin": "bin/test.bin.ts",
+  "config.test": "tests/config.test.ts",
 };
 export const extension =
   {

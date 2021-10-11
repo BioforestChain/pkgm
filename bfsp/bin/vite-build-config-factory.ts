@@ -1,9 +1,10 @@
-import type { InputOption, ModuleFormat } from "rollup";
 import type { InlineConfig } from "vite";
 import path from "node:path";
 import fs from "node:fs";
 import { inspect } from "node:util";
 import typescript from "typescript";
+import { getBfspProjectConfig } from "../src/bfspConfig";
+import { generateViteConfig } from "../src/gen/viteConfig";
 
 const FORMATS = ["esm", "cjs"] as const;
 type $Format = typeof FORMATS[number];
@@ -24,12 +25,21 @@ export const getArg = <T extends string>(name: string) => {
   }
 };
 
-export const ViteConfigFactory = (options: {
+export const ViteConfigFactory = async (options: {
   projectDirpath: string;
-  input: InputOption;
   format?: $Format;
   platform?: string;
 }) => {
+  const config = await getBfspProjectConfig(options.projectDirpath);
+  if (config === undefined) {
+    console.error("no found #bfsp project");
+    return process.exit(1);
+  }
+  const viteConfig = await generateViteConfig(
+    config.projectDirpath,
+    config.userConfig
+  );
+
   let {
     format = getArg("format") ?? "esm",
     platform = getArg("platfrom") ?? "default",
@@ -40,7 +50,8 @@ export const ViteConfigFactory = (options: {
   const extension = EXTENSION_MAP[format] || ".js";
   const outDir = format ? `dist/${format}` : undefined;
 
-  const viteConfig: InlineConfig = {
+  const viteBuildConfig: InlineConfig = {
+    root: config.projectDirpath,
     base: "./",
     cacheDir: "node_modules/.bfsp",
     envPrefix: ["BFSP_", "VITE_"],
@@ -50,7 +61,7 @@ export const ViteConfigFactory = (options: {
       rollupOptions: {
         preserveEntrySignatures: "strict",
         external: [/^@bfchain\/.*/, /^node:.*/, "tslib", "js-yaml"],
-        input: options.input,
+        input: viteConfig.viteInput,
         output: {
           entryFileNames: `[name]${extension}`,
           chunkFileNames: `chunk/[name]${extension}`,
@@ -61,7 +72,7 @@ export const ViteConfigFactory = (options: {
     plugins: [
       (() => {
         const tsconfigFilepath = path.join(
-          options.projectDirpath,
+          config.projectDirpath,
           "tsconfig.json"
         );
         // console.log(tsconfigFilepath);
@@ -118,7 +129,7 @@ export const ViteConfigFactory = (options: {
       })(),
       (() => {
         const packageFilepath = path.join(
-          options.projectDirpath,
+          config.projectDirpath,
           "package.json"
         );
         const packageJson = JSON.parse(
@@ -149,5 +160,5 @@ export const ViteConfigFactory = (options: {
     },
   };
 
-  return viteConfig;
+  return viteBuildConfig;
 };
