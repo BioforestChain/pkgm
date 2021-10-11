@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import type { InputOption, ModuleFormat } from "rollup";
+import { existsSync, statSync } from "node:fs";
 
 const libFormat = (process.argv
   .find((arg) => arg.startsWith("--format="))
@@ -32,15 +33,39 @@ export default defineConfig((info) => {
       target: "es2020",
       rollupOptions: {
         preserveEntrySignatures: "strict",
-        external: [
-          /^node:.*/,
-          "vite",
-          "esbuild",
-          "rollup",
-          "typescript",
-          "ava",
-          "*",
-        ],
+        external: (source, importer, isResolved) => {
+          if (source.startsWith("node:")) {
+            // console.log("external", source);
+            return true;
+          }
+          if (
+            source.startsWith("@bfchain/") ||
+            source.includes("node_modules/@bfchain/")
+          ) {
+            return false;
+          }
+          if (source.includes("node_modules")) {
+            // console.log("external", source);
+            return true;
+          }
+          if (
+            !source.startsWith(".") &&
+            existsSync(`node_modules/${source}`) &&
+            statSync(`node_modules/${source}`).isDirectory()
+          ) {
+            // console.log("external", source);
+            return true;
+          }
+        },
+        // [
+        //   /^node:.*/,
+        //   "vite",
+        //   "esbuild",
+        //   "rollup",
+        //   "typescript",
+        //   "ava",
+        //   "*",
+        // ] ,
         input,
         output: {
           entryFileNames: `[name]${extension}`,

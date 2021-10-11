@@ -6,7 +6,12 @@ import {
   generatePackageJson,
   writePackageJson,
 } from "./gen/packageJson";
-import { $TsConfig, generateTsConfig, writeTsConfig } from "./gen/tsConfig";
+import {
+  $TsConfig,
+  generateTsConfig,
+  watchTsConfig,
+  writeTsConfig,
+} from "./gen/tsConfig";
 import { $ViteConfig, generateViteConfig } from "./gen/viteConfig";
 
 export interface $BfspProjectConfig {
@@ -28,17 +33,24 @@ export const getBfspProjectConfig = async (dirname = process.cwd()) => {
 };
 
 export const writeBfspProjectConfig = async (
-  projectConfig: $BfspProjectConfig
+  projectConfig: $BfspProjectConfig,
+  options: { watch?: boolean } = {}
 ) => {
   const { projectDirpath, userConfig } = projectConfig;
+  const { watch = false } = options;
 
   const tsConfigPo = generateTsConfig(projectDirpath, userConfig);
+
   const viteConfigPo = generateViteConfig(projectDirpath, userConfig);
   const gitIgnorePo = generateGitIgnore(projectDirpath, userConfig);
   const npmIgnorePo = generateNpmIgnore(projectDirpath, userConfig);
   const packageJsonPo = viteConfigPo.then((viteConfig) =>
     generatePackageJson(projectDirpath, viteConfig, userConfig)
   );
+  if (watch) {
+    watchTsConfig(projectDirpath, tsConfigPo);
+  }
+
   await Promise.all([
     tsConfigPo.then((tsConfig) => writeTsConfig(projectDirpath, tsConfig)),
     gitIgnorePo.then((gitIgnore) => writeGitIgnore(projectDirpath, gitIgnore)),

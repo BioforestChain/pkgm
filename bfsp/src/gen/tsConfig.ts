@@ -1,7 +1,27 @@
 import { walkFiles, notGitIgnored, folderIO, toPosixPath } from "../toolkit";
 import path from "node:path";
 
-// import type {} from "typescript";
+export const isTsFile = (projectDirpath: string, filepath: string) =>
+  /// 在assets文件夹下的json文件
+  ((filepath.endsWith(".json") &&
+    toPosixPath(path.relative(projectDirpath, filepath)).startsWith(
+      "assets/"
+    )) ||
+    /// ts文件
+    (filepath.endsWith(".ts") &&
+      !filepath.endsWith(".d.ts") &&
+      !filepath.endsWith("#bfsp.ts")) ||
+    filepath.endsWith(".tsx") ||
+    filepath.endsWith(".cts") ||
+    filepath.endsWith(".mts") ||
+    filepath.endsWith(".ctsx") ||
+    filepath.endsWith(".mtsx")) &&
+  /// promise<boolean>
+  notGitIgnored(filepath);
+
+const isTypeFile = (projectDirpath: string, filepath: string) =>
+  filepath.endsWith(".type.ts") || filepath.startsWith("typings/");
+
 export const generateTsConfig = async (
   projectDirpath: string,
   config?: Bfsp.UserConfig
@@ -9,21 +29,10 @@ export const generateTsConfig = async (
   const allTsFileList = await walkFiles(projectDirpath, (dirpath) =>
     notGitIgnored(dirpath)
   )
-    .filter((filepath) => {
-      return (
-        (filepath.endsWith(".ts") ||
-          filepath.endsWith(".tsx") ||
-          filepath.endsWith(".cts") ||
-          filepath.endsWith(".mts") ||
-          filepath.endsWith(".ctsx") ||
-          filepath.endsWith(".mtsx")) &&
-        !filepath.endsWith("#bfsp.ts") &&
-        !filepath.endsWith(".d.ts") &&
-        notGitIgnored(filepath) /* promise<boolean> */
-      );
-    })
+    .filter((filepath) => isTsFile(projectDirpath, filepath))
     .map((filepath) => toPosixPath(path.relative(projectDirpath, filepath)))
     .toArray();
+
   const allTypesFileList: string[] = [];
   const tsConfig = {
     compilerOptions: {
@@ -58,12 +67,12 @@ export const generateTsConfig = async (
         path: "./tsconfig.prod.json",
       },
     ],
-    files: allTsFileList.filter((file) => {
-      if (!file.endsWith(".type.ts") && !file.startsWith("typings/")) {
-        return true;
+    files: allTsFileList.filter((filepath) => {
+      if (isTypeFile(projectDirpath, filepath)) {
+        allTypesFileList.push(filepath);
+        return false;
       }
-      allTypesFileList.push(file);
-      return false;
+      return true;
     }),
   };
   const tsProdConfig = {
@@ -78,8 +87,8 @@ export const generateTsConfig = async (
   };
 
   return {
-    tsFileList: allTsFileList,
-    typesFileList: allTypesFileList,
+    tsFiles: new Set(allTsFileList),
+    typesFiles: new Set(allTypesFileList),
     tsConfig,
     tsProdConfig,
   };
@@ -89,7 +98,8 @@ export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
 import { resolve } from "node:path";
 import { fileIO } from "../toolkit";
 export const writeTsConfig = (projectDirpath: string, config: $TsConfig) => {
-  console.log("write to tsconfig", config.tsFileList);
+  console.log("write to tsconfig", config.tsFiles, config.typesFiles);
+
   return Promise.all([
     fileIO.set(
       resolve(projectDirpath, "tsconfig.json"),
@@ -103,7 +113,7 @@ export const writeTsConfig = (projectDirpath: string, config: $TsConfig) => {
       const indexFilepath = resolve(projectDirpath, "typings/@index.d.ts");
       const typesFilepath = resolve(projectDirpath, "typings/@types.d.ts");
       const indexFileCode = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\nimport "./@types.d.ts";\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
-      if (config.typesFileList.length === 0) {
+      if (config.typesFiles.size === 0) {
         if (await fileIO.has(typesFilepath)) {
           await fileIO.del(typesFilepath);
           if (await fileIO.has(indexFilepath)) {
@@ -124,7 +134,7 @@ export const writeTsConfig = (projectDirpath: string, config: $TsConfig) => {
         await fileIO.set(
           typesFilepath,
           Buffer.from(
-            config.typesFileList
+            [...config.typesFiles]
               .map(
                 (filepath) =>
                   `import "${toPosixPath(path.relative("typings", filepath))}"`
@@ -146,4 +156,89 @@ export const writeTsConfig = (projectDirpath: string, config: $TsConfig) => {
       }
     })(),
   ]);
+};
+
+import chokidar from "chokidar";
+
+export const watchTsConfig = (
+  projectDirpath: string,
+  configPo: BFChainUtil.PromiseMaybe<$TsConfig>
+) => {
+  const watcher = chokidar.watch(
+    [
+      "assets/**/*.json",
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.cts",
+      "**/*.mts",
+      "**/*.ctsx",
+      "**/*.mtsx",
+    ],
+    {
+      cwd: projectDirpath,
+      ignoreInitial: false,
+      followSymlinks: true,
+      ignored: ["*.d.ts", "#bfsp.ts", "node_modules"],
+    }
+  );
+
+  type EventType = "add" | "unlink";
+  let cachedEventList = new Map<string, EventType>();
+  /// 收集监听到事件
+  watcher.on("add", (path) => {
+    cachedEventList.set(path, "add");
+    loopProcesser();
+  });
+  watcher.on("unlink", (path) => {
+    cachedEventList.set(path, "unlink");
+    loopProcesser();
+  });
+
+  /// 循环处理监听到的事件
+  let running = false;
+  const loopProcesser = async () => {
+    if (running) {
+      return;
+    }
+    running = true;
+    try {
+      const config = (configPo = await configPo);
+      while (cachedEventList.size !== 0) {
+        // 保存一份,清空缓存
+        const eventList = new Map(cachedEventList);
+        cachedEventList.clear();
+
+        for (const [path, type] of eventList) {
+          const posixPath = toPosixPath(path);
+          if (type === "add") {
+            if (config.tsFiles.has(posixPath)) {
+              return;
+            }
+            config.tsFiles.add(posixPath);
+            if (isTypeFile(projectDirpath, posixPath)) {
+              config.typesFiles.add(posixPath);
+            }
+          } else {
+            if (config.tsFiles.has(posixPath) === false) {
+              return;
+            }
+            config.tsFiles.delete(posixPath);
+            if (isTypeFile(projectDirpath, posixPath)) {
+              config.typesFiles.delete(posixPath);
+            }
+          }
+          console.log(type, path);
+
+          const allTsFileList = [...config.tsFiles];
+          config.tsConfig.files = allTsFileList.filter((filepath) => {
+            return !config.typesFiles.has(filepath);
+          });
+          config.tsProdConfig.files = allTsFileList;
+          await writeTsConfig(projectDirpath, config);
+        }
+      }
+    } finally {
+      running = false;
+    }
+  };
 };
