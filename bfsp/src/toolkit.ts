@@ -1,7 +1,8 @@
-import { readdir, stat, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
 import type {} from "@bfchain/util";
-import ignore, { Ignore } from "ignore";
+import ignore from "ignore";
+import { existsSync, mkdirSync, statSync } from "node:fs";
+import { readdir, readFile, unlink, writeFile } from "node:fs/promises";
+import path from "node:path";
 
 /**
  * 一个通用的基于时间的缓存器
@@ -35,8 +36,16 @@ abstract class CacheGetter<K, V> {
     return cache.value;
   }
   abstract getVal(key: K): BFChainUtil.PromiseMaybe<V>;
+
+  has(key: K) {
+    if (this._cache.has(key)) {
+      return true;
+    }
+    return this.hasVal(key);
+  }
+  abstract hasVal(key: K): BFChainUtil.PromiseMaybe<boolean>;
 }
-abstract class CacheWetter<K, V> extends CacheGetter<K, V> {
+abstract class CacheWritter<K, V> extends CacheGetter<K, V> {
   abstract setVal(key: K, val: V): BFChainUtil.PromiseMaybe<boolean>;
   async set(key: K, val: V) {
     if (await this.setVal(key, val)) {
@@ -48,6 +57,12 @@ abstract class CacheWetter<K, V> extends CacheGetter<K, V> {
       } else {
         this._cache.set(key, { time: now, value: val });
       }
+    }
+  }
+  abstract delVal(key: K): BFChainUtil.PromiseMaybe<boolean>;
+  async del(key: K) {
+    if (await this.delVal(key)) {
+      this._cache.delete(key);
     }
   }
 }
@@ -67,7 +82,7 @@ class GitignoreCache extends CacheGetter<string, GitIgnore[]> {
       if (names.includes(".gitignore")) {
         const filepath = path.join(dir, ".gitignore");
 
-        if ((await stat(filepath)).isFile()) {
+        if (statSync(filepath).isFile()) {
           const gitIgnoreRules: string[] = [];
           for (let line of (await readFile(filepath, "utf-8")).split("\n")) {
             line = line.trim();
@@ -82,13 +97,20 @@ class GitignoreCache extends CacheGetter<string, GitIgnore[]> {
       }
       if (
         names.includes(".git") &&
-        (await stat(path.join(dir, ".git"))).isDirectory()
+        statSync(path.join(dir, ".git")).isDirectory()
       ) {
         break;
       }
       dir = path.dirname(dir);
     }
     return gitginoreList;
+  }
+  has(dir: string) {
+    return this.hasVal(dir);
+  }
+  async hasVal(dir: string) {
+    const gitginoreList = await this.get(dir);
+    return gitginoreList.length > 0;
   }
 }
 export const gitignoreListCache = new GitignoreCache();
@@ -104,6 +126,12 @@ class IgnoreCache extends CacheGetter<string, (somepath: string) => boolean> {
     });
     return (somepath: string) =>
       ignoresList.some((ignores) => ignores(somepath));
+  }
+  has(dir: string) {
+    return this.hasVal(dir);
+  }
+  async hasVal(dir: string) {
+    return gitignoreListCache.has(dir);
   }
 }
 export const ignoresCache = new IgnoreCache();
@@ -131,26 +159,51 @@ class ReaddirCache extends CacheGetter<string, string[]> {
       }
     }
   }
+  hasVal(dirpath: string) {
+    return existsSync(dirpath) && statSync(dirpath).isDirectory();
+  }
+  async tryInit(dirpath: string) {
+    if (this.hasVal(dirpath) === false) {
+      return mkdirSync(dirpath);
+    }
+  }
 }
 export const folderIO = new ReaddirCache();
 
-export async function* walkFiles(dirpath: string) {
-  for (const filename of await folderIO.get(dirpath)) {
-    const filepath = path.resolve(dirpath, filename);
-    // console.log("walk", filepath);
-    if ((await stat(filepath)).isFile()) {
-      yield filepath;
+export async function* walkFiles(
+  dirpath: string,
+  dirFilter: (dirpath: string) => BFChainUtil.PromiseMaybe<boolean> = () => true
+): AsyncGenerator<string> {
+  for (const basename of await folderIO.get(dirpath)) {
+    const somepath = path.resolve(dirpath, basename);
+    // console.log("walk", somepath);
+    if (statSync(somepath).isFile()) {
+      yield somepath;
+    } else if (await dirFilter(somepath)) {
+      yield* walkFiles(somepath);
     }
   }
 }
 
-class FileIoCache extends CacheWetter<string, Buffer> {
+class FileIoCache extends CacheWritter<string, Buffer> {
   getVal(filepath: string) {
     return readFile(filepath);
   }
+  hasVal(filepath: string) {
+    return existsSync(filepath);
+  }
   async setVal(filepath: string, content: Buffer) {
+    // mkdir(path.dirname(filepath))
     await writeFile(filepath, content);
     return true;
+  }
+  // exits(filepath)
+  async delVal(filepath: string) {
+    if (existsSync(filepath)) {
+      await unlink(filepath);
+      return true;
+    }
+    return false;
   }
 }
 export const fileIO = new FileIoCache();
@@ -202,3 +255,6 @@ AGP.toArray = function () {
   return AG_ToArray(this);
 };
 //#endregion
+
+export const toPosixPath = (windowsPath: string) =>
+  windowsPath.replace(/^(\w):|\\+/g, "/$1");
