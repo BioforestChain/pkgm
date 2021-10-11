@@ -24,10 +24,10 @@ abstract class CacheGetter<K, V> {
   }
   protected _cache = new Map<K, { time: number; value: V }>();
   cacheTime = 1e3; // 默认缓存1s
-  async get(key: K) {
+  async get(key: K, refresh?: boolean) {
     let cache = this._cache.get(key);
     const now = Date.now();
-    if (cache === undefined || now - cache.time > this.cacheTime) {
+    if (refresh || cache === undefined || now - cache.time > this.cacheTime) {
       if (cache === undefined) {
         cache = { time: now, value: await this.getVal(key) };
       }
@@ -254,6 +254,8 @@ AGP.filter = function (filter: any) {
 AGP.toArray = function () {
   return AG_ToArray(this);
 };
+
+// export class
 //#endregion
 
 export const toPosixPath = (windowsPath: string) =>

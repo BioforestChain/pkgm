@@ -23,7 +23,12 @@ export const defineConfig = (
   });
 };
 
-export const getBfspUserConfig = async (dirname = process.cwd()) => {
+export const getBfspUserConfig = async (
+  dirname = process.cwd(),
+  options: {
+    refresh?: boolean;
+  } = {}
+) => {
   for (const filename of await folderIO.get(dirname)) {
     if (filename === "#bfsp.ts") {
       const cache_filename = `#bfsp.mjs`;
@@ -40,9 +45,11 @@ export const getBfspUserConfig = async (dirname = process.cwd()) => {
         // incremental: true,
       });
       try {
-        const { default: config } = await import(
-          pathToFileURL(cache_filepath).href
-        );
+        const url = pathToFileURL(cache_filepath);
+        if (options.refresh) {
+          url.searchParams.append("_", Date.now().toString());
+        }
+        const { default: config } = await import(url.href);
         return config as Bfsp.UserConfig;
       } finally {
         await unlink(cache_filepath);
@@ -50,9 +57,45 @@ export const getBfspUserConfig = async (dirname = process.cwd()) => {
     }
     if (filename === "#bfsp.json") {
       return JSON.parse(
-        (await fileIO.get(resolve(dirname, filename))).toString("utf-8")
+        (
+          await fileIO.get(resolve(dirname, filename), options.refresh)
+        ).toString("utf-8")
       ) as Bfsp.UserConfig;
     }
   }
   //   throw "no found bfsp config";
 };
+
+import chokidar from "chokidar";
+import { PromiseOut } from "@bfchain/util-extends-promise-out";
+import { isDeepStrictEqual } from "node:util";
+export async function* watchBfspUserConfig(
+  projectDirpath: string,
+  userConfigPo: BFChainUtil.PromiseMaybe<Bfsp.UserConfig>
+) {
+  const watcher = chokidar.watch(["#bfsp.json", "#bfsp.ts"], {
+    cwd: projectDirpath,
+    ignoreInitial: false,
+  });
+  let waitter = new PromiseOut<{ event: string; path: string }>();
+  watcher.on("change", (path) => waitter.resolve({ event: "change", path }));
+  watcher.on("add", (path) => waitter.resolve({ event: "add", path }));
+
+  let preUserConfig = await userConfigPo;
+
+  while (true) {
+    const event = await waitter.promise;
+    console.log(event);
+    waitter = new PromiseOut();
+
+    const userConfig = await getBfspUserConfig(projectDirpath, {
+      refresh: true,
+    });
+    if (userConfig !== undefined) {
+      if (isDeepStrictEqual(preUserConfig, userConfig)) {
+        continue;
+      }
+      yield (preUserConfig = userConfig);
+    }
+  }
+}
