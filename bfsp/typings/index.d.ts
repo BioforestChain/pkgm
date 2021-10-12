@@ -5,3 +5,5 @@ import "./userConfig";
 import "./gitIgnore";
 import "./npmIgnore";
 import "../bin.type";
+
+// export * from '../src/index'

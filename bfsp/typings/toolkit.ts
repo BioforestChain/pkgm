@@ -4,4 +4,5 @@ declare interface AsyncGenerator<T> {
     filter: (i: T) => BFChainUtil.PromiseMaybe<boolean>
   ): AsyncGenerator<R>;
   toArray(): Promise<T[]>;
+  toSharable(): import("../src/toolkit").SharedAsyncIterable<T>;
 }

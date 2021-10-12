@@ -1,4 +1,11 @@
-import { walkFiles, notGitIgnored, folderIO, toPosixPath } from "../toolkit";
+import {
+  walkFiles,
+  notGitIgnored,
+  folderIO,
+  toPosixPath,
+  SharedAsyncIterable,
+  SharedFollower,
+} from "../toolkit";
 import path from "node:path";
 
 export const isTsFile = (projectDirpath: string, filepath: string) =>
@@ -22,8 +29,12 @@ export const isTsFile = (projectDirpath: string, filepath: string) =>
 const isTypeFile = (projectDirpath: string, filepath: string) =>
   filepath.endsWith(".type.ts") || filepath.startsWith("typings/");
 
+const isTestFile = (projectDirpath: string, filepath: string) =>
+  filepath.endsWith(".test.ts") && filepath.startsWith("tests");
+
 export const generateTsConfig = async (
   projectDirpath: string,
+  viteConfig: $ViteConfig,
   config?: Bfsp.UserConfig
 ) => {
   const allTsFileList = await walkFiles(projectDirpath, (dirpath) =>
@@ -33,7 +44,8 @@ export const generateTsConfig = async (
     .map((filepath) => toPosixPath(path.relative(projectDirpath, filepath)))
     .toArray();
 
-  const allTypesFileList: string[] = [];
+  const allTypeFileList: string[] = [];
+  const allTestFileList: string[] = [];
   const tsConfig = {
     compilerOptions: {
       composite: true,
@@ -56,7 +68,7 @@ export const generateTsConfig = async (
       alwaysStrict: true,
       moduleResolution: "node",
       resolveJsonModule: true,
-      baseUrl: "./",
+      // baseUrl: "./",
       types: ["node"],
       esModuleInterop: true,
       skipLibCheck: true,
@@ -69,7 +81,7 @@ export const generateTsConfig = async (
     ],
     files: allTsFileList.filter((filepath) => {
       if (isTypeFile(projectDirpath, filepath)) {
-        allTypesFileList.push(filepath);
+        allTypeFileList.push(filepath);
         return false;
       }
       return true;
@@ -82,13 +94,20 @@ export const generateTsConfig = async (
       outDir: "./node_modules/.bfsp/tsc",
       noEmit: false,
     },
-    files: allTsFileList,
+    files: allTsFileList.filter((filepath) => {
+      if (isTestFile(projectDirpath, filepath)) {
+        allTestFileList.push(filepath);
+        return false;
+      }
+      return true;
+    }),
     references: [],
   };
 
   return {
     tsFiles: new Set(allTsFileList),
-    typesFiles: new Set(allTypesFileList),
+    typeFiles: new Set(allTypeFileList),
+    testFiles: new Set(allTestFileList),
     tsConfig,
     tsProdConfig,
   };
@@ -97,23 +116,29 @@ export const generateTsConfig = async (
 export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
 import { resolve } from "node:path";
 import { fileIO } from "../toolkit";
-export const writeTsConfig = (projectDirpath: string, config: $TsConfig) => {
-  console.log("write to tsconfig", config.tsFiles, config.typesFiles);
+export const writeTsConfig = (
+  projectDirpath: string,
+  viteConfig: $ViteConfig,
+  tsConfig: $TsConfig
+) => {
+  console.log("write to tsconfig", tsConfig.tsFiles, tsConfig.typeFiles);
 
   return Promise.all([
     fileIO.set(
       resolve(projectDirpath, "tsconfig.json"),
-      Buffer.from(JSON.stringify(config.tsConfig, null, 2))
+      Buffer.from(JSON.stringify(tsConfig.tsConfig, null, 2))
     ),
     fileIO.set(
       resolve(projectDirpath, "tsconfig.prod.json"),
-      Buffer.from(JSON.stringify(config.tsProdConfig, null, 2))
+      Buffer.from(JSON.stringify(tsConfig.tsProdConfig, null, 2))
     ),
     (async () => {
       const indexFilepath = resolve(projectDirpath, "typings/@index.d.ts");
       const typesFilepath = resolve(projectDirpath, "typings/@types.d.ts");
-      const indexFileCode = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\nimport "./@types.d.ts";\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
-      if (config.typesFiles.size === 0) {
+      const indexFileCode = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\nimport "./@types.d.ts";\nexport * from "${toPosixPath(
+        path.relative("typings", viteConfig.indexFile)
+      )}"\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
+      if (tsConfig.typeFiles.size === 0) {
         if (await fileIO.has(typesFilepath)) {
           await fileIO.del(typesFilepath);
           if (await fileIO.has(indexFilepath)) {
@@ -134,7 +159,7 @@ export const writeTsConfig = (projectDirpath: string, config: $TsConfig) => {
         await fileIO.set(
           typesFilepath,
           Buffer.from(
-            [...config.typesFiles]
+            [...tsConfig.typeFiles]
               .map(
                 (filepath) =>
                   `import "${toPosixPath(path.relative("typings", filepath))}"`
@@ -159,11 +184,79 @@ export const writeTsConfig = (projectDirpath: string, config: $TsConfig) => {
 };
 
 import chokidar from "chokidar";
+import { $ViteConfig } from "./viteConfig";
 
 export const watchTsConfig = (
   projectDirpath: string,
-  configPo: BFChainUtil.PromiseMaybe<$TsConfig>
+  tsConfigInitPo: BFChainUtil.PromiseMaybe<$TsConfig>,
+  viteConfigStream: SharedAsyncIterable<$ViteConfig>,
+  options: {
+    write?: boolean;
+  } = {}
 ) => {
+  const { write = false } = options;
+  const follower = new SharedFollower<$TsConfig>();
+  /// 循环处理监听到的事件
+  let running = false;
+  const loopProcesser = async () => {
+    if (running) {
+      return;
+    }
+    running = true;
+    try {
+      const tsConfig = (tsConfigInitPo = await tsConfigInitPo);
+      const viteConfig = await viteConfigStream.getCurrent();
+      while (cachedEventList.size !== 0) {
+        // 保存一份,清空缓存
+        const eventList = new Map(cachedEventList);
+        cachedEventList.clear();
+
+        for (const [path, type] of eventList) {
+          const posixPath = toPosixPath(path);
+          if (type === "add") {
+            if (tsConfig.tsFiles.has(posixPath)) {
+              return;
+            }
+            tsConfig.tsFiles.add(posixPath);
+            if (isTypeFile(projectDirpath, posixPath)) {
+              tsConfig.typeFiles.add(posixPath);
+            } else if (isTestFile(projectDirpath, posixPath)) {
+              tsConfig.testFiles.add(posixPath);
+            }
+          } else {
+            if (tsConfig.tsFiles.has(posixPath) === false) {
+              return;
+            }
+            tsConfig.tsFiles.delete(posixPath);
+            if (isTypeFile(projectDirpath, posixPath)) {
+              tsConfig.typeFiles.delete(posixPath);
+            } else if (isTestFile(projectDirpath, posixPath)) {
+              tsConfig.testFiles.delete(posixPath);
+            }
+          }
+          console.log(type, path);
+
+          const allTsFileList = [...tsConfig.tsFiles];
+          tsConfig.tsConfig.files = allTsFileList.filter(
+            (filepath) => !tsConfig.typeFiles.has(filepath)
+          );
+          tsConfig.tsProdConfig.files = allTsFileList.filter(
+            (filepath) => !tsConfig.testFiles.has(filepath)
+          );
+
+          if (write) {
+            await writeTsConfig(projectDirpath, viteConfig, tsConfig);
+          }
+
+          follower.push(tsConfig);
+        }
+      }
+    } finally {
+      running = false;
+    }
+  };
+
+  //#region 监听文件变动来触发更新
   const watcher = chokidar.watch(
     [
       "assets/**/*.json",
@@ -193,52 +286,11 @@ export const watchTsConfig = (
     cachedEventList.set(path, "unlink");
     loopProcesser();
   });
+  //#endregion
 
-  /// 循环处理监听到的事件
-  let running = false;
-  const loopProcesser = async () => {
-    if (running) {
-      return;
-    }
-    running = true;
-    try {
-      const config = (configPo = await configPo);
-      while (cachedEventList.size !== 0) {
-        // 保存一份,清空缓存
-        const eventList = new Map(cachedEventList);
-        cachedEventList.clear();
+  //#region 监听依赖配置来触发更新
+  viteConfigStream.onNext(loopProcesser);
+  //#endregion
 
-        for (const [path, type] of eventList) {
-          const posixPath = toPosixPath(path);
-          if (type === "add") {
-            if (config.tsFiles.has(posixPath)) {
-              return;
-            }
-            config.tsFiles.add(posixPath);
-            if (isTypeFile(projectDirpath, posixPath)) {
-              config.typesFiles.add(posixPath);
-            }
-          } else {
-            if (config.tsFiles.has(posixPath) === false) {
-              return;
-            }
-            config.tsFiles.delete(posixPath);
-            if (isTypeFile(projectDirpath, posixPath)) {
-              config.typesFiles.delete(posixPath);
-            }
-          }
-          console.log(type, path);
-
-          const allTsFileList = [...config.tsFiles];
-          config.tsConfig.files = allTsFileList.filter((filepath) => {
-            return !config.typesFiles.has(filepath);
-          });
-          config.tsProdConfig.files = allTsFileList;
-          await writeTsConfig(projectDirpath, config);
-        }
-      }
-    } finally {
-      running = false;
-    }
-  };
+  return new SharedAsyncIterable<$TsConfig>(follower);
 };

@@ -5,6 +5,7 @@ import {
   getBfspProjectConfig,
   writeBfspProjectConfig,
   gitignoreListCache,
+  watchBfspProjectConfig,
 } from "../src";
 import test from "ava";
 import { sleep } from "@bfchain/util-extends-promise";
@@ -19,7 +20,9 @@ test("get config in 'demo' project", async (t) => {
   t.truthy(config);
 
   // console.log(config);
-  await writeBfspProjectConfig(config!, { watch: true });
+  const subConfigs = await writeBfspProjectConfig(config!);
+  watchBfspProjectConfig(config!, { tsConfig: subConfigs.tsConfig });
+
   const timeout = sleep(2000);
 
   const randomFilename = `test-${Math.random().toString(36)}.type.ts`;

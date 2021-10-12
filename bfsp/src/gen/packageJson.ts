@@ -9,16 +9,17 @@ export const generatePackageJson = async (
   if (config) {
     packageJson.name = config?.name;
   }
-  packageJson.main = `dist/${viteConfig.mainName}.cjs`;
-  packageJson.types = viteConfig.mainEntry;
+  const output = viteConfig.exportsMap.getDefine(viteConfig.indexFile);
+  packageJson.main = `dist/${output}.cjs`;
+  packageJson.types = `typings/@index.d.ts`; // viteConfig.mainEntry;
   packageJson.exports = {
     ".": {
-      require: `dist/${viteConfig.mainName}.cjs`,
-      import: `dist/${viteConfig.mainName}.mjs`,
+      require: `dist/${output}.cjs`,
+      import: `dist/${output}.mjs`,
     },
   };
   for (const key in viteConfig.viteInput) {
-    if (key === viteConfig.mainName) {
+    if (key === output) {
       continue;
     }
     const value = viteConfig.viteInput[key];

@@ -1,4 +1,4 @@
-import type {} from "@bfchain/util";
+import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import ignore from "ignore";
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { readdir, readFile, unlink, writeFile } from "node:fs/promises";
@@ -254,6 +254,115 @@ AGP.filter = function (filter: any) {
 AGP.toArray = function () {
   return AG_ToArray(this);
 };
+
+AGP.toSharable = function () {
+  return new SharedAsyncIterable(this);
+};
+
+import { EventEmitter } from "node:events";
+export class SharedAsyncIterable<T> implements AsyncIterable<T> {
+  private _current?: T;
+  constructor(/* private */ source: AsyncIterator<T>) {
+    (async () => {
+      do {
+        const item = await source.next();
+        if (item.done) {
+          break;
+        }
+        const { value } = item;
+        this._current = value;
+        for (const f of this._followers) {
+          f.push(value);
+        }
+        this._ee.emit("value", value);
+      } while (this._loop);
+      this._loop = true;
+    })();
+  }
+  private _followers = new Set<SharedFollower<T>>();
+  private _ee = new EventEmitter();
+  onNext(cb: (value: T) => unknown) {
+    this._ee.addListener("value", cb);
+  }
+  hasCurrent() {
+    return this._current !== undefined;
+  }
+  getCurrent() {
+    if (this._current === undefined) {
+      return this.getNext();
+    }
+    return this._current;
+  }
+  getNext() {
+    return new Promise<T>((cb) => this.onNext(cb));
+  }
+
+  private _loop = true;
+  stop() {
+    if (this._loop) {
+      return false;
+    }
+    this._loop = false;
+    return true;
+  }
+
+  /// 每一次for await，都会生成一个新的迭代器，直到被break掉
+  [Symbol.asyncIterator]() {
+    const follower = new SharedFollower<T>(() => {
+      this._followers.delete(follower);
+    });
+    this._followers.add(follower);
+
+    if (this._current !== undefined) {
+      follower.push(this._current);
+    }
+    return follower;
+  }
+}
+
+export class SharedFollower<T> implements AsyncIterator<T> {
+  private _waitters: PromiseOut<T>[] = [];
+  private _caches: T[] = [];
+  push(item: T) {
+    const waitter = this._waitters.shift();
+    if (waitter !== undefined) {
+      waitter.resolve(item);
+    } else {
+      this._caches.push(item);
+    }
+  }
+  private _done = false;
+  async next() {
+    if (this._done) {
+      return {
+        done: true as const,
+        value: undefined,
+      };
+    }
+    let item = this._caches.shift();
+    if (item === undefined) {
+      const waitter = new PromiseOut<T>();
+      this._waitters.push(waitter);
+      item = await waitter.promise;
+    }
+    return {
+      done: false as const,
+      value: item,
+    };
+  }
+
+  constructor(private onDone?: Function) {}
+  async return() {
+    this.onDone?.();
+    return {
+      done: (this._done = true as const),
+      value: undefined,
+    };
+  }
+  throw() {
+    return this.return();
+  }
+}
 
 // export class
 //#endregion

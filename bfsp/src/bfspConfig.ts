@@ -1,4 +1,4 @@
-import { getBfspUserConfig } from "./userConfig";
+import { getBfspUserConfig, watchBfspUserConfig } from "./userConfig";
 import { $GitIgnore, generateGitIgnore, writeGitIgnore } from "./gen/gitIgnore";
 import { $NpmIgnore, generateNpmIgnore, writeNpmIgnore } from "./gen/npmIgnore";
 import {
@@ -12,7 +12,11 @@ import {
   watchTsConfig,
   writeTsConfig,
 } from "./gen/tsConfig";
-import { $ViteConfig, generateViteConfig } from "./gen/viteConfig";
+import {
+  $ViteConfig,
+  generateViteConfig,
+  watchViteConfig,
+} from "./gen/viteConfig";
 
 export interface $BfspProjectConfig {
   projectDirpath: string;
@@ -33,30 +37,61 @@ export const getBfspProjectConfig = async (dirname = process.cwd()) => {
 };
 
 export const writeBfspProjectConfig = async (
-  projectConfig: $BfspProjectConfig,
-  options: { watch?: boolean } = {}
+  projectConfig: $BfspProjectConfig
 ) => {
   const { projectDirpath, userConfig } = projectConfig;
-  const { watch = false } = options;
 
-  const tsConfigPo = generateTsConfig(projectDirpath, userConfig);
+  const viteConfig = await generateViteConfig(projectDirpath, userConfig);
+  const tsConfigPo = generateTsConfig(projectDirpath, viteConfig, userConfig);
 
-  const viteConfigPo = generateViteConfig(projectDirpath, userConfig);
   const gitIgnorePo = generateGitIgnore(projectDirpath, userConfig);
   const npmIgnorePo = generateNpmIgnore(projectDirpath, userConfig);
-  const packageJsonPo = viteConfigPo.then((viteConfig) =>
-    generatePackageJson(projectDirpath, viteConfig, userConfig)
+  const packageJsonPo = generatePackageJson(
+    projectDirpath,
+    viteConfig,
+    userConfig
   );
-  if (watch) {
-    watchTsConfig(projectDirpath, tsConfigPo);
-  }
 
-  await Promise.all([
-    tsConfigPo.then((tsConfig) => writeTsConfig(projectDirpath, tsConfig)),
-    gitIgnorePo.then((gitIgnore) => writeGitIgnore(projectDirpath, gitIgnore)),
-    npmIgnorePo.then((npmIgnore) => writeNpmIgnore(projectDirpath, npmIgnore)),
+  const [tsConfig, gitIgnore, npmIgnore, packageJson] = await Promise.all([
+    tsConfigPo.then((tsConfig) =>
+      writeTsConfig(projectDirpath, viteConfig, tsConfig).then(() => tsConfig)
+    ),
+    gitIgnorePo.then((gitIgnore) =>
+      writeGitIgnore(projectDirpath, gitIgnore).then(() => gitIgnore)
+    ),
+    npmIgnorePo.then((npmIgnore) =>
+      writeNpmIgnore(projectDirpath, npmIgnore).then(() => npmIgnore)
+    ),
     packageJsonPo.then((packageJson) =>
-      writePackageJson(projectDirpath, packageJson)
+      writePackageJson(projectDirpath, packageJson).then(() => packageJson)
     ),
   ]);
+
+  return { viteConfig, tsConfig, gitIgnore, npmIgnore, packageJson };
+};
+
+export const watchBfspProjectConfig = (
+  projectConfig: $BfspProjectConfig,
+  initConfigs: {
+    tsConfig: BFChainUtil.PromiseMaybe<$TsConfig>;
+  }
+) => {
+  const { projectDirpath, userConfig } = projectConfig;
+
+  const userConfigStream = watchBfspUserConfig(projectDirpath, userConfig);
+  const viteConfigStream = watchViteConfig(projectDirpath, userConfigStream);
+  const tsConfigStream = watchTsConfig(
+    projectDirpath,
+    initConfigs.tsConfig,
+    viteConfigStream,
+    {
+      write: true,
+    }
+  );
+
+  return {
+    userConfigStream,
+    viteConfigStream,
+    tsConfigStream,
+  };
 };

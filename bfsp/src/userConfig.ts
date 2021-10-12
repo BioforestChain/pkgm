@@ -69,9 +69,9 @@ export const getBfspUserConfig = async (
 import chokidar from "chokidar";
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import { isDeepStrictEqual } from "node:util";
-export async function* watchBfspUserConfig(
+async function* _watchBfspUserConfig(
   projectDirpath: string,
-  userConfigPo: BFChainUtil.PromiseMaybe<Bfsp.UserConfig>
+  userConfigInitPo: BFChainUtil.PromiseMaybe<Bfsp.UserConfig>
 ) {
   const watcher = chokidar.watch(["#bfsp.json", "#bfsp.ts"], {
     cwd: projectDirpath,
@@ -81,7 +81,8 @@ export async function* watchBfspUserConfig(
   watcher.on("change", (path) => waitter.resolve({ event: "change", path }));
   watcher.on("add", (path) => waitter.resolve({ event: "add", path }));
 
-  let preUserConfig = await userConfigPo;
+  let curUserConfig = await userConfigInitPo;
+  yield curUserConfig; // 初始的值要放出来
 
   while (true) {
     const event = await waitter.promise;
@@ -92,10 +93,14 @@ export async function* watchBfspUserConfig(
       refresh: true,
     });
     if (userConfig !== undefined) {
-      if (isDeepStrictEqual(preUserConfig, userConfig)) {
+      if (isDeepStrictEqual(curUserConfig, userConfig)) {
         continue;
       }
-      yield (preUserConfig = userConfig);
+      yield (curUserConfig = userConfig);
     }
   }
 }
+export const watchBfspUserConfig = (
+  projectDirpath: string,
+  userConfigInitPo: BFChainUtil.PromiseMaybe<Bfsp.UserConfig>
+) => _watchBfspUserConfig(projectDirpath, userConfigInitPo).toSharable();
