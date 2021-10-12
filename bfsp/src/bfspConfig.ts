@@ -18,43 +18,42 @@ import {
   watchViteConfig,
 } from "./gen/viteConfig";
 
-export interface $BfspProjectConfig {
-  projectDirpath: string;
-  userConfig: Bfsp.UserConfig;
-}
-
 export const getBfspProjectConfig = async (dirname = process.cwd()) => {
-  const userConfig = await getBfspUserConfig(dirname);
-  if (userConfig === undefined) {
-    return;
-  }
+  const bfspUserConfig = await getBfspUserConfig(dirname);
 
-  const projectConfig: $BfspProjectConfig = {
+  const projectConfig = {
     projectDirpath: dirname,
-    userConfig,
+    bfspUserConfig,
   };
   return projectConfig;
 };
+export type $BfspProjectConfig = BFChainUtil.PromiseReturnType<
+  typeof getBfspProjectConfig
+>;
 
 export const writeBfspProjectConfig = async (
   projectConfig: $BfspProjectConfig
 ) => {
-  const { projectDirpath, userConfig } = projectConfig;
+  const { projectDirpath, bfspUserConfig } = projectConfig;
 
-  const viteConfig = await generateViteConfig(projectDirpath, userConfig);
-  const tsConfigPo = generateTsConfig(projectDirpath, viteConfig, userConfig);
+  const viteConfig = await generateViteConfig(projectDirpath, bfspUserConfig);
+  const tsConfigPo = generateTsConfig(projectDirpath, bfspUserConfig);
 
-  const gitIgnorePo = generateGitIgnore(projectDirpath, userConfig);
-  const npmIgnorePo = generateNpmIgnore(projectDirpath, userConfig);
-  const packageJsonPo = generatePackageJson(
+  const gitIgnorePo = generateGitIgnore(
     projectDirpath,
-    viteConfig,
-    userConfig
+    bfspUserConfig.userConfig
   );
+  const npmIgnorePo = generateNpmIgnore(
+    projectDirpath,
+    bfspUserConfig.userConfig
+  );
+  const packageJsonPo = generatePackageJson(projectDirpath, bfspUserConfig);
 
   const [tsConfig, gitIgnore, npmIgnore, packageJson] = await Promise.all([
     tsConfigPo.then((tsConfig) =>
-      writeTsConfig(projectDirpath, viteConfig, tsConfig).then(() => tsConfig)
+      writeTsConfig(projectDirpath, bfspUserConfig, tsConfig).then(
+        () => tsConfig
+      )
     ),
     gitIgnorePo.then((gitIgnore) =>
       writeGitIgnore(projectDirpath, gitIgnore).then(() => gitIgnore)
@@ -76,14 +75,14 @@ export const watchBfspProjectConfig = (
     tsConfig: BFChainUtil.PromiseMaybe<$TsConfig>;
   }
 ) => {
-  const { projectDirpath, userConfig } = projectConfig;
+  const { projectDirpath, bfspUserConfig } = projectConfig;
 
-  const userConfigStream = watchBfspUserConfig(projectDirpath, userConfig);
+  const userConfigStream = watchBfspUserConfig(projectDirpath, bfspUserConfig);
   const viteConfigStream = watchViteConfig(projectDirpath, userConfigStream);
   const tsConfigStream = watchTsConfig(
     projectDirpath,
     initConfigs.tsConfig,
-    viteConfigStream,
+    userConfigStream,
     {
       write: true,
     }

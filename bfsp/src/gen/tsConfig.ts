@@ -1,12 +1,16 @@
+import chokidar from "chokidar";
+import path, { resolve } from "node:path";
 import {
-  walkFiles,
-  notGitIgnored,
+  fileIO,
   folderIO,
-  toPosixPath,
+  notGitIgnored,
   SharedAsyncIterable,
   SharedFollower,
+  toPosixPath,
+  walkFiles,
 } from "../toolkit";
-import path from "node:path";
+import type { $BfspUserConfig } from "../userConfig";
+import type { $ViteConfig } from "./viteConfig";
 
 export const isTsFile = (projectDirpath: string, filepath: string) =>
   /// 在assets文件夹下的json文件
@@ -34,8 +38,7 @@ const isTestFile = (projectDirpath: string, filepath: string) =>
 
 export const generateTsConfig = async (
   projectDirpath: string,
-  viteConfig: $ViteConfig,
-  config?: Bfsp.UserConfig
+  bfspUserConfig: $BfspUserConfig
 ) => {
   const allTsFileList = await walkFiles(projectDirpath, (dirpath) =>
     notGitIgnored(dirpath)
@@ -114,11 +117,9 @@ export const generateTsConfig = async (
 };
 
 export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
-import { resolve } from "node:path";
-import { fileIO } from "../toolkit";
 export const writeTsConfig = (
   projectDirpath: string,
-  viteConfig: $ViteConfig,
+  bfspUserConfig: $BfspUserConfig,
   tsConfig: $TsConfig
 ) => {
   console.log("write to tsconfig", tsConfig.tsFiles, tsConfig.typeFiles);
@@ -136,7 +137,7 @@ export const writeTsConfig = (
       const indexFilepath = resolve(projectDirpath, "typings/@index.d.ts");
       const typesFilepath = resolve(projectDirpath, "typings/@types.d.ts");
       const indexFileCode = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\nimport "./@types.d.ts";\nexport * from "${toPosixPath(
-        path.relative("typings", viteConfig.indexFile)
+        path.relative("typings", bfspUserConfig.exportsDetail.indexFile)
       )}"\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
       if (tsConfig.typeFiles.size === 0) {
         if (await fileIO.has(typesFilepath)) {
@@ -183,13 +184,10 @@ export const writeTsConfig = (
   ]);
 };
 
-import chokidar from "chokidar";
-import { $ViteConfig } from "./viteConfig";
-
 export const watchTsConfig = (
   projectDirpath: string,
   tsConfigInitPo: BFChainUtil.PromiseMaybe<$TsConfig>,
-  viteConfigStream: SharedAsyncIterable<$ViteConfig>,
+  bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
   options: {
     write?: boolean;
   } = {}
@@ -205,7 +203,7 @@ export const watchTsConfig = (
     running = true;
     try {
       const tsConfig = (tsConfigInitPo = await tsConfigInitPo);
-      const viteConfig = await viteConfigStream.getCurrent();
+      const bfspUserConfig = await bfspUserConfigStream.getCurrent();
       while (cachedEventList.size !== 0) {
         // 保存一份,清空缓存
         const eventList = new Map(cachedEventList);
@@ -245,7 +243,7 @@ export const watchTsConfig = (
           );
 
           if (write) {
-            await writeTsConfig(projectDirpath, viteConfig, tsConfig);
+            await writeTsConfig(projectDirpath, bfspUserConfig, tsConfig);
           }
 
           follower.push(tsConfig);
@@ -289,7 +287,7 @@ export const watchTsConfig = (
   //#endregion
 
   //#region 监听依赖配置来触发更新
-  viteConfigStream.onNext(loopProcesser);
+  bfspUserConfigStream.onNext(loopProcesser);
   //#endregion
 
   return new SharedAsyncIterable<$TsConfig>(follower);
