@@ -4,7 +4,10 @@ declare namespace Bfsp {
     exports: {
       [path in `.` | `./${string}`]: string;
     };
+    formats?: Format[];
   }
+
+  type Format = "cjs" | "esm" | "iife";
   interface ConfigEnvInfo {
     mode: import("../src/configs/bfspUserConfig").BUILD_MODE;
   }

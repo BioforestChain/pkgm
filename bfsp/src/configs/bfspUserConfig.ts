@@ -1,12 +1,16 @@
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import chokidar from "chokidar";
 import { build } from "esbuild";
-import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, writeFileSync } from "node:fs";
 import { unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
-import { fileIO, folderIO, Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
+import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
+import { fileIO, folderIO, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
+import debug from "debug";
+const log = debug("bfsp:config/#bfsp");
 
 // export const enum BUILD_MODE {
 //   DEVELOPMENT = "development",
@@ -76,6 +80,7 @@ export class ExportsMap {
 export const parseExports = (exports: Bfsp.UserConfig["exports"]) => {
   const exportsMap = new ExportsMap();
   let _index: { posixKey: string; input: string; key: string } | undefined;
+  const standardExports: Bfsp.UserConfig["exports"] = { ".": "" };
   /// 先暴露出模块
   for (const key in exports) {
     /**一个格式化后的key, 是用于提供 @bfchain/xxx/{key} 这样的扩展包的 */
@@ -84,10 +89,12 @@ export const parseExports = (exports: Bfsp.UserConfig["exports"]) => {
       console.error(`invalid exports key: '${key}'`);
       continue;
     }
-    const input: string = (exports as any)[key];
+    const input: string = toPosixPath((exports as any)[key]);
 
     let inputAlias = posixKey;
     if (posixKey === "." || posixKey === "./" || posixKey === "") {
+      standardExports["."] = input;
+
       inputAlias = "index";
       if (_index !== undefined) {
         console.error(`duplicated default export: '${posixKey}', will use '.' by default`);
@@ -97,6 +104,12 @@ export const parseExports = (exports: Bfsp.UserConfig["exports"]) => {
         exportsMap.delInput(_index.input);
       }
       _index = { posixKey, input, key };
+    } else {
+      if (posixKey in standardExports) {
+        console.error(`duplicated default export: '${posixKey}('${key}')'`);
+        continue;
+      }
+      (standardExports as any)[posixKey] = input;
     }
 
     exportsMap.autoOutput(input, inputAlias);
@@ -108,6 +121,7 @@ export const parseExports = (exports: Bfsp.UserConfig["exports"]) => {
 
   return {
     exportsMap,
+    formatedExports: standardExports,
     indexFile: _index.input,
     indexKey: {
       sourceKey: _index.key,
@@ -116,15 +130,24 @@ export const parseExports = (exports: Bfsp.UserConfig["exports"]) => {
   };
 };
 
-import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
-import { writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { createHash } from "node:crypto";
+const ALLOW_FORMATS = new Set<Bfsp.Format>(["iife", "cjs", "esm"]);
+const parseFormats = (formats: Bfsp.UserConfig["formats"] = []) => {
+  const formatSet = new Set(formats.filter((f) => ALLOW_FORMATS.has(f)));
+  formats = [...formatSet];
+  if (formats.length === 0) {
+    formats.push("esm");
+  }
+  return formats;
+};
+
 const bfspTsconfigFilepath = path.join(
   tmpdir(),
   `tsconfig.bfsp-${createHash("md5").update(bfspTsconfigContent).digest("hex")}.json`
 );
-writeFileSync(bfspTsconfigFilepath, bfspTsconfigContent);
+if (existsSync(bfspTsconfigFilepath) === false) {
+  writeFileSync(bfspTsconfigFilepath, bfspTsconfigContent);
+  log("tsconfigUrl", bfspTsconfigFilepath);
+}
 
 export const readUserConfig = async (
   dirname: string,
@@ -137,7 +160,6 @@ export const readUserConfig = async (
       const cache_filename = `#bfsp.mjs`;
       const cache_filepath = resolve(dirname, cache_filename);
       try {
-        console.log("tsconfigUrl", bfspTsconfigFilepath);
         await build({
           entryPoints: [filename],
           absWorkingDir: dirname,
@@ -145,10 +167,8 @@ export const readUserConfig = async (
           platform: "node",
           format: "esm",
           write: true,
-          // outdir: dirname,
           outfile: cache_filepath,
           tsconfig: bfspTsconfigFilepath,
-          // incremental: true,
         });
         const url = pathToFileURL(cache_filepath);
         if (options.refresh) {
@@ -184,6 +204,7 @@ const _getBfspUserConfig = (userConfig: Bfsp.UserConfig) => {
   return {
     userConfig,
     exportsDetail: parseExports(userConfig.exports),
+    formats: parseFormats(userConfig.formats),
   };
 };
 
@@ -212,7 +233,7 @@ export const watchBfspUserConfig = (
       if (isDeepStrictEqual(curBfspUserConfig?.userConfig, userConfig)) {
         return;
       }
-      console.log("bfspuserConfig changed!!");
+      log("bfspuserConfig changed!!");
       follower.push((curBfspUserConfig = _getBfspUserConfig(userConfig)));
     }
   });

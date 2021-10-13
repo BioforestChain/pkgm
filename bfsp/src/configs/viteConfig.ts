@@ -1,7 +1,10 @@
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import type { $TsConfig } from "./tsConfig";
+import debug from "debug";
+const log = debug("bfsp:config/vite.config.ts");
 // import { $TsConfig } from "./tsConfig";
 // import viteConfigTemplate from "../../assets/vite.config.template.ts?raw";
 
@@ -34,7 +37,7 @@ export const generateViteConfig = async (
     viteInput[output] = path.join(projectDirpath, filepath);
   }
 
-  console.log("viteInput", viteInput);
+  log("viteInput", viteInput);
 
   return {
     viteInput,
@@ -59,13 +62,18 @@ export const watchViteConfig = (
   tsConfigStream: SharedAsyncIterable<$TsConfig>
 ) => {
   const follower = new SharedFollower<$ViteConfig>();
+
+  let preViteConfig: $ViteConfig | undefined;
   /// 循环处理监听到的事件
   const looper = Loopable(async () => {
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
     const tsConfig = await tsConfigStream.getCurrent();
     const viteConfig = await generateViteConfig(projectDirpath, bfspUserConfig, tsConfig);
-    console.log("viteConfig changed!!", viteConfig);
-    follower.push(viteConfig);
+    if (isDeepStrictEqual(preViteConfig, viteConfig)) {
+      return;
+    }
+    log("viteConfig changed!!", viteConfig);
+    follower.push((preViteConfig = viteConfig));
   });
 
   //#region 监听依赖配置来触发更新

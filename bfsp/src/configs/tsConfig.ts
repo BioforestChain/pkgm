@@ -1,4 +1,5 @@
 import chokidar from "chokidar";
+import debug from "debug";
 import path, { resolve } from "node:path";
 import {
   $PathInfo,
@@ -16,6 +17,7 @@ import {
   walkFiles,
 } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
+const log = debug("bfsp:config/tsconfig.json");
 
 export const isTsFile = (filepathInfo: $PathInfo) => {
   const { relative } = filepathInfo;
@@ -169,8 +171,6 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
 
 export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
 export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserConfig, tsConfig: $TsConfig) => {
-  // console.log("write to tsconfig", tsConfig.tsFilesLists.allFiles.toArray());
-
   return Promise.all([
     fileIO.set(resolve(projectDirpath, "tsconfig.json"), Buffer.from(JSON.stringify(tsConfig.tsConfig, null, 2))),
     fileIO.set(
@@ -251,7 +251,7 @@ export const watchTsConfig = (
         await writeTsConfig(projectDirpath, bfspUserConfig, tsConfig);
       }
 
-      console.log("tsconfig changed!!");
+      log("tsconfig changed!!");
       follower.push(tsConfig);
     }
   });

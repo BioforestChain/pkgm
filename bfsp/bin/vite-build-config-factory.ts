@@ -1,20 +1,16 @@
-import type { InlineConfig } from "vite";
-import path from "node:path";
+import debug from "debug";
 import fs from "node:fs";
 import { inspect } from "node:util";
 import typescript from "typescript";
+import type { InlineConfig } from "vite";
+import { $PackageJson } from "../src/configs/packageJson";
+import { $TsConfig } from "../src/configs/tsConfig";
 import type { $ViteConfig } from "../src/configs/viteConfig";
+import { getExtensionByFormat } from "../src/toolkit";
+const log = debug("bfsp:config/vite-config.ts");
 
-const FORMATS = ["esm", "cjs"] as const;
+const FORMATS = ["cjs", "esm", "iife"] as const;
 type $Format = typeof FORMATS[number];
-
-const EXTENSION_MAP = {
-  es: ".mjs",
-  esm: ".mjs",
-  module: ".mjs",
-  cjs: ".cjs",
-  commonjs: ".cjs",
-};
 
 export const getArg = <T extends string>(name: string) => {
   const foundArg = process.argv.find((arg) => arg.startsWith(`--${name}=`));
@@ -27,18 +23,17 @@ export const getArg = <T extends string>(name: string) => {
 export const ViteConfigFactory = async (options: {
   projectDirpath: string;
   viteConfig: $ViteConfig;
+  packageJson: $PackageJson;
+  tsConfig: $TsConfig;
   format?: $Format;
   platform?: string;
 }) => {
-  let {
-    format = getArg("format") ?? "esm",
-    platform = getArg("platfrom") ?? "default",
-  } = options;
+  let { format = getArg("format") ?? "esm", platform = getArg("platfrom") ?? "default" } = options;
   if (FORMATS.includes(format as any) === false) {
     format = "esm";
   }
   const { projectDirpath, viteConfig } = options;
-  const extension = EXTENSION_MAP[format] || ".js";
+  const extension = getExtensionByFormat(format);
   const outDir = format ? `dist/${format}` : undefined;
 
   const viteBuildConfig: InlineConfig = {
@@ -62,12 +57,7 @@ export const ViteConfigFactory = async (options: {
     },
     plugins: [
       (() => {
-        const tsconfigFilepath = path.join(projectDirpath, "tsconfig.json");
-        // console.log(tsconfigFilepath);
-        const parsedTsConfig: typescript.TranspileOptions =
-          new Function(
-            `return ${fs.readFileSync(tsconfigFilepath, "utf-8").trim()}`
-          )() || {};
+        const parsedTsConfig: typescript.TranspileOptions = JSON.parse(JSON.stringify(options.tsConfig));
         const compilerOptions = (parsedTsConfig.compilerOptions ||= {});
         compilerOptions.emitDeclarationOnly = false;
         compilerOptions.noEmit = false;
@@ -76,7 +66,7 @@ export const ViteConfigFactory = async (options: {
         compilerOptions.inlineSourceMap = false;
 
         function printDiagnostics(...args: unknown[]) {
-          console.log(inspect(args, false, 10, true));
+          console.error(inspect(args, false, 10, true));
         }
 
         return {
@@ -94,10 +84,7 @@ export const ViteConfigFactory = async (options: {
 
               // Find the decorator and if there isn't one, return out
               const hasDecorator = ts
-                .replace(
-                  /`(?:\.|(\\\`)|[^\``])*`|"(?:\.|(\\\")|[^\""\n])*"|'(?:\.|(\\\')|[^\''\n])*'/g,
-                  ""
-                )
+                .replace(/`(?:\.|(\\\`)|[^\``])*`|"(?:\.|(\\\")|[^\""\n])*"|'(?:\.|(\\\')|[^\''\n])*'/g, "")
                 .replace(/\/\/[\w\W]*?\n/g, "")
                 .replace(/\/\*[\w\W]*?\*\//g, "")
                 .includes("@");
@@ -105,9 +92,9 @@ export const ViteConfigFactory = async (options: {
                 return null;
               }
 
-              // console.log("need emitDecoratorMetadata", source);
+              log("need emitDecoratorMetadata", source);
               const program = typescript.transpileModule(ts, parsedTsConfig);
-              // console.log(program.outputText);
+              // log(program.outputText);
               return program.outputText;
             } catch (err) {
               printDiagnostics({ file: source, err });
@@ -117,16 +104,11 @@ export const ViteConfigFactory = async (options: {
         };
       })(),
       (() => {
-        const packageFilepath = path.join(projectDirpath, "package.json");
-        const packageJson = JSON.parse(
-          fs.readFileSync(packageFilepath, "utf-8")
-        );
-        const subpathImports = packageJson.imports || {};
-        // console.log(subpathImports);
+        const subpathImports: any = options.packageJson.imports || {};
+        log("subpathImports", subpathImports);
         return {
           name: "Subpath imports",
           resolveId(source: string) {
-            // console.log(source);
             if (source.startsWith("#")) {
               const imports = subpathImports[source];
               if (imports) {

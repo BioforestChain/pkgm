@@ -2,9 +2,7 @@ import { defineConfig } from "vite";
 import type { InputOption, ModuleFormat } from "rollup";
 import { existsSync, statSync } from "node:fs";
 
-const libFormat = (process.argv
-  .find((arg) => arg.startsWith("--format="))
-  ?.split("=")[1] ?? "esm") as ModuleFormat;
+const libFormat = (process.argv.find((arg) => arg.startsWith("--format="))?.split("=")[1] ?? "esm") as ModuleFormat;
 
 export const input: InputOption = {
   index: "src/index.ts",
@@ -35,17 +33,12 @@ export default defineConfig((info) => {
         preserveEntrySignatures: "strict",
         external: (source, importer, isResolved) => {
           if (source.startsWith("node:")) {
-            // console.log("external", source);
             return true;
           }
-          if (
-            source.startsWith("@bfchain/") ||
-            source.includes("node_modules/@bfchain/")
-          ) {
+          if (source.startsWith("@bfchain/") || source.includes("node_modules/@bfchain/")) {
             return false;
           }
           if (source.includes("node_modules")) {
-            // console.log("external", source);
             return true;
           }
           if (
@@ -53,7 +46,6 @@ export default defineConfig((info) => {
             existsSync(`node_modules/${source}`) &&
             statSync(`node_modules/${source}`).isDirectory()
           ) {
-            // console.log("external", source);
             return true;
           }
         },

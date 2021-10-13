@@ -2,25 +2,22 @@ import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import fs from "node:fs";
 import path from "node:path";
 import type { RollupWatcher } from "rollup";
-import { build } from "vite";
+import { build as buildVite } from "vite";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { generateViteConfig } from "../src/configs/viteConfig";
-import { watchBfspUserConfig } from "../src/configs/bfspUserConfig";
-import { ViteConfigFactory } from "./vite-build-config-factory";
 import { Abortable } from "../src/toolkit";
+import { ViteConfigFactory } from "./vite-build-config-factory";
+import debug from "debug";
 
 (async () => {
+  const log = debug("bfsp:bin/dev");
+
   const cwd = process.cwd();
   const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
   const root = fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
 
-  console.log("root", root);
+  log("root", root);
 
   const config = await getBfspProjectConfig(root);
-  if (config === undefined) {
-    console.error("no found #bfsp project");
-    process.exit(1);
-  }
 
   /// 初始化写入配置
   const subConfigs = await writeBfspProjectConfig(config);
@@ -28,6 +25,7 @@ import { Abortable } from "../src/toolkit";
   /// 监听项目变动
   const subStreams = watchBfspProjectConfig(config!, {
     tsConfig: subConfigs.tsConfig,
+    packageJson: subConfigs.packageJson,
   });
 
   const abortable = Abortable(async (aborter) => {
@@ -39,10 +37,16 @@ import { Abortable } from "../src/toolkit";
       aborter.finishedAborted.resolve();
     };
 
+    const userConfig = await subStreams.userConfigStream.getCurrent();
     const viteConfig = await subStreams.viteConfigStream.getCurrent();
+    const packageJson = await subStreams.packageJsonStream.getCurrent();
+    const tsConfig = await subStreams.tsConfigStream.getCurrent();
     const viteBuildConfig = await ViteConfigFactory({
       projectDirpath: root,
       viteConfig,
+      packageJson,
+      tsConfig,
+      format: userConfig.userConfig.formats?.[0],
     });
 
     viteBuildConfig.build = {
@@ -55,8 +59,8 @@ import { Abortable } from "../src/toolkit";
     };
     viteBuildConfig.mode = "development";
 
-    console.log("running esbuild!!!");
-    const dev = (await build(viteBuildConfig)) as RollupWatcher;
+    log("running vite build!");
+    const dev = (await buildVite(viteBuildConfig)) as RollupWatcher;
     devPo.resolve(dev);
   });
 

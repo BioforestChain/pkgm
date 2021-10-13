@@ -192,7 +192,6 @@ export async function* walkFiles(
 ): AsyncGenerator<string> {
   for (const basename of await folderIO.get(dirpath)) {
     const somepath = path.resolve(dirpath, basename);
-    // console.log("walk", somepath);
     try {
       if (statSync(somepath).isFile()) {
         yield somepath;
@@ -234,7 +233,6 @@ export const fileIO = new FileIoCache();
 
 export async function* AG_Map<T, R>(asyncGenerator: AsyncGenerator<T>, map: (i: T) => R) {
   for await (const item of asyncGenerator) {
-    // console.log("map", item);
     yield (await map(item)) as BFChainUtil.PromiseType<R>;
   }
 }
@@ -245,7 +243,6 @@ export async function* AG_Filter<T, R = T>(
 ) {
   for await (const item of asyncGenerator) {
     if (await filter(item)) {
-      // console.log("filter", item);
       yield item as unknown as R;
     }
   }
@@ -254,7 +251,6 @@ export async function* AG_Filter<T, R = T>(
 export async function AG_ToArray<T>(asyncGenerator: AsyncGenerator<T>) {
   const result: T[] = [];
   for await (const item of asyncGenerator) {
-    // console.log("arr", item);
     result.push(item);
   }
   return result;
@@ -290,7 +286,6 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
         for (const f of this._followers) {
           f.push(value);
         }
-        console.log("emit value!!!");
         this._ee.emit("value", value);
       } while (this._loop);
       this._loop = true;
@@ -569,3 +564,16 @@ export const PathInfoParser = (
 };
 export type $PathInfo = ReturnType<typeof PathInfoParser>;
 //#endregion
+
+import type { ModuleFormat } from "rollup";
+const EXTENSION_MAP = {
+  es: ".mjs",
+  esm: ".mjs",
+  module: ".mjs",
+  cjs: ".cjs",
+  commonjs: ".cjs",
+  iife: ".js",
+};
+export const getExtensionByFormat = (format: ModuleFormat): ".js" | ".mjs" | ".cjs" => {
+  return (EXTENSION_MAP as any)[format] || ".js";
+};
