@@ -1,5 +1,5 @@
 declare namespace Bfsp {
   interface UserConfig {
-    gitignore?: import("../src/gen/commonIgnore").IgnoreUserConfig;
+    gitignore?: import("../src/configs/commonIgnore").IgnoreUserConfig;
   }
 }

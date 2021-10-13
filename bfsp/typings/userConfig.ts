@@ -6,6 +6,6 @@ declare namespace Bfsp {
     };
   }
   interface ConfigEnvInfo {
-    mode: import("../src/userConfig").BUILD_MODE;
+    mode: import("../src/configs/bfspUserConfig").BUILD_MODE;
   }
 }

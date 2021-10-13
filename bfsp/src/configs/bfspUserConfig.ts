@@ -1,8 +1,12 @@
-import { readFile, unlink } from "node:fs/promises";
+import { PromiseOut } from "@bfchain/util-extends-promise-out";
+import chokidar from "chokidar";
+import { build } from "esbuild";
+import { existsSync } from "node:fs";
+import { unlink } from "node:fs/promises";
 import path, { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { build } from "esbuild";
-import { folderIO, fileIO } from "./toolkit";
+import { isDeepStrictEqual } from "node:util";
+import { fileIO, folderIO } from "../toolkit";
 
 // export const enum BUILD_MODE {
 //   DEVELOPMENT = "development",
@@ -29,41 +33,41 @@ export const defineConfig = (
  * 别名可以一样
  */
 export class ExportsMap {
-  readonly oi_cache = new Map<string, string>();
-  readonly io_cache = new Map<string, string>();
+  readonly oi = new Map<string, string>();
+  readonly io = new Map<string, string>();
   hasDefine(input: string) {
-    return this.io_cache.has(input);
+    return this.io.has(input);
   }
   define(input: string, output: string) {
-    this.oi_cache.set(output, input);
-    this.io_cache.set(input, output);
+    this.oi.set(output, input);
+    this.io.set(input, output);
   }
   autoDefine(input: string, inputAlias: string) {
-    let output = this.oi_cache.get(input);
+    let output = this.oi.get(input);
     if (output !== undefined) {
       return output;
     }
     let autoNameAcc = 0;
     do {
       output = autoNameAcc === 0 ? inputAlias : `${inputAlias}-${autoNameAcc}`;
-      if (this.oi_cache.has(output) === false) {
+      if (this.oi.has(output) === false) {
         break;
       }
 
-      autoNameAcc += Math.ceil(this.oi_cache.size / 2);
+      autoNameAcc += Math.ceil(this.oi.size / 2);
     } while (true);
 
     this.define(input, output);
     return output;
   }
   getDefine(input: string) {
-    return this.io_cache.get(input);
+    return this.io.get(input);
   }
   delDefine(input: string) {
-    const output = this.io_cache.get(input);
+    const output = this.io.get(input);
     if (output !== undefined) {
-      this.io_cache.delete(input);
-      this.oi_cache.delete(output);
+      this.io.delete(input);
+      this.oi.delete(output);
       return true;
     }
     return false;
@@ -180,10 +184,6 @@ export type $BfspUserConfig = BFChainUtil.PromiseReturnType<
   typeof getBfspUserConfig
 >;
 
-import chokidar from "chokidar";
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
-import { isDeepStrictEqual } from "node:util";
-import { existsSync } from "node:fs";
 async function* _watchBfspUserConfig(
   projectDirpath: string,
   bfspUserConfigInitPo: BFChainUtil.PromiseMaybe<$BfspUserConfig>

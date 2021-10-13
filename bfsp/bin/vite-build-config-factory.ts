@@ -3,7 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import { inspect } from "node:util";
 import typescript from "typescript";
-import type { $ViteConfig } from "../src/gen/viteConfig";
+import type { $ViteConfig } from "../src/configs/viteConfig";
 
 const FORMATS = ["esm", "cjs"] as const;
 type $Format = typeof FORMATS[number];

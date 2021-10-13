@@ -1,6 +1,6 @@
 import path from "node:path";
 import { SharedAsyncIterable, SharedFollower } from "../toolkit";
-import { $BfspUserConfig } from "../userConfig";
+import { $BfspUserConfig } from "./bfspUserConfig";
 // import { $TsConfig } from "./tsConfig";
 // import viteConfigTemplate from "../../assets/vite.config.template.ts?raw";
 
@@ -12,7 +12,7 @@ export const generateViteConfig = async (
     [entryAlias: string]: string;
   } = {};
   for (const [output, input] of bfspUserConfig.exportsDetail.exportsMap
-    .oi_cache) {
+    .oi) {
     viteInput[output] = path.join(projectDirpath, input);
   }
 

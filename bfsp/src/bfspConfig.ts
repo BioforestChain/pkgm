@@ -1,22 +1,22 @@
-import { getBfspUserConfig, watchBfspUserConfig } from "./userConfig";
-import { $GitIgnore, generateGitIgnore, writeGitIgnore } from "./gen/gitIgnore";
-import { $NpmIgnore, generateNpmIgnore, writeNpmIgnore } from "./gen/npmIgnore";
+import { getBfspUserConfig, watchBfspUserConfig } from "./configs/bfspUserConfig";
+import { $GitIgnore, generateGitIgnore, writeGitIgnore } from "./configs/gitIgnore";
+import { $NpmIgnore, generateNpmIgnore, writeNpmIgnore } from "./configs/npmIgnore";
 import {
   $PackageJson,
   generatePackageJson,
   writePackageJson,
-} from "./gen/packageJson";
+} from "./configs/packageJson";
 import {
   $TsConfig,
   generateTsConfig,
   watchTsConfig,
   writeTsConfig,
-} from "./gen/tsConfig";
+} from "./configs/tsConfig";
 import {
   $ViteConfig,
   generateViteConfig,
   watchViteConfig,
-} from "./gen/viteConfig";
+} from "./configs/viteConfig";
 
 export const getBfspProjectConfig = async (dirname = process.cwd()) => {
   const bfspUserConfig = await getBfspUserConfig(dirname);

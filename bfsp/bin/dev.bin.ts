@@ -8,8 +8,8 @@ import {
   watchBfspProjectConfig,
   writeBfspProjectConfig,
 } from "../src/bfspConfig";
-import { generateViteConfig } from "../src/gen/viteConfig";
-import { watchBfspUserConfig } from "../src/userConfig";
+import { generateViteConfig } from "../src/configs/viteConfig";
+import { watchBfspUserConfig } from "../src/configs/bfspUserConfig";
 import { ViteConfigFactory } from "./vite-build-config-factory";
 
 (async () => {

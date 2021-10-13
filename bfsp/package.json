@@ -19,6 +19,7 @@
     "bfsp-test": "./dist/test.bin.mjs"
   },
   "scripts": {
+    "tsc": "tsc --build tsconfig.json -w",
     "dev": "vite build --watch --minify=false --sourcemap=true",
     "test": "ava"
   },

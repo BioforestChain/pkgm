@@ -1,5 +1,5 @@
 declare namespace Bfsp {
   interface UserConfig {
-    npmignore?: import("../src/gen/commonIgnore").IgnoreUserConfig;
+    npmignore?: import("../src/configs/commonIgnore").IgnoreUserConfig;
   }
 }

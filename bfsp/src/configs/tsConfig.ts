@@ -9,7 +9,7 @@ import {
   toPosixPath,
   walkFiles,
 } from "../toolkit";
-import type { $BfspUserConfig } from "../userConfig";
+import type { $BfspUserConfig } from "./bfspUserConfig";
 import type { $ViteConfig } from "./viteConfig";
 
 export const isTsFile = (projectDirpath: string, filepath: string) =>

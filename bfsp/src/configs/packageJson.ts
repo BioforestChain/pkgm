@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { fileIO } from "../toolkit";
-import type { $BfspUserConfig } from "../userConfig";
+import type { $BfspUserConfig } from "./bfspUserConfig";
 
 export const generatePackageJson = async (
   projectDirpath: string,
@@ -21,7 +21,7 @@ export const generatePackageJson = async (
     },
   };
   for (const [output, input] of bfspUserConfig.exportsDetail.exportsMap
-    .oi_cache) {
+    .oi) {
     if (output === indexOutput) {
       continue;
     }
