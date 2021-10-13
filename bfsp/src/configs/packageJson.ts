@@ -3,15 +3,10 @@ import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { fileIO } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 
-export const generatePackageJson = async (
-  projectDirpath: string,
-  bfspUserConfig: $BfspUserConfig
-) => {
+export const generatePackageJson = async (projectDirpath: string, bfspUserConfig: $BfspUserConfig) => {
   const packageJson = JSON.parse(packageJsonTemplate);
   packageJson.name = bfspUserConfig.userConfig.name;
-  const indexOutput = bfspUserConfig.exportsDetail.exportsMap.getDefine(
-    bfspUserConfig.exportsDetail.indexFile
-  );
+  const indexOutput = bfspUserConfig.exportsDetail.exportsMap.getOutput(bfspUserConfig.exportsDetail.indexFile);
   packageJson.main = `dist/${indexOutput}.cjs`;
   packageJson.types = `typings/@index.d.ts`; // viteConfig.mainEntry;
   packageJson.exports = {
@@ -20,8 +15,7 @@ export const generatePackageJson = async (
       import: `dist/${indexOutput}.mjs`,
     },
   };
-  for (const [output, input] of bfspUserConfig.exportsDetail.exportsMap
-    .oi) {
+  for (const [output, input] of bfspUserConfig.exportsDetail.exportsMap.oi) {
     if (output === indexOutput) {
       continue;
     }
@@ -33,15 +27,7 @@ export const generatePackageJson = async (
   return packageJson as typeof import("../../assets/package.template.json");
 };
 
-export type $PackageJson = BFChainUtil.PromiseReturnType<
-  typeof generatePackageJson
->;
-export const writePackageJson = (
-  projectDirpath: string,
-  packageJson: $PackageJson
-) => {
-  return fileIO.set(
-    resolve(projectDirpath, "package.json"),
-    Buffer.from(JSON.stringify(packageJson, null, 2))
-  );
+export type $PackageJson = BFChainUtil.PromiseReturnType<typeof generatePackageJson>;
+export const writePackageJson = (projectDirpath: string, packageJson: $PackageJson) => {
+  return fileIO.set(resolve(projectDirpath, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
 };

@@ -1,0 +1,31 @@
+{
+  "compilerOptions": {
+    "composite": false,
+    "noEmit": false,
+    "declaration": false,
+    "sourceMap": false,
+    "target": "es2020",
+    "module": "es2020",
+    "lib": [
+      "ES2020"
+    ],
+    "importHelpers": false,
+    "isolatedModules": true,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "types": [
+      "node"
+    ],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+}

@@ -25,8 +25,11 @@ test("get config in 'demo' project", async (t) => {
 
   const timeout = sleep(2000);
 
-  const randomFilename = `test-${Math.random().toString(36)}.type.ts`;
-  const randomFilepath = resolve(demoProjectPath, "bin/" + randomFilename);
+  const randomFilename = `test-${Math.random().toString(36)}.type`;
+  const randomFilepath = resolve(
+    demoProjectPath,
+    "bin/" + randomFilename + ".ts"
+  );
   const typesFilepath = resolve(demoProjectPath, "typings/@types.d.ts");
 
   writeFileSync(randomFilepath, "// test");

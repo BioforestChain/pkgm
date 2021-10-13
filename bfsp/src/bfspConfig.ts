@@ -1,6 +1,17 @@
-import { getBfspUserConfig, watchBfspUserConfig } from "./configs/bfspUserConfig";
-import { $GitIgnore, generateGitIgnore, writeGitIgnore } from "./configs/gitIgnore";
-import { $NpmIgnore, generateNpmIgnore, writeNpmIgnore } from "./configs/npmIgnore";
+import {
+  getBfspUserConfig,
+  watchBfspUserConfig,
+} from "./configs/bfspUserConfig";
+import {
+  $GitIgnore,
+  generateGitIgnore,
+  writeGitIgnore,
+} from "./configs/gitIgnore";
+import {
+  $NpmIgnore,
+  generateNpmIgnore,
+  writeNpmIgnore,
+} from "./configs/npmIgnore";
 import {
   $PackageJson,
   generatePackageJson,
@@ -36,8 +47,12 @@ export const writeBfspProjectConfig = async (
 ) => {
   const { projectDirpath, bfspUserConfig } = projectConfig;
 
-  const viteConfig = await generateViteConfig(projectDirpath, bfspUserConfig);
-  const tsConfigPo = generateTsConfig(projectDirpath, bfspUserConfig);
+  const tsConfig = await generateTsConfig(projectDirpath, bfspUserConfig);
+  const viteConfig = await generateViteConfig(
+    projectDirpath,
+    bfspUserConfig,
+    tsConfig
+  );
 
   const gitIgnorePo = generateGitIgnore(
     projectDirpath,
@@ -49,12 +64,8 @@ export const writeBfspProjectConfig = async (
   );
   const packageJsonPo = generatePackageJson(projectDirpath, bfspUserConfig);
 
-  const [tsConfig, gitIgnore, npmIgnore, packageJson] = await Promise.all([
-    tsConfigPo.then((tsConfig) =>
-      writeTsConfig(projectDirpath, bfspUserConfig, tsConfig).then(
-        () => tsConfig
-      )
-    ),
+  const [gitIgnore, npmIgnore, packageJson] = await Promise.all([
+    writeTsConfig(projectDirpath, bfspUserConfig, tsConfig),
     gitIgnorePo.then((gitIgnore) =>
       writeGitIgnore(projectDirpath, gitIgnore).then(() => gitIgnore)
     ),
@@ -72,20 +83,22 @@ export const writeBfspProjectConfig = async (
 export const watchBfspProjectConfig = (
   projectConfig: $BfspProjectConfig,
   initConfigs: {
-    tsConfig: BFChainUtil.PromiseMaybe<$TsConfig>;
+    tsConfig?: BFChainUtil.PromiseMaybe<$TsConfig>;
   }
 ) => {
   const { projectDirpath, bfspUserConfig } = projectConfig;
 
-  const userConfigStream = watchBfspUserConfig(projectDirpath, bfspUserConfig);
-  const viteConfigStream = watchViteConfig(projectDirpath, userConfigStream);
-  const tsConfigStream = watchTsConfig(
+  const userConfigStream = watchBfspUserConfig(projectDirpath, {
+    bfspUserConfigInitPo: bfspUserConfig,
+  });
+  const tsConfigStream = watchTsConfig(projectDirpath, userConfigStream, {
+    tsConfigInitPo: initConfigs.tsConfig,
+    write: true,
+  });
+  const viteConfigStream = watchViteConfig(
     projectDirpath,
-    initConfigs.tsConfig,
     userConfigStream,
-    {
-      write: true,
-    }
+    tsConfigStream
   );
 
   return {

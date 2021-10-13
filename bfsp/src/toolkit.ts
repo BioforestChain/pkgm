@@ -35,6 +35,7 @@ abstract class CacheGetter<K, V> {
     }
     return cache.value;
   }
+  abstract isEqual(key: K, val1: V, val2: V): boolean;
   abstract getVal(key: K): BFChainUtil.PromiseMaybe<V>;
 
   has(key: K) {
@@ -47,10 +48,13 @@ abstract class CacheGetter<K, V> {
 }
 abstract class CacheWritter<K, V> extends CacheGetter<K, V> {
   abstract setVal(key: K, val: V): BFChainUtil.PromiseMaybe<boolean>;
-  async set(key: K, val: V) {
+  async set(key: K, val: V, force?: boolean) {
+    let cache = this._cache.get(key);
+    const now = Date.now();
+    if (!force && cache !== undefined && now - cache.time < this.cacheTime && this.isEqual(key, cache.value, val)) {
+      return;
+    }
     if (await this.setVal(key, val)) {
-      let cache = this._cache.get(key);
-      const now = Date.now();
       if (cache) {
         cache.value = val;
         cache.time = now;
@@ -74,9 +78,14 @@ type GitIgnore = {
   basedir: string;
   rules: string[];
 };
+import { isDeepStrictEqual } from "node:util";
 class GitignoreCache extends CacheGetter<string, GitIgnore[]> {
-  async getVal(dir: string) {
+  isEqual(key: string, val1: GitIgnore[], val2: GitIgnore[]): boolean {
+    return isDeepStrictEqual(val1, val2);
+  }
+  async getVal(inputDir: string) {
     const gitginoreList: GitIgnore[] = [];
+    let dir = inputDir;
     while (true) {
       const names = await folderIO.get(dir);
       if (names.includes(".gitignore")) {
@@ -95,13 +104,14 @@ class GitignoreCache extends CacheGetter<string, GitIgnore[]> {
           }
         }
       }
-      if (
-        names.includes(".git") &&
-        statSync(path.join(dir, ".git")).isDirectory()
-      ) {
+      if (names.includes(".git") && statSync(path.join(dir, ".git")).isDirectory()) {
         break;
       }
-      dir = path.dirname(dir);
+      const parentDir = path.dirname(dir);
+      if (parentDir === dir) {
+        break;
+      }
+      dir = parentDir;
     }
     return gitginoreList;
   }
@@ -116,16 +126,19 @@ class GitignoreCache extends CacheGetter<string, GitIgnore[]> {
 export const gitignoreListCache = new GitignoreCache();
 
 class IgnoreCache extends CacheGetter<string, (somepath: string) => boolean> {
+  isEqual(key: string, val1: (somepath: string) => boolean, val2: (somepath: string) => boolean): boolean {
+    return val1 === val2;
+  }
+  cacheTime = Infinity;
+
   async getVal(dir: string) {
     const gitginoreList = await gitignoreListCache.get(dir);
     const ignoresList = gitginoreList.map((gitignore) => {
       const ig = ignore();
       ig.add(gitignore.rules);
-      return (somepath: string) =>
-        ig.ignores(path.relative(gitignore.basedir, somepath));
+      return (somepath: string) => ig.ignores(path.relative(gitignore.basedir, somepath));
     });
-    return (somepath: string) =>
-      ignoresList.some((ignores) => ignores(somepath));
+    return (somepath: string) => ignoresList.some((ignores) => ignores(somepath));
   }
   has(dir: string) {
     return this.hasVal(dir);
@@ -136,19 +149,22 @@ class IgnoreCache extends CacheGetter<string, (somepath: string) => boolean> {
 }
 export const ignoresCache = new IgnoreCache();
 
-export const isGitIgnored = async (somepath: string) => {
-  const ignores = await ignoresCache.get(path.dirname(somepath));
-  return ignores(somepath);
+export const isGitIgnored = async (somefullpath: string) => {
+  const ignores = await ignoresCache.get(path.dirname(somefullpath));
+  return ignores(somefullpath);
 };
-export const notGitIgnored = async (somepath: string) => {
-  const ignores = await ignoresCache.get(path.dirname(somepath));
-  return ignores(somepath) === false;
+export const notGitIgnored = async (somefullpath: string) => {
+  const ignores = await ignoresCache.get(path.dirname(somefullpath));
+  return ignores(somefullpath) === false;
 };
 //#endregion
 
 //#region 文件功能的扩展
 
 class ReaddirCache extends CacheGetter<string, string[]> {
+  isEqual(key: string, val1: string[], val2: string[]): boolean {
+    return isDeepStrictEqual(val1, val2);
+  }
   getVal(dirpath: string) {
     return readdir(dirpath);
   }
@@ -177,15 +193,20 @@ export async function* walkFiles(
   for (const basename of await folderIO.get(dirpath)) {
     const somepath = path.resolve(dirpath, basename);
     // console.log("walk", somepath);
-    if (statSync(somepath).isFile()) {
-      yield somepath;
-    } else if (await dirFilter(somepath)) {
-      yield* walkFiles(somepath);
-    }
+    try {
+      if (statSync(somepath).isFile()) {
+        yield somepath;
+      } else if (await dirFilter(somepath)) {
+        yield* walkFiles(somepath);
+      }
+    } catch {}
   }
 }
 
 class FileIoCache extends CacheWritter<string, Buffer> {
+  isEqual(key: string, val1: Buffer, val2: Buffer): boolean {
+    return val1.compare(val2) === 0;
+  }
   getVal(filepath: string) {
     return readFile(filepath);
   }
@@ -211,10 +232,7 @@ export const fileIO = new FileIoCache();
 
 //#region 扩展AsyncGenerator的原型链
 
-export async function* AG_Map<T, R>(
-  asyncGenerator: AsyncGenerator<T>,
-  map: (i: T) => R
-) {
+export async function* AG_Map<T, R>(asyncGenerator: AsyncGenerator<T>, map: (i: T) => R) {
   for await (const item of asyncGenerator) {
     // console.log("map", item);
     yield (await map(item)) as BFChainUtil.PromiseType<R>;
@@ -242,9 +260,7 @@ export async function AG_ToArray<T>(asyncGenerator: AsyncGenerator<T>) {
   return result;
 }
 
-const AGP = Object.getPrototypeOf(
-  Object.getPrototypeOf((async function* () {})())
-);
+const AGP = Object.getPrototypeOf(Object.getPrototypeOf((async function* () {})()));
 AGP.map = function (map: any) {
   return AG_Map(this, map);
 };
@@ -274,6 +290,7 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
         for (const f of this._followers) {
           f.push(value);
         }
+        console.log("emit value!!!");
         this._ee.emit("value", value);
       } while (this._loop);
       this._loop = true;
@@ -281,8 +298,12 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
   }
   private _followers = new Set<SharedFollower<T>>();
   private _ee = new EventEmitter();
-  onNext(cb: (value: T) => unknown) {
-    this._ee.addListener("value", cb);
+  onNext(cb: (value: T) => unknown, once?: boolean) {
+    if (once) {
+      this._ee.once("value", cb);
+    } else {
+      this._ee.addListener("value", cb);
+    }
   }
   hasCurrent() {
     return this._current !== undefined;
@@ -294,7 +315,7 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
     return this._current;
   }
   getNext() {
-    return new Promise<T>((cb) => this.onNext(cb));
+    return new Promise<T>((cb) => this.onNext(cb, true));
   }
 
   private _loop = true;
@@ -343,7 +364,14 @@ export class SharedFollower<T> implements AsyncIterator<T> {
     if (item === undefined) {
       const waitter = new PromiseOut<T>();
       this._waitters.push(waitter);
-      item = await waitter.promise;
+      try {
+        item = await waitter.promise;
+      } catch {
+        return {
+          done: true as const,
+          value: undefined,
+        };
+      }
     }
     return {
       done: false as const,
@@ -353,7 +381,13 @@ export class SharedFollower<T> implements AsyncIterator<T> {
 
   constructor(private onDone?: Function) {}
   async return() {
-    this.onDone?.();
+    if (this._done === false) {
+      this.onDone?.();
+      if (this._waitters.length > 0) {
+        this._waitters.forEach((waitter) => waitter.reject());
+        this._waitters.length = 0;
+      }
+    }
     return {
       done: (this._done = true as const),
       value: undefined,
@@ -364,8 +398,174 @@ export class SharedFollower<T> implements AsyncIterator<T> {
   }
 }
 
-// export class
 //#endregion
 
-export const toPosixPath = (windowsPath: string) =>
-  windowsPath.replace(/^(\w):|\\+/g, "/$1");
+export const toPosixPath = (windowsPath: string) => {
+  const somepath = windowsPath.replace(/^(\w):|\\+/g, "/$1");
+  if (somepath[0] !== "/" && somepath[0] !== ".") {
+    return "./" + somepath;
+  }
+  return somepath;
+};
+
+//#region 模糊Array与Set的辅助集合
+export abstract class List<T> implements Iterable<T> {
+  abstract [Symbol.iterator](): Iterator<T, any, undefined>;
+  abstract add(item: T): void;
+  abstract remove(item: T): void;
+  abstract toArray(): T[];
+  abstract toSet(): Set<T>;
+  abstract get size(): number;
+}
+export class ListArray<T> extends List<T> {
+  constructor(items?: Iterable<T>) {
+    super();
+    if (items !== undefined) {
+      if (Array.isArray(items)) {
+        this._arr = items;
+      } else {
+        this._arr = [...items];
+      }
+    } else {
+      this._arr = [];
+    }
+  }
+  private _arr: T[];
+  add(item: T): void {
+    this._arr[this._arr.length] = item;
+  }
+  remove(item: T): void {
+    const index = this._arr.indexOf(item);
+    if (index !== -1) {
+      this._arr.splice(index, 1);
+    }
+  }
+  get size() {
+    return this._arr.length;
+  }
+  [Symbol.iterator]() {
+    return this._arr[Symbol.iterator]();
+  }
+  toArray() {
+    return this._arr;
+  }
+  toSet() {
+    return new Set(this._arr);
+  }
+}
+export class ListSet<T> extends List<T> {
+  constructor(items?: Iterable<T>) {
+    super();
+    this._set = new Set(items);
+  }
+  private _set: Set<T>;
+  add(item: T): void {
+    this._set.add(item);
+  }
+  remove(item: T): void {
+    this._set.delete(item);
+  }
+  get size() {
+    return this._set.size;
+  }
+  [Symbol.iterator]() {
+    return this._set[Symbol.iterator]();
+  }
+  toArray() {
+    return [...this._set];
+  }
+  toSet() {
+    return this._set;
+  }
+}
+//#endregion
+
+//#region 一些循环需要用到的辅助
+class SimpleAborter {
+  abortedCallback(reason: unknown) {
+    this.finishedAborted.resolve();
+  }
+  readonly finishedAborted = new PromiseOut<void>();
+}
+export const Abortable = (fun: (aborter: SimpleAborter) => unknown) => {
+  let aborter: SimpleAborter | undefined;
+  let closing = false;
+  const abortable = {
+    async start() {
+      if (aborter) {
+        throw new Error("already running");
+      }
+      const ab = (aborter = new SimpleAborter());
+      await fun(aborter);
+      if (ab === aborter) {
+        aborter = undefined;
+      }
+    },
+    async abort() {
+      closing = true;
+      if (aborter) {
+        await aborter.finishedAborted.promise;
+      }
+      aborter = undefined;
+      closing = false;
+    },
+    async restart() {
+      if (closing) {
+        return;
+      }
+      await abortable.abort();
+      await abortable.start();
+    },
+  };
+  return abortable;
+};
+
+export const Loopable = (fun: () => unknown, label = fun.name) => {
+  let lock = -1;
+  const doLoop = async () => {
+    do {
+      lock = 0;
+      try {
+        await fun();
+      } catch (err) {
+        console.error(`error when ${label} loopping!!`, err);
+      }
+    } while (lock > 0);
+    lock = -1;
+  };
+  return {
+    loop() {
+      if (lock === -1) {
+        doLoop();
+      } else {
+        lock += 1;
+      }
+    },
+  };
+};
+
+//#endregion
+
+//#region 路径相关的辅助函数
+export const PathInfoParser = (
+  dir: string,
+  somepath: string,
+  isAbsolute = path.posix.isAbsolute(toPosixPath(somepath))
+) => {
+  const info = {
+    get full() {
+      const fullpath = isAbsolute ? somepath : path.join(dir, somepath);
+      Object.defineProperty(info, "full", { value: fullpath });
+      return fullpath;
+    },
+    get relative() {
+      const relativepath = isAbsolute ? path.relative(dir, somepath) : somepath;
+      Object.defineProperty(info, "relative", { value: relativepath });
+      return relativepath;
+    },
+    dir,
+  };
+  return info;
+};
+export type $PathInfo = ReturnType<typeof PathInfoParser>;
+//#endregion

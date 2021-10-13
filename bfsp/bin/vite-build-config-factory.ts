@@ -64,9 +64,10 @@ export const ViteConfigFactory = async (options: {
       (() => {
         const tsconfigFilepath = path.join(projectDirpath, "tsconfig.json");
         // console.log(tsconfigFilepath);
-        const parsedTsConfig: typescript.TranspileOptions = new Function(
-          `return ${fs.readFileSync(tsconfigFilepath, "utf-8").trim()}`
-        )();
+        const parsedTsConfig: typescript.TranspileOptions =
+          new Function(
+            `return ${fs.readFileSync(tsconfigFilepath, "utf-8").trim()}`
+          )() || {};
         const compilerOptions = (parsedTsConfig.compilerOptions ||= {});
         compilerOptions.emitDeclarationOnly = false;
         compilerOptions.noEmit = false;

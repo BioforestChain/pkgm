@@ -3,25 +3,16 @@ import fs from "node:fs";
 import path from "node:path";
 import type { RollupWatcher } from "rollup";
 import { build } from "vite";
-import {
-  getBfspProjectConfig,
-  watchBfspProjectConfig,
-  writeBfspProjectConfig,
-} from "../src/bfspConfig";
+import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import { watchBfspUserConfig } from "../src/configs/bfspUserConfig";
 import { ViteConfigFactory } from "./vite-build-config-factory";
+import { Abortable } from "../src/toolkit";
 
 (async () => {
   const cwd = process.cwd();
-  const maybeRoot = path.join(
-    cwd,
-    process.argv.filter((a) => a.startsWith(".")).pop() || ""
-  );
-  const root =
-    fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory()
-      ? maybeRoot
-      : cwd;
+  const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
+  const root = fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
 
   console.log("root", root);
 
@@ -39,29 +30,14 @@ import { ViteConfigFactory } from "./vite-build-config-factory";
     tsConfig: subConfigs.tsConfig,
   });
 
-  let watchController: { close(): Promise<void> } | undefined;
-  let watchLock = false;
-  const doWatch = async () => {
-    //#region 加锁
-
-    if (watchLock) {
-      return;
-    }
-    if (watchController) {
-      watchLock = true;
-      await watchController.close();
-      watchLock = false;
-    }
-
-    const input = new PromiseOut<void>();
-    const output = new PromiseOut<void>();
-    watchController = {
-      close() {
-        input.resolve();
-        return output.promise;
-      },
+  const abortable = Abortable(async (aborter) => {
+    /// 初始化终端的回调
+    const devPo = new PromiseOut<RollupWatcher>();
+    aborter.abortedCallback = async () => {
+      const dev = await devPo.promise;
+      dev.close();
+      aborter.finishedAborted.resolve();
     };
-    //#endregion
 
     const viteConfig = await subStreams.viteConfigStream.getCurrent();
     const viteBuildConfig = await ViteConfigFactory({
@@ -79,18 +55,14 @@ import { ViteConfigFactory } from "./vite-build-config-factory";
     };
     viteBuildConfig.mode = "development";
 
-    const devOut = (await build(viteBuildConfig)) as RollupWatcher;
-
-    /// 监听锁
-    input.onFinished(() => {
-      devOut.close();
-      output.resolve();
-    });
-  };
+    console.log("running esbuild!!!");
+    const dev = (await build(viteBuildConfig)) as RollupWatcher;
+    devPo.resolve(dev);
+  });
 
   /// 开始监听并触发编译
-  subStreams.viteConfigStream.onNext(doWatch);
+  subStreams.viteConfigStream.onNext(abortable.restart);
   if (subStreams.viteConfigStream.hasCurrent()) {
-    doWatch();
+    abortable.start();
   }
 })();

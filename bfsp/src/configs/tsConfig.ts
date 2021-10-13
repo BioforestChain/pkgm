@@ -1,54 +1,118 @@
 import chokidar from "chokidar";
 import path, { resolve } from "node:path";
 import {
+  $PathInfo,
   fileIO,
   folderIO,
+  List,
+  ListArray,
+  ListSet,
+  Loopable,
   notGitIgnored,
+  PathInfoParser,
   SharedAsyncIterable,
   SharedFollower,
   toPosixPath,
   walkFiles,
 } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
-import type { $ViteConfig } from "./viteConfig";
 
-export const isTsFile = (projectDirpath: string, filepath: string) =>
-  /// 在assets文件夹下的json文件
-  ((filepath.endsWith(".json") &&
-    toPosixPath(path.relative(projectDirpath, filepath)).startsWith(
-      "assets/"
-    )) ||
-    /// ts文件
-    (filepath.endsWith(".ts") &&
-      !filepath.endsWith(".d.ts") &&
-      !filepath.endsWith("#bfsp.ts")) ||
-    filepath.endsWith(".tsx") ||
-    filepath.endsWith(".cts") ||
-    filepath.endsWith(".mts") ||
-    filepath.endsWith(".ctsx") ||
-    filepath.endsWith(".mtsx")) &&
-  /// promise<boolean>
-  notGitIgnored(filepath);
+export const isTsFile = (filepathInfo: $PathInfo) => {
+  const { relative } = filepathInfo;
+  return (
+    /// 在assets文件夹下的json文件
+    ((relative.endsWith(".json") && toPosixPath(filepathInfo.relative).startsWith("./assets/")) ||
+      /// ts文件
+      (relative.endsWith(".ts") && !relative.endsWith(".d.ts") && !relative.endsWith("#bfsp.ts")) ||
+      relative.endsWith(".tsx") ||
+      relative.endsWith(".cts") ||
+      relative.endsWith(".mts") ||
+      relative.endsWith(".ctsx") ||
+      relative.endsWith(".mtsx")) &&
+    /// promise<boolean>
+    notGitIgnored(filepathInfo.full)
+  );
+};
 
-const isTypeFile = (projectDirpath: string, filepath: string) =>
-  filepath.endsWith(".type.ts") || filepath.startsWith("typings/");
+export const isTypeFile = (projectDirpath: string, filepath: string) =>
+  filepath.endsWith(".type.ts") || filepath.startsWith("./typings/");
 
-const isTestFile = (projectDirpath: string, filepath: string) =>
-  filepath.endsWith(".test.ts") && filepath.startsWith("tests");
+export const isTestFile = (projectDirpath: string, filepath: string) =>
+  filepath.startsWith("./tests/") && (filepath.endsWith(".test.ts") || filepath.endsWith(".bm.ts"));
 
-export const generateTsConfig = async (
-  projectDirpath: string,
-  bfspUserConfig: $BfspUserConfig
-) => {
-  const allTsFileList = await walkFiles(projectDirpath, (dirpath) =>
-    notGitIgnored(dirpath)
-  )
-    .filter((filepath) => isTsFile(projectDirpath, filepath))
-    .map((filepath) => toPosixPath(path.relative(projectDirpath, filepath)))
+export const isBinFile = (projectDirpath: string, filepath: string) => {
+  return filepath.startsWith("./bin/") && (filepath.endsWith(".cmd.ts") || filepath.endsWith(".tui.ts"));
+};
+
+type TsFilesLists = {
+  allFiles: List<string>;
+  codeFiles: List<string>;
+  prodFiles: List<string>;
+  typeFiles: List<string>;
+  testFiles: List<string>;
+  binFiles: List<string>;
+};
+export const groupTsFilesByAdd = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
+  for (const filepath of tsFiles) {
+    lists.allFiles.add(filepath);
+
+    if (isTypeFile(projectDirpath, filepath)) {
+      lists.typeFiles.add(filepath);
+    } else {
+      lists.codeFiles.add(filepath);
+    }
+
+    if (isTestFile(projectDirpath, filepath)) {
+      lists.testFiles.add(filepath);
+    } else {
+      lists.prodFiles.add(filepath);
+    }
+
+    if (isBinFile(projectDirpath, filepath)) {
+      lists.binFiles.add(filepath);
+    }
+  }
+};
+export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
+  for (const filepath of tsFiles) {
+    lists.allFiles.remove(filepath);
+
+    if (isTypeFile(projectDirpath, filepath)) {
+      lists.typeFiles.remove(filepath);
+    } else {
+      lists.codeFiles.remove(filepath);
+    }
+
+    if (isTestFile(projectDirpath, filepath)) {
+      lists.testFiles.remove(filepath);
+    } else {
+      lists.prodFiles.remove(filepath);
+    }
+
+    if (isBinFile(projectDirpath, filepath)) {
+      lists.binFiles.remove(filepath);
+    }
+  }
+};
+
+export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $BfspUserConfig) => {
+  const allTsFileList = await walkFiles(projectDirpath, (fullDirpath) => notGitIgnored(fullDirpath))
+    .map((fullFilepath) => PathInfoParser(projectDirpath, fullFilepath, true))
+    .filter((pathInfo) => isTsFile(pathInfo))
+    .map((pathInfo) => toPosixPath(pathInfo.relative))
     .toArray();
 
-  const allTypeFileList: string[] = [];
-  const allTestFileList: string[] = [];
+  const tsFilesLists = {
+    allFiles: new ListSet(allTsFileList),
+    codeFiles: new ListArray<string>(),
+    prodFiles: new ListArray<string>(),
+    typeFiles: new ListSet<string>(),
+    testFiles: new ListSet<string>(),
+    binFiles: new ListSet<string>(),
+  };
+
+  groupTsFilesByAdd(projectDirpath, allTsFileList, tsFilesLists);
+
   const tsConfig = {
     compilerOptions: {
       composite: true,
@@ -82,13 +146,7 @@ export const generateTsConfig = async (
         path: "./tsconfig.prod.json",
       },
     ],
-    files: allTsFileList.filter((filepath) => {
-      if (isTypeFile(projectDirpath, filepath)) {
-        allTypeFileList.push(filepath);
-        return false;
-      }
-      return true;
-    }),
+    files: tsFilesLists.codeFiles.toArray(),
   };
   const tsProdConfig = {
     extends: "./tsconfig.json",
@@ -97,38 +155,24 @@ export const generateTsConfig = async (
       outDir: "./node_modules/.bfsp/tsc",
       noEmit: false,
     },
-    files: allTsFileList.filter((filepath) => {
-      if (isTestFile(projectDirpath, filepath)) {
-        allTestFileList.push(filepath);
-        return false;
-      }
-      return true;
-    }),
+    files: tsFilesLists.prodFiles.toArray(),
     references: [],
   };
 
   return {
-    tsFiles: new Set(allTsFileList),
-    typeFiles: new Set(allTypeFileList),
-    testFiles: new Set(allTestFileList),
+    tsFilesLists,
+
     tsConfig,
     tsProdConfig,
   };
 };
 
 export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
-export const writeTsConfig = (
-  projectDirpath: string,
-  bfspUserConfig: $BfspUserConfig,
-  tsConfig: $TsConfig
-) => {
-  console.log("write to tsconfig", tsConfig.tsFiles, tsConfig.typeFiles);
+export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserConfig, tsConfig: $TsConfig) => {
+  // console.log("write to tsconfig", tsConfig.tsFilesLists.allFiles.toArray());
 
   return Promise.all([
-    fileIO.set(
-      resolve(projectDirpath, "tsconfig.json"),
-      Buffer.from(JSON.stringify(tsConfig.tsConfig, null, 2))
-    ),
+    fileIO.set(resolve(projectDirpath, "tsconfig.json"), Buffer.from(JSON.stringify(tsConfig.tsConfig, null, 2))),
     fileIO.set(
       resolve(projectDirpath, "tsconfig.prod.json"),
       Buffer.from(JSON.stringify(tsConfig.tsProdConfig, null, 2))
@@ -136,49 +180,28 @@ export const writeTsConfig = (
     (async () => {
       const indexFilepath = resolve(projectDirpath, "typings/@index.d.ts");
       const typesFilepath = resolve(projectDirpath, "typings/@types.d.ts");
-      const indexFileCode = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\nimport "./@types.d.ts";\nexport * from "${toPosixPath(
-        path.relative("typings", bfspUserConfig.exportsDetail.indexFile)
-      )}"\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
-      if (tsConfig.typeFiles.size === 0) {
-        if (await fileIO.has(typesFilepath)) {
-          await fileIO.del(typesFilepath);
-          if (await fileIO.has(indexFilepath)) {
-            const indexFileContent = (
-              await fileIO.get(indexFilepath)
-            ).toString();
+      const parseToEsmPath = (filepath: string) =>
+        toPosixPath(path.relative("typings", filepath.slice(0, -path.extname(filepath).length)));
+      // const indexFileCodeReg =
+      //   /\/\/▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼[\w\W]+?\/\/▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲/g;
+      const indexFileSnippet = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\nimport "./@types.d.ts";\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
+      const typesFileSnippet =
+        `/// ▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\n` +
+        `export * from "${parseToEsmPath(bfspUserConfig.exportsDetail.indexFile)}";\n` +
+        tsConfig.tsFilesLists.typeFiles
+          .toArray()
+          .map((filepath) => `import "${parseToEsmPath(filepath)}"`)
+          .join(";\n");
 
-            // @todo 可能使用语法分析来剔除这个import会更好一些
-            // @todo 需要进行fmt
-            await fileIO.set(
-              indexFilepath,
-              Buffer.from(indexFileContent.replace(indexFileCode, ""))
-            );
-          }
-        }
-      } else {
-        await folderIO.tryInit(resolve(projectDirpath, "typings"));
-        await fileIO.set(
-          typesFilepath,
-          Buffer.from(
-            [...tsConfig.typeFiles]
-              .map(
-                (filepath) =>
-                  `import "${toPosixPath(path.relative("typings", filepath))}"`
-              )
-              .join(";\n")
-          )
-        );
-        const indexFileContent = (await fileIO.has(indexFilepath))
-          ? (await fileIO.get(indexFilepath)).toString()
-          : "";
-        if (indexFileContent.includes(indexFileCode) === false) {
-          // @todo 可能使用语法分析来剔除这个import会更好一些
-          // @todo 需要进行fmt
-          await fileIO.set(
-            indexFilepath,
-            Buffer.from(indexFileContent + `\n${indexFileCode}`.trim())
-          );
-        }
+      /// 自动创建的相关文件与代码
+      await folderIO.tryInit(resolve(projectDirpath, "typings"));
+      await fileIO.set(typesFilepath, Buffer.from(typesFileSnippet));
+      const indexFileContent = (await fileIO.has(indexFilepath)) ? (await fileIO.get(indexFilepath)).toString() : "";
+
+      if (indexFileContent.includes(indexFileSnippet) === false) {
+        // @todo 可能使用语法分析来剔除这个import会更好一些
+        // @todo 需要进行fmt
+        await fileIO.set(indexFilepath, Buffer.from(indexFileSnippet + "\n\n" + indexFileContent));
       }
     })(),
   ]);
@@ -186,85 +209,56 @@ export const writeTsConfig = (
 
 export const watchTsConfig = (
   projectDirpath: string,
-  tsConfigInitPo: BFChainUtil.PromiseMaybe<$TsConfig>,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
   options: {
+    tsConfigInitPo?: BFChainUtil.PromiseMaybe<$TsConfig>;
     write?: boolean;
   } = {}
 ) => {
   const { write = false } = options;
   const follower = new SharedFollower<$TsConfig>();
+
+  let tsConfig: $TsConfig | undefined;
   /// 循环处理监听到的事件
-  let running = false;
-  const loopProcesser = async () => {
-    if (running) {
-      return;
+  const looper = Loopable(async () => {
+    const bfspUserConfig = await bfspUserConfigStream.getCurrent();
+    if (tsConfig === undefined) {
+      follower.push((tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig))));
     }
-    running = true;
-    try {
-      const tsConfig = (tsConfigInitPo = await tsConfigInitPo);
-      const bfspUserConfig = await bfspUserConfigStream.getCurrent();
-      while (cachedEventList.size !== 0) {
-        // 保存一份,清空缓存
-        const eventList = new Map(cachedEventList);
-        cachedEventList.clear();
 
-        for (const [path, type] of eventList) {
-          const posixPath = toPosixPath(path);
-          if (type === "add") {
-            if (tsConfig.tsFiles.has(posixPath)) {
-              return;
-            }
-            tsConfig.tsFiles.add(posixPath);
-            if (isTypeFile(projectDirpath, posixPath)) {
-              tsConfig.typeFiles.add(posixPath);
-            } else if (isTestFile(projectDirpath, posixPath)) {
-              tsConfig.testFiles.add(posixPath);
-            }
-          } else {
-            if (tsConfig.tsFiles.has(posixPath) === false) {
-              return;
-            }
-            tsConfig.tsFiles.delete(posixPath);
-            if (isTypeFile(projectDirpath, posixPath)) {
-              tsConfig.typeFiles.delete(posixPath);
-            } else if (isTestFile(projectDirpath, posixPath)) {
-              tsConfig.testFiles.delete(posixPath);
-            }
-          }
-          console.log(type, path);
-
-          const allTsFileList = [...tsConfig.tsFiles];
-          tsConfig.tsConfig.files = allTsFileList.filter(
-            (filepath) => !tsConfig.typeFiles.has(filepath)
-          );
-          tsConfig.tsProdConfig.files = allTsFileList.filter(
-            (filepath) => !tsConfig.testFiles.has(filepath)
-          );
-
-          if (write) {
-            await writeTsConfig(projectDirpath, bfspUserConfig, tsConfig);
-          }
-
-          follower.push(tsConfig);
+    while (cachedEventList.size !== 0) {
+      // 归类, 然后清空缓存
+      const addFileList: string[] = [];
+      const removeFileList: string[] = [];
+      for (const [path, type] of cachedEventList) {
+        const posixPath = toPosixPath(path);
+        if (type === "add") {
+          addFileList.push(posixPath);
+        } else {
+          removeFileList.push(posixPath);
         }
       }
-    } finally {
-      running = false;
+      cachedEventList.clear();
+
+      if (addFileList.length > 0) {
+        groupTsFilesByAdd(projectDirpath, addFileList, tsConfig.tsFilesLists);
+      }
+      if (removeFileList.length > 0) {
+        groupTsFilesByRemove(projectDirpath, removeFileList, tsConfig.tsFilesLists);
+      }
+
+      if (write) {
+        await writeTsConfig(projectDirpath, bfspUserConfig, tsConfig);
+      }
+
+      console.log("tsconfig changed!!");
+      follower.push(tsConfig);
     }
-  };
+  });
 
   //#region 监听文件变动来触发更新
   const watcher = chokidar.watch(
-    [
-      "assets/**/*.json",
-      "**/*.ts",
-      "**/*.tsx",
-      "**/*.cts",
-      "**/*.mts",
-      "**/*.ctsx",
-      "**/*.mtsx",
-    ],
+    ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
     {
       cwd: projectDirpath,
       ignoreInitial: false,
@@ -276,19 +270,24 @@ export const watchTsConfig = (
   type EventType = "add" | "unlink";
   let cachedEventList = new Map<string, EventType>();
   /// 收集监听到事件
-  watcher.on("add", (path) => {
-    cachedEventList.set(path, "add");
-    loopProcesser();
+  watcher.on("add", async (path) => {
+    if (await isTsFile(PathInfoParser(projectDirpath, path))) {
+      cachedEventList.set(path, "add");
+      looper.loop();
+    }
   });
-  watcher.on("unlink", (path) => {
-    cachedEventList.set(path, "unlink");
-    loopProcesser();
+  watcher.on("unlink", async (path) => {
+    if (await isTsFile(PathInfoParser(projectDirpath, path))) {
+      cachedEventList.set(path, "unlink");
+      looper.loop();
+    }
   });
   //#endregion
 
   //#region 监听依赖配置来触发更新
-  bfspUserConfigStream.onNext(loopProcesser);
+  bfspUserConfigStream.onNext(looper.loop);
   //#endregion
 
+  looper.loop();
   return new SharedAsyncIterable<$TsConfig>(follower);
 };
