@@ -7,9 +7,13 @@
   "main": "./dist/index.mjs",
   "exports": {
     ".": {
-      "import": "./dist/index.mjs",
-      "node": "./dist/index.mjs",
-      "require": "./dist/index.mjs"
+      "import": "./dist/index.mjs"
+    },
+    "./bin": {
+      "import": "./dist/bin.mjs"
+    },
+    "./test": {
+      "import": "./dist/test.mjs"
     }
   },
   "bin": {

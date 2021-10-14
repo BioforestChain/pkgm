@@ -149,6 +149,15 @@ if (existsSync(bfspTsconfigFilepath) === false) {
   log("tsconfigUrl", bfspTsconfigFilepath);
 }
 
+const _readFromMjs = async (filename: string, refresh?: boolean) => {
+  const url = pathToFileURL(filename);
+  if (refresh) {
+    url.searchParams.append("_", Date.now().toString());
+  }
+  const { default: config } = await import(url.href);
+  return config as Bfsp.UserConfig;
+};
+
 export const readUserConfig = async (
   dirname: string,
   options: {
@@ -156,7 +165,7 @@ export const readUserConfig = async (
   }
 ) => {
   for (const filename of await folderIO.get(dirname)) {
-    if (filename === "#bfsp.ts") {
+    if (filename === "#bfsp.ts" || filename === "#bfsp.mts" || filename === "#bfsp.mtsx") {
       const cache_filename = `#bfsp.mjs`;
       const cache_filepath = resolve(dirname, cache_filename);
       try {
@@ -170,16 +179,14 @@ export const readUserConfig = async (
           outfile: cache_filepath,
           tsconfig: bfspTsconfigFilepath,
         });
-        const url = pathToFileURL(cache_filepath);
-        if (options.refresh) {
-          url.searchParams.append("_", Date.now().toString());
-        }
-        const { default: config } = await import(url.href);
-        return config as Bfsp.UserConfig;
+        return await _readFromMjs(cache_filepath, options.refresh);
       } finally {
         existsSync(cache_filepath) && (await unlink(cache_filepath));
       }
     }
+    // if (filename === "#bfsp.mjs") {
+    //   return await _readFromMjs(filename, options.refresh);
+    // }
     if (filename === "#bfsp.json") {
       return JSON.parse(
         (await fileIO.get(resolve(dirname, filename), options.refresh)).toString("utf-8")
@@ -220,7 +227,7 @@ export const watchBfspUserConfig = (
 
   let curBfspUserConfig: $BfspUserConfig | undefined;
 
-  const looper = Loopable(async () => {
+  const looper = Loopable('watch bfsp user config',async () => {
     if (curBfspUserConfig === undefined) {
       // 初始的值 放出来
       follower.push((curBfspUserConfig = await (options.bfspUserConfigInitPo ?? getBfspUserConfig(projectDirpath))));

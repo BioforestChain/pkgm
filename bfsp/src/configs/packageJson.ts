@@ -94,7 +94,7 @@ export const watchPackageJson = (
   const { write = false } = options;
 
   let curPackageJson: $PackageJson | undefined;
-  const looper = Loopable(async () => {
+  const looper = Loopable('watch package.json',async () => {
     if (curPackageJson === undefined && options.packageJsonInitPo !== undefined) {
       curPackageJson = await options.packageJsonInitPo;
       follower.push(curPackageJson);

@@ -476,46 +476,88 @@ export class ListSet<T> extends List<T> {
 //#endregion
 
 //#region 一些循环需要用到的辅助
-class SimpleAborter {
-  abortedCallback(reason: unknown) {
-    this.finishedAborted.resolve();
-  }
-  readonly finishedAborted = new PromiseOut<void>();
-}
-export const Abortable = (fun: (aborter: SimpleAborter) => unknown) => {
-  let aborter: SimpleAborter | undefined;
+// class SimpleAborter {
+//   abortedCallback(reason: unknown) {
+//     this.finishedAborted.resolve();
+//   }
+//   readonly finishedAborted = new PromiseOut<void>();
+// }
+type DoClose = (reason?: unknown) => unknown;
+
+export const Closeable = (title: string, fun: () => BFChainUtil.PromiseMaybe<DoClose>) => {
+  let aborter: DoClose | undefined;
   let closing = false;
+  let starting = false;
+
+  let state: "opening" | "opened" | "closing" | "closed" = "closed";
+
+  type $CMD = "close" | "open";
+  class CmdQueue {
+    caches = new Set<$CMD>();
+    add(cmd: $CMD) {
+      this.caches.delete("open");
+      this.caches.add(cmd);
+    }
+    getNext() {
+      for (const item of this.caches) {
+        this.caches.delete(item);
+        return item;
+      }
+    }
+  }
+  const cmdQueue = new CmdQueue();
+
+  const looper = Loopable(title, async () => {
+    do {
+      const cmd = cmdQueue.getNext();
+      if (cmd === undefined) {
+        break;
+      }
+      if (cmd === "open") {
+        if (state === "closed") {
+          state = "opening";
+          try {
+            aborter = await fun();
+            state = "opened";
+          } catch (err) {
+            console.error(`open '${title}' failed`, err);
+            state = "closed";
+          }
+        }
+      } else {
+        if (state === "opened") {
+          state = "closing";
+          try {
+            await aborter!();
+          } catch (err) {
+            console.error(`close '${title}' failed`, err);
+          }
+          aborter = undefined;
+          state = "closed";
+        }
+      }
+    } while (true);
+  });
+
   const abortable = {
-    async start() {
-      if (aborter) {
-        throw new Error("already running");
-      }
-      const ab = (aborter = new SimpleAborter());
-      await fun(aborter);
-      if (ab === aborter) {
-        aborter = undefined;
-      }
+    start() {
+      cmdQueue.add("open");
+      looper.loop();
     },
-    async abort() {
-      closing = true;
-      if (aborter) {
-        await aborter.finishedAborted.promise;
-      }
-      aborter = undefined;
-      closing = false;
+    close(reason?: unknown) {
+      cmdQueue.add("close");
+      looper.loop();
     },
-    async restart() {
-      if (closing) {
-        return;
-      }
-      await abortable.abort();
-      await abortable.start();
+    restart(reason?: unknown) {
+      cmdQueue.add("close");
+      cmdQueue.add("open");
+      looper.loop();
     },
   };
   return abortable;
 };
 
-export const Loopable = (fun: () => unknown, label = fun.name) => {
+export const Loopable = (title: string, fun: () => unknown) => {
   let lock = -1;
   const doLoop = async () => {
     do {
@@ -523,7 +565,7 @@ export const Loopable = (fun: () => unknown, label = fun.name) => {
       try {
         await fun();
       } catch (err) {
-        console.error(`error when ${label} loopping!!`, err);
+        console.error(`error when '${title}' loopping!!`, err);
       }
     } while (lock > 0);
     lock = -1;

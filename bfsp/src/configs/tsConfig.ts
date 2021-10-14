@@ -220,7 +220,7 @@ export const watchTsConfig = (
 
   let tsConfig: $TsConfig | undefined;
   /// 循环处理监听到的事件
-  const looper = Loopable(async () => {
+  const looper = Loopable("watch tsconfigs", async () => {
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
     if (tsConfig === undefined) {
       follower.push((tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig))));

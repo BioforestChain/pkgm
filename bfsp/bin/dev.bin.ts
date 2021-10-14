@@ -4,9 +4,10 @@ import path from "node:path";
 import type { RollupWatcher } from "rollup";
 import { build as buildVite } from "vite";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { Abortable } from "../src/toolkit";
+import { Closeable } from "../src/toolkit";
 import { ViteConfigFactory } from "./vite-build-config-factory";
 import debug from "debug";
+import { sleep } from "@bfchain/util-extends-promise";
 
 (async () => {
   const log = debug("bfsp:bin/dev");
@@ -28,44 +29,57 @@ import debug from "debug";
     packageJson: subConfigs.packageJson,
   });
 
-  const abortable = Abortable(async (aborter) => {
-    /// 初始化终端的回调
-    const devPo = new PromiseOut<RollupWatcher>();
-    aborter.abortedCallback = async () => {
-      const dev = await devPo.promise;
-      dev.close();
-      aborter.finishedAborted.resolve();
+  const abortable = Closeable("bin:dev", async () => {
+    /**防抖，避免不必要的多次调用 */
+    const debounce = new PromiseOut<unknown>();
+    (async () => {
+      await sleep(500);
+      if (debounce.is_finished) {
+        log("skip vite build by debounce");
+        return;
+      }
+
+      const userConfig = await subStreams.userConfigStream.getCurrent();
+      const viteConfig = await subStreams.viteConfigStream.getCurrent();
+      const packageJson = await subStreams.packageJsonStream.getCurrent();
+      const tsConfig = await subStreams.tsConfigStream.getCurrent();
+
+      const viteBuildConfig = ViteConfigFactory({
+        projectDirpath: root,
+        viteConfig,
+        packageJson,
+        tsConfig,
+        format: userConfig.userConfig.formats?.[0],
+      });
+
+      viteBuildConfig.build = {
+        ...viteBuildConfig.build!,
+        watch: {
+          clearScreen: !log.enabled,
+        },
+        minify: false,
+        sourcemap: true,
+      };
+      viteBuildConfig.mode = "development";
+
+      log("running vite build!");
+      const dev = (await buildVite(viteBuildConfig)) as RollupWatcher;
+      debounce.onSuccess((reason) => {
+        log("close vite build, reason: ", reason);
+        dev.close();
+      });
+    })();
+
+    return (reason: unknown) => {
+      debounce.resolve(reason);
     };
-
-    const userConfig = await subStreams.userConfigStream.getCurrent();
-    const viteConfig = await subStreams.viteConfigStream.getCurrent();
-    const packageJson = await subStreams.packageJsonStream.getCurrent();
-    const tsConfig = await subStreams.tsConfigStream.getCurrent();
-    const viteBuildConfig = await ViteConfigFactory({
-      projectDirpath: root,
-      viteConfig,
-      packageJson,
-      tsConfig,
-      format: userConfig.userConfig.formats?.[0],
-    });
-
-    viteBuildConfig.build = {
-      ...viteBuildConfig.build!,
-      watch: {
-        clearScreen: false,
-      },
-      minify: false,
-      sourcemap: true,
-    };
-    viteBuildConfig.mode = "development";
-
-    log("running vite build!");
-    const dev = (await buildVite(viteBuildConfig)) as RollupWatcher;
-    devPo.resolve(dev);
   });
 
   /// 开始监听并触发编译
+  subStreams.userConfigStream.onNext(abortable.restart);
+  subStreams.packageJsonStream.onNext(abortable.restart);
   subStreams.viteConfigStream.onNext(abortable.restart);
+  subStreams.tsConfigStream.onNext(abortable.restart);
   if (subStreams.viteConfigStream.hasCurrent()) {
     abortable.start();
   }

@@ -1,5 +1,5 @@
 import debug from "debug";
-import fs from "node:fs";
+import fs, { existsSync, statSync } from "node:fs";
 import { inspect } from "node:util";
 import typescript from "typescript";
 import type { InlineConfig } from "vite";
@@ -20,7 +20,7 @@ export const getArg = <T extends string>(name: string) => {
   }
 };
 
-export const ViteConfigFactory = async (options: {
+export const ViteConfigFactory = (options: {
   projectDirpath: string;
   viteConfig: $ViteConfig;
   packageJson: $PackageJson;
@@ -41,12 +41,33 @@ export const ViteConfigFactory = async (options: {
     base: "./",
     cacheDir: "node_modules/.bfsp",
     envPrefix: ["BFSP_", "VITE_"],
+    clearScreen: !log.enabled,
     build: {
       target: ["chrome74", "node16"],
       outDir: outDir,
       rollupOptions: {
         preserveEntrySignatures: "strict",
-        external: [/^@bfchain\/.*/, /^node:.*/, "tslib", "js-yaml"],
+        external:
+          format === "iife"
+            ? undefined
+            : (source, importer, isResolved) => {
+                if (source.startsWith("node:")) {
+                  return true;
+                }
+                if (source.startsWith("@bfchain/") || source.includes("node_modules/@bfchain/")) {
+                  return false;
+                }
+                if (source.includes("node_modules")) {
+                  return true;
+                }
+                if (
+                  !source.startsWith(".") &&
+                  existsSync(`node_modules/${source}`) &&
+                  statSync(`node_modules/${source}`).isDirectory()
+                ) {
+                  return true;
+                }
+              },
         input: viteConfig.viteInput,
         output: {
           entryFileNames: `[name]${extension}`,

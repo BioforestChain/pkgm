@@ -33,7 +33,6 @@
   "files": [
     "bin.ts",
     "assets/package.template.json",
-    "assets/vite.config.template.ts",
     "bin/dev.bin.ts",
     "bin/fmt.bin.ts",
     "bin/init.bin.ts",

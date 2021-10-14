@@ -65,7 +65,7 @@ export const watchViteConfig = (
 
   let preViteConfig: $ViteConfig | undefined;
   /// 循环处理监听到的事件
-  const looper = Loopable(async () => {
+  const looper = Loopable("watch viteConfig", async () => {
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
     const tsConfig = await tsConfigStream.getCurrent();
     const viteConfig = await generateViteConfig(projectDirpath, bfspUserConfig, tsConfig);

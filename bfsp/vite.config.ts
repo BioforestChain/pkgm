@@ -10,6 +10,8 @@ export const input: InputOption = {
   "fmt.bin": "bin/fmt.bin.ts",
   "test.bin": "bin/test.bin.ts",
   "config.test": "tests/config.test.ts",
+  bin: "bin.ts",
+  test: "test.ts",
 };
 export const extension =
   {
