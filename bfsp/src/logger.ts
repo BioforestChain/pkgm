@@ -1,6 +1,7 @@
 import type { Widgets } from "blessed";
 import chalk from "chalk";
 import type { RollupError } from "rollup";
+import { inspect } from "node:util";
 import type { LogErrorOptions, Logger, LoggerOptions, LogLevel, LogType } from "vite";
 import { require } from "./toolkit";
 const blessed = require("blessed") as typeof import("blessed");
@@ -88,10 +89,10 @@ class ScrollableLog {
   //   };
 }
 const viteLog = new ScrollableLog({
-  top: 1,
+  top: "60%",
   left: "left",
   width: "100%",
-  height: "50%",
+  height: "40%",
   content: "" + `---${chalk.cyanBright("qaq")}!!`,
   tags: true,
   border: {
@@ -220,4 +221,53 @@ export function createViteLogger(level: LogLevel = "info", options: LoggerOption
   };
 
   return logger;
+}
+
+const tscLog = new ScrollableLog({
+  top: 1,
+  left: "left",
+  width: "100%",
+  height: "60%-1",
+  content: "" + `---${chalk.cyanBright("qaq")}!!`,
+  tags: true,
+  /// 这边使用bg模式，是为了确保链接能点击到
+  border: "bg", // { type: "bg" /* ch:  '　' */ },
+  label: " {bold}Tsc Builder{/bold} ",
+  style: {
+    border: {
+      fg: "blueBright",
+      // bg: "blueBright",
+    },
+    focus: {
+      border: {
+        fg: "blue",
+        // bg: "blue",
+      },
+    },
+  },
+});
+
+screen.append(tscLog.box);
+
+export function createTscLogger() {
+  const box = tscLog.box;
+  const TSLOGO = chalk.bgBlue.white.bold("TS");
+  let label = ` ${TSLOGO} `;
+  box.setLabel(label);
+  return {
+    write(s: string) {
+      box.pushLine(s);
+      box.screen.render();
+      const foundErrors = s.match(/Found (\d+) error/);
+      if (foundErrors !== null) {
+        const errorCount = parseInt(foundErrors[1]);
+        label = ` ${TSLOGO} ${errorCount === 0 ? "✅" : `[${chalk.red.bold(errorCount)}]`} `;
+      }
+      box.setLabel(label);
+    },
+    clear() {
+      box.setContent("");
+      box.screen.render();
+    },
+  };
 }

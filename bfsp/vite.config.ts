@@ -12,6 +12,7 @@ export const input: InputOption = {
   "config.test": "tests/config.test.ts",
   bin: "bin.ts",
   test: "test.ts",
+  tsc: "bin/tsc.ts",
 };
 export const extension =
   {

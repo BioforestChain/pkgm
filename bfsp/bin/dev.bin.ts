@@ -1,6 +1,6 @@
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import fs from "node:fs";
-import path from "node:path";
+import path, { dirname } from "node:path";
 import type { RollupWatcher } from "rollup";
 import { build as buildBfsp } from "vite";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
@@ -8,7 +8,10 @@ import { Closeable } from "../src/toolkit";
 import { ViteConfigFactory } from "./vite-build-config-factory";
 import debug from "debug";
 import { sleep } from "@bfchain/util-extends-promise";
-import { createViteLogger } from "../src/logger";
+import { createTscLogger, createViteLogger } from "../src/logger";
+import { Worker } from "node:worker_threads";
+import { fileURLToPath, URL } from "node:url";
+import chalk from "chalk";
 
 (async () => {
   const log = debug("bfsp:bin/dev");
@@ -52,23 +55,52 @@ import { createViteLogger } from "../src/logger";
         tsConfig,
         format: userConfig.userConfig.formats?.[0],
       });
+      debugger;
 
       log("running bfsp build!");
-      debugger
+      //#region vite
+      const viteLogger = createViteLogger("info", {});
       const dev = (await buildBfsp({
         ...viteBuildConfig,
         build: {
           ...viteBuildConfig.build,
           minify: false,
           sourcemap: true,
+          rollupOptions: {
+            ...viteBuildConfig.build?.rollupOptions,
+            onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
+          },
         },
         mode: "development",
-        customLogger: createViteLogger("info", {}),
+        customLogger: viteLogger,
       })) as RollupWatcher;
+      //#endregion
+
+      //#region tsc
+
+      const __filename = fileURLToPath(import.meta.url);
+      const __dirname = dirname(__filename);
+      const tsconfigPath = path.join(root, "tsconfig.json");
+      const tscWorker = new Worker(path.join(__dirname, "./tsc.mjs"), {
+        argv: ["--build", tsconfigPath, "-w"],
+        stdin: true,
+        stdout: true,
+        stderr: true,
+      });
+      const tscLogger = createTscLogger();
+      tscWorker.on("message", (data) => {
+        if (data === "clearScreen") {
+          tscLogger.clear();
+        } else if (Array.isArray(data) && data[0] === "write") {
+          tscLogger.write(data[1]);
+        }
+      });
+      //#endregion
 
       debounce.onSuccess((reason) => {
         log("close bfsp build, reason: ", reason);
         dev.close();
+        tscWorker.terminate();
       });
     })();
 

@@ -138,7 +138,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
       moduleResolution: "node",
       resolveJsonModule: true,
       // baseUrl: "./",
-      types: ["node"],
+      // types: ["node"],
       esModuleInterop: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,

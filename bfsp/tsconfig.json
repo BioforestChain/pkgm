@@ -38,6 +38,7 @@
     "bin/init.bin.ts",
     "bin/test.bin.ts",
     "src/logger.ts",
+    "bin/tsc.ts",
     "bin/vite-build-config-factory.ts",
     "src/bfspConfig.ts",
     "src/index.ts",
