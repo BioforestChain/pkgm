@@ -1,4 +1,3 @@
-import debug from "debug";
 import fs, { existsSync, statSync } from "node:fs";
 import { inspect } from "node:util";
 import typescript from "typescript";
@@ -6,6 +5,7 @@ import type { InlineConfig } from "vite";
 import { $PackageJson } from "../src/configs/packageJson";
 import { $TsConfig } from "../src/configs/tsConfig";
 import type { $ViteConfig } from "../src/configs/viteConfig";
+import { debug } from "../src/logger";
 import { getExtensionByFormat } from "../src/toolkit";
 const log = debug("bfsp:config/vite-config.ts");
 

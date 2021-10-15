@@ -1,10 +1,10 @@
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
+import { debug } from "../logger";
 import { fileIO, getExtensionByFormat, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
-import debug from "debug";
 const log = debug("bfsp:config/package.json");
 // const format
 
@@ -94,7 +94,7 @@ export const watchPackageJson = (
   const { write = false } = options;
 
   let curPackageJson: $PackageJson | undefined;
-  const looper = Loopable('watch package.json',async () => {
+  const looper = Loopable("watch package.json", async () => {
     if (curPackageJson === undefined && options.packageJsonInitPo !== undefined) {
       curPackageJson = await options.packageJsonInitPo;
       follower.push(curPackageJson);

@@ -1,6 +1,6 @@
 import chokidar from "chokidar";
-import debug from "debug";
 import path, { resolve } from "node:path";
+import { debug } from "../logger";
 import {
   $PathInfo,
   fileIO,

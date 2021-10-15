@@ -1,7 +1,6 @@
 import type { Widgets } from "blessed";
 import chalk from "chalk";
 import type { RollupError } from "rollup";
-import { inspect } from "node:util";
 import type { LogErrorOptions, Logger, LoggerOptions, LogLevel, LogType } from "vite";
 import { require } from "./toolkit";
 const blessed = require("blessed") as typeof import("blessed");
@@ -163,7 +162,7 @@ export function createViteLogger(level: LogLevel = "info", options: LoggerOption
         }
       };
 
-      screen.debug(msg);
+      // screen.debug(msg);
       // console.log(JSON.stringify(msg));
       if (options.error) {
         loggedErrors.add(options.error);
@@ -295,4 +294,30 @@ export function createTscLogger() {
       box.screen.render();
     },
   };
+}
+
+// import D from "debug";
+const D = require("debug");
+import util from "node:util";
+
+export function debug(label: string) {
+  const d = D(label);
+  let t = Date.now();
+
+  return Object.assign(
+    (...args: unknown[]) => {
+      if (!d.enabled) {
+        return;
+      }
+      const now = Date.now();
+      d.diff = now - t;
+      t = now;
+
+      args = [util.format(...args)];
+      D.formatArgs.call(d, args);
+      screen.debug(...(args as any));
+      // screen.debug(util.format(...args));
+    },
+    { enabled: false }
+  );
 }

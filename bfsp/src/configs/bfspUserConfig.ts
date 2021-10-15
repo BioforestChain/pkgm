@@ -9,7 +9,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
 import { CacheGetter, fileIO, folderIO, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
-import debug from "debug";
+import { debug } from "../logger";
 const log = debug("bfsp:config/#bfsp");
 
 // export const enum BUILD_MODE {
