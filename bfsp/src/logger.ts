@@ -93,12 +93,12 @@ const viteLog = new ScrollableLog({
   left: "left",
   width: "100%",
   height: "40%",
-  content: "" + `---${chalk.cyanBright("qaq")}!!`,
+  content: "" + chalk.cyanBright("starting..."),
   tags: true,
   border: {
     type: "line",
   },
-  label: " {bold}Vite Builder{/bold} ",
+  label: " {bold}Bundle{/bold} ",
   style: {
     border: {
       fg: "cyanBright",
@@ -143,7 +143,7 @@ export function createViteLogger(level: LogLevel = "info", options: LoggerOption
         const viteVersion = blankMsg.match(/vite v[\d\.]+/);
         if (viteVersion) {
           isInited = true;
-          box.setLabel(msg.replace("...", ""));
+          screen.debug(msg);
           return;
         }
       }
@@ -228,7 +228,7 @@ const tscLog = new ScrollableLog({
   left: "left",
   width: "100%",
   height: "60%-1",
-  content: "" + `---${chalk.cyanBright("qaq")}!!`,
+  content: "" + chalk.cyanBright("starting..."),
   tags: true,
   /// 这边使用bg模式，是为了确保链接能点击到
   border: "bg", // { type: "bg" /* ch:  '　' */ },
@@ -251,19 +251,44 @@ screen.append(tscLog.box);
 
 export function createTscLogger() {
   const box = tscLog.box;
-  const TSLOGO = chalk.bgBlue.white.bold("TS");
-  let label = ` ${TSLOGO} `;
-  box.setLabel(label);
+  const TSLOGO = chalk.bgBlue.white.bold("TypeScript");
+  const TIMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  let timeId = 0;
+  let building: any;
+  const startBuilding = () => {
+    if (building !== undefined) {
+      return;
+    }
+    box.setLabel(buildingLabel());
+    building = setInterval(() => {
+      box.setLabel(buildingLabel());
+    }, 80);
+  };
+  const stopBuilding = () => {
+    if (building === undefined) {
+      return;
+    }
+    clearInterval(building);
+    building = undefined;
+  };
+  const buildingLabel = () => ` ${TSLOGO} ${TIMES[timeId++ % TIMES.length]} `;
+
+  startBuilding();
+
   return {
     write(s: string) {
       box.pushLine(s);
       box.screen.render();
       const foundErrors = s.match(/Found (\d+) error/);
       if (foundErrors !== null) {
+        stopBuilding();
         const errorCount = parseInt(foundErrors[1]);
-        label = ` ${TSLOGO} ${errorCount === 0 ? "✅" : `[${chalk.red.bold(errorCount)}]`} `;
+        box.setLabel(
+          ` ${TSLOGO} ${errorCount === 0 ? chalk.red.greenBright("SUCCESS") : `[${chalk.red.bold(errorCount)}]`} `
+        );
+      } else {
+        startBuilding();
       }
-      box.setLabel(label);
     },
     clear() {
       box.setContent("");
