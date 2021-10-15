@@ -5,10 +5,10 @@ import { existsSync, writeFileSync } from "node:fs";
 import { unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
-import { fileIO, folderIO, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
+import { CacheGetter, fileIO, folderIO, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
 import debug from "debug";
 const log = debug("bfsp:config/#bfsp");
 
@@ -227,7 +227,7 @@ export const watchBfspUserConfig = (
 
   let curBfspUserConfig: $BfspUserConfig | undefined;
 
-  const looper = Loopable('watch bfsp user config',async () => {
+  const looper = Loopable("watch bfsp user config", async () => {
     if (curBfspUserConfig === undefined) {
       // 初始的值 放出来
       follower.push((curBfspUserConfig = await (options.bfspUserConfigInitPo ?? getBfspUserConfig(projectDirpath))));

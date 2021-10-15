@@ -36,7 +36,7 @@ export const ViteConfigFactory = (options: {
   const extension = getExtensionByFormat(format);
   const outDir = format ? `dist/${format}` : undefined;
 
-  const viteBuildConfig: InlineConfig = {
+  const viteBuildConfig: Readonly<InlineConfig> = {
     root: projectDirpath,
     base: "./",
     cacheDir: "node_modules/.bfsp",
@@ -45,6 +45,10 @@ export const ViteConfigFactory = (options: {
     build: {
       target: ["chrome74", "node16"],
       outDir: outDir,
+      watch: {
+        chokidar: { cwd: projectDirpath },
+        clearScreen: !log.enabled,
+      },
       rollupOptions: {
         preserveEntrySignatures: "strict",
         external:

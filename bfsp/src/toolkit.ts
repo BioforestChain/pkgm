@@ -4,10 +4,15 @@ import { existsSync, mkdirSync, statSync } from "node:fs";
 import { readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { createRequire } from "node:module";
+// const requireRoot = fileURLToPath(new URL("../", import.meta.url).href);
+// console.log("requireRoot", requireRoot);
+export const require = createRequire(import.meta.url);
+
 /**
  * 一个通用的基于时间的缓存器
  */
-abstract class CacheGetter<K, V> {
+export abstract class CacheGetter<K, V> {
   constructor() {
     const doClear = () => {
       const now = Date.now();
@@ -608,6 +613,7 @@ export type $PathInfo = ReturnType<typeof PathInfoParser>;
 //#endregion
 
 import type { ModuleFormat } from "rollup";
+import { fileURLToPath } from "node:url";
 const EXTENSION_MAP = {
   es: ".mjs",
   esm: ".mjs",

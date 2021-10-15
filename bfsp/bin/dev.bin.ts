@@ -2,12 +2,13 @@ import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import fs from "node:fs";
 import path from "node:path";
 import type { RollupWatcher } from "rollup";
-import { build as buildVite } from "vite";
+import { build as buildBfsp } from "vite";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { Closeable } from "../src/toolkit";
 import { ViteConfigFactory } from "./vite-build-config-factory";
 import debug from "debug";
 import { sleep } from "@bfchain/util-extends-promise";
+import { createViteLogger } from "../src/logger";
 
 (async () => {
   const log = debug("bfsp:bin/dev");
@@ -52,20 +53,21 @@ import { sleep } from "@bfchain/util-extends-promise";
         format: userConfig.userConfig.formats?.[0],
       });
 
-      viteBuildConfig.build = {
-        ...viteBuildConfig.build!,
-        watch: {
-          clearScreen: !log.enabled,
+      log("running bfsp build!");
+      debugger
+      const dev = (await buildBfsp({
+        ...viteBuildConfig,
+        build: {
+          ...viteBuildConfig.build,
+          minify: false,
+          sourcemap: true,
         },
-        minify: false,
-        sourcemap: true,
-      };
-      viteBuildConfig.mode = "development";
+        mode: "development",
+        customLogger: createViteLogger("info", {}),
+      })) as RollupWatcher;
 
-      log("running vite build!");
-      const dev = (await buildVite(viteBuildConfig)) as RollupWatcher;
       debounce.onSuccess((reason) => {
-        log("close vite build, reason: ", reason);
+        log("close bfsp build, reason: ", reason);
         dev.close();
       });
     })();

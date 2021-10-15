@@ -43,23 +43,13 @@ export default defineConfig((info) => {
           if (source.includes("node_modules")) {
             return true;
           }
-          if (
-            !source.startsWith(".") &&
-            existsSync(`node_modules/${source}`) &&
-            statSync(`node_modules/${source}`).isDirectory()
-          ) {
-            return true;
+          if (!source.startsWith(".")) {
+            if (existsSync(`node_modules/${source}`)) {
+              return true;
+            }
           }
+          console.log("include", source);
         },
-        // [
-        //   /^node:.*/,
-        //   "vite",
-        //   "esbuild",
-        //   "rollup",
-        //   "typescript",
-        //   "ava",
-        //   "*",
-        // ] ,
         input,
         output: {
           entryFileNames: `[name]${extension}`,

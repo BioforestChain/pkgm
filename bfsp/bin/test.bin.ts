@@ -1,5 +1,6 @@
 import { createServer } from "vite";
 import { fileURLToPath } from "node:url";
+// typeof __dirname === 
 const __dirname = fileURLToPath(import.meta.url);
 (async () => {
   const server = await createServer({
