@@ -54,7 +54,6 @@ import { ViteConfigFactory } from "./vite-build-config-factory";
         tsConfig,
         format: userConfig.userConfig.formats?.[0],
       });
-      debugger;
 
       log("running bfsp build!");
       //#region vite
@@ -82,9 +81,9 @@ import { ViteConfigFactory } from "./vite-build-config-factory";
       const tsconfigPath = path.join(root, "tsconfig.json");
       const tscWorker = new Worker(path.join(__dirname, "./tsc.mjs"), {
         argv: ["--build", tsconfigPath, "-w"],
-        stdin: true,
-        stdout: true,
-        stderr: true,
+        stdin: false,
+        stdout: false,
+        stderr: false,
       });
       const tscLogger = createTscLogger();
       tscWorker.on("message", (data) => {

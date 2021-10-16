@@ -21,11 +21,8 @@ export function doTsc() {
       .replace(/var ts;/g, "/* var ts */;")
       .replace(`ts.executeCommandLine(ts.sys, ts.noop, ts.sys.args);`, "")
   );
-  debugger;
   tscScript.runInContext(context);
   const ts = context.ts as typeof import("typescript");
-  console.log(ts.sys.args);
-  debugger;
 
   ts.sys.clearScreen = () => {
     parentPort?.postMessage("clearScreen");

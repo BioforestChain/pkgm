@@ -20,9 +20,6 @@ const screen = blessed.screen({
   fullUnicode: true,
   title: "bfsp - power by @bfchain/pkgm",
 });
-screen.key([/* "escape", "q",  */ "C-c"], function (ch, key) {
-  return process.exit(0);
-});
 screen.render();
 
 class ScrollableLog {
@@ -86,6 +83,9 @@ class ScrollableLog {
   //     }
   //     return ret;
   //   };
+  appendToScreen(screen: Widgets.Screen) {
+    screen.append(this.box);
+  }
 }
 const viteLog = new ScrollableLog({
   top: "60%",
@@ -110,7 +110,7 @@ const viteLog = new ScrollableLog({
   },
 });
 
-screen.append(viteLog.box);
+viteLog.appendToScreen(screen);
 
 export function createViteLogger(level: LogLevel = "info", options: LoggerOptions = {}): Logger {
   const box = viteLog.box;
@@ -222,7 +222,38 @@ export function createViteLogger(level: LogLevel = "info", options: LoggerOption
   return logger;
 }
 
-const tscLog = new ScrollableLog({
+const tscLog = new (class TscLog extends ScrollableLog {
+  constructor(options?: Widgets.BoxOptions) {
+    super(options);
+  }
+
+  readonly logo = blessed.text({ top: 0, left: 3, content: " ".repeat(5), style: { bg: "blue", fg: "blue" } });
+
+  private _TSLOGO = chalk.bgBlue.white.bold("  TS ");
+
+  setLabel(label: string) {
+    this.logo.setContent(".".repeat(5));
+    process.nextTick(() => {
+      this.logo.setContent(" ".repeat(5));
+      this.box.screen.render();
+    });
+    this.box.setLabel(` ${this._TSLOGO} ${label}`);
+    this.box.screen.render();
+  }
+  appendToScreen(screen: Widgets.Screen) {
+    screen.append(this.logo);
+    super.appendToScreen(screen);
+  }
+  private _content = "";
+  pushLine(line: string) {
+    this.box.setContent((this._content += line));
+    this.box.screen.render();
+  }
+  clearScreen() {
+    this.box.setContent((this._content = "\n"));
+    this.box.screen.render();
+  }
+})({
   top: 1,
   left: "left",
   width: "100%",
@@ -246,52 +277,53 @@ const tscLog = new ScrollableLog({
   },
 });
 
-screen.append(tscLog.box);
+tscLog.appendToScreen(screen);
 
-export function createTscLogger() {
-  const box = tscLog.box;
-  const TSLOGO = chalk.bgBlue.white.bold("TypeScript");
-  const TIMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
-  let timeId = 0;
-  let building: any;
+const tscStateHelper = (() => {
+  const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+  let frameId = 0;
+  const getLoadingFrames = () => FRAMES[frameId++ % FRAMES.length];
+  let buildingTi: any;
   const startBuilding = () => {
-    if (building !== undefined) {
+    if (buildingTi !== undefined) {
       return;
     }
-    box.setLabel(buildingLabel());
-    building = setInterval(() => {
-      box.setLabel(buildingLabel());
+    tscLog.setLabel(getLoadingFrames());
+    buildingTi = setInterval(() => {
+      tscLog.setLabel(getLoadingFrames());
     }, 80);
   };
   const stopBuilding = () => {
-    if (building === undefined) {
+    if (buildingTi === undefined) {
       return;
     }
-    clearInterval(building);
-    building = undefined;
+    clearInterval(buildingTi);
+    buildingTi = undefined;
   };
-  const buildingLabel = () => ` ${TSLOGO} ${TIMES[timeId++ % TIMES.length]} `;
 
-  startBuilding();
+  return { startBuilding, stopBuilding };
+})();
+
+export function createTscLogger() {
+  // const box = tscLog.box;
+
+  tscStateHelper.startBuilding();
 
   return {
     write(s: string) {
-      box.pushLine(s);
-      box.screen.render();
+      tscLog.pushLine(s);
       const foundErrors = s.match(/Found (\d+) error/);
       if (foundErrors !== null) {
-        stopBuilding();
+        tscStateHelper.stopBuilding();
         const errorCount = parseInt(foundErrors[1]);
-        box.setLabel(
-          ` ${TSLOGO} ${errorCount === 0 ? chalk.red.greenBright("SUCCESS") : `[${chalk.red.bold(errorCount)}]`} `
-        );
+
+        tscLog.setLabel(errorCount === 0 ? chalk.red.greenBright("SUCCESS") : chalk.red.bold(`[${errorCount}] ERROR`));
       } else {
-        startBuilding();
+        tscStateHelper.startBuilding();
       }
     },
     clear() {
-      box.setContent("");
-      box.screen.render();
+      tscLog.clearScreen();
     },
   };
 }
@@ -321,3 +353,34 @@ export function debug(label: string) {
     { enabled: false }
   );
 }
+
+//// 关闭进程的交互
+
+let asking = false;
+const dangerQuestion = blessed.question({
+  parent: screen,
+  border: "line",
+  height: "shrink",
+  width: "half",
+  top: "center",
+  left: "center",
+  label: " {red-fg}WARNING{/red-fg} ",
+  style: { border: { fg: "yellow" } },
+  tags: true,
+  keys: true,
+  vi: true,
+});
+dangerQuestion._.okay.content = `${chalk.underline("Y")}es`;
+dangerQuestion._.cancel.content = `${chalk.underline("N")}o`;
+screen.key([/* "escape", "q",  */ "C-c"], function (ch, key) {
+  if (asking) {
+    return process.exit(0);
+  }
+  asking = true;
+  dangerQuestion.ask("confirm to exit?", (err, confirmed) => {
+    asking = false;
+    if (confirmed) {
+      return process.exit(0);
+    }
+  });
+});

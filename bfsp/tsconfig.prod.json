@@ -1,11 +1,13 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "isolatedModules": false,
+    "isolatedModules": true,
     "outDir": "./node_modules/.bfsp/tsc",
     "noEmit": false
   },
   "files": [
+    "bin.ts",
+    "test.ts",
     "assets/package.template.json",
     "bin/dev.bin.ts",
     "bin/fmt.bin.ts",
@@ -15,6 +17,7 @@
     "bin/tsc.ts",
     "bin/vite-build-config-factory.ts",
     "src/bfspConfig.ts",
+    "src/index.ts",
     "src/toolkit.ts",
     "src/configs/bfspUserConfig.ts",
     "src/configs/commonIgnore.ts",
@@ -23,14 +26,7 @@
     "src/configs/packageJson.ts",
     "src/configs/tsConfig.ts",
     "src/configs/viteConfig.ts",
-    "src/index.ts",
-    "tests/config.test.ts",
-    "bin.ts",
-    "bin.type.ts",
-    "typings/gitIgnore.ts",
-    "typings/npmIgnore.ts",
-    "typings/toolkit.ts",
-    "typings/userConfig.ts"
+    "tests/config.test.ts"
   ],
   "references": []
 }

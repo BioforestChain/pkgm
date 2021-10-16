@@ -24,6 +24,7 @@
     "bfsp-test": "./dist/test.bin.mjs"
   },
   "scripts": {
+    "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",
     "dev": "vite build --watch --minify=false --sourcemap=true",
     "test": "ava"
