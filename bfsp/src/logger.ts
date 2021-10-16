@@ -97,10 +97,10 @@ const viteLog = new ScrollableLog({
   border: {
     type: "line",
   },
-  label: " {bold}Bundle{/bold} ",
+  label: `${chalk.cyan.underline(`[0]`)} ${chalk.bold("Bundle")} `, // " {bold}Bundle{/bold} ",
   style: {
     border: {
-      fg: "cyanBright",
+      fg: "gray",
     },
     focus: {
       border: {
@@ -108,6 +108,9 @@ const viteLog = new ScrollableLog({
       },
     },
   },
+});
+screen.key(["0"], () => {
+  viteLog.box.focus();
 });
 
 viteLog.appendToScreen(screen);
@@ -227,9 +230,9 @@ const tscLog = new (class TscLog extends ScrollableLog {
     super(options);
   }
 
-  readonly logo = blessed.text({ top: 0, left: 3, content: " ".repeat(5), style: { bg: "blue", fg: "blue" } });
+  readonly logo = blessed.text({ top: 0, left: 6, content: " ".repeat(5), style: { bg: "blue", fg: "blue" } });
 
-  private _TSLOGO = chalk.bgBlue.white.bold("  TS ");
+  private _TSLOGO = `${chalk.cyan.underline(`[1]`)} ${chalk.bgBlue.white.bold("  TS ")}`;
 
   setLabel(label: string) {
     this.logo.setContent(".".repeat(5));
@@ -237,7 +240,7 @@ const tscLog = new (class TscLog extends ScrollableLog {
       this.logo.setContent(" ".repeat(5));
       this.box.screen.render();
     });
-    this.box.setLabel(` ${this._TSLOGO} ${label}`);
+    this.box.setLabel(`${this._TSLOGO} ${label} `);
     this.box.screen.render();
   }
   appendToScreen(screen: Widgets.Screen) {
@@ -265,16 +268,20 @@ const tscLog = new (class TscLog extends ScrollableLog {
   label: " {bold}Tsc Builder{/bold} ",
   style: {
     border: {
-      fg: "blueBright",
-      // bg: "blueBright",
+      fg: "gray",
+      bg: "gray",
     },
     focus: {
       border: {
-        fg: "blue",
-        // bg: "blue",
+        fg: "cyan",
+        bg: "cyan",
       },
     },
   },
+});
+
+screen.key(["1"], () => {
+  tscLog.box.focus();
 });
 
 tscLog.appendToScreen(screen);

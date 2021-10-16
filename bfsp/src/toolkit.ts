@@ -277,6 +277,7 @@ AGP.toSharable = function () {
 };
 
 import { EventEmitter } from "node:events";
+EventEmitter.defaultMaxListeners = 100;
 export class SharedAsyncIterable<T> implements AsyncIterable<T> {
   private _current?: T;
   constructor(/* private */ source: AsyncIterator<T>) {
@@ -624,4 +625,21 @@ const EXTENSION_MAP = {
 };
 export const getExtensionByFormat = (format: ModuleFormat): ".js" | ".mjs" | ".cjs" => {
   return (EXTENSION_MAP as any)[format] || ".js";
+};
+export const isEqualSet = <T>(set1: Set<T>, set2?: Set<T>) => {
+  if (set2 === undefined) {
+    return;
+  }
+  if (set1 === set2) {
+    return true;
+  }
+  if (set1.size !== set2.size) {
+    return false;
+  }
+  for (const item of set1) {
+    if (set2.has(item) === false) {
+      return false;
+    }
+  }
+  return true;
 };

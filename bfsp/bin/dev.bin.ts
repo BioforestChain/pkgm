@@ -4,6 +4,7 @@ import chalk from "chalk";
 import fs from "node:fs";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isDeepStrictEqual } from "node:util";
 import { Worker } from "node:worker_threads";
 import type { RollupWatcher } from "rollup";
 import { build as buildBfsp } from "vite";
@@ -27,10 +28,9 @@ import { ViteConfigFactory } from "./vite-build-config-factory";
   const subConfigs = await writeBfspProjectConfig(config);
 
   /// 监听项目变动
-  const subStreams = watchBfspProjectConfig(config!, {
-    tsConfig: subConfigs.tsConfig,
-    packageJson: subConfigs.packageJson,
-  });
+  const subStreams = watchBfspProjectConfig(config!, subConfigs);
+
+  let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
 
   const abortable = Closeable("bin:dev", async () => {
     /**防抖，避免不必要的多次调用 */
@@ -47,13 +47,18 @@ import { ViteConfigFactory } from "./vite-build-config-factory";
       const packageJson = await subStreams.packageJsonStream.getCurrent();
       const tsConfig = await subStreams.tsConfigStream.getCurrent();
 
-      const viteBuildConfig = ViteConfigFactory({
+      const viteConfigBuildOptions = {
         projectDirpath: root,
         viteConfig,
         packageJson,
         tsConfig,
         format: userConfig.userConfig.formats?.[0],
-      });
+      };
+      if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
+        return;
+      }
+      preViteConfigBuildOptions = viteConfigBuildOptions;
+      const viteBuildConfig = ViteConfigFactory(viteConfigBuildOptions);
 
       log("running bfsp build!");
       //#region vite
@@ -108,10 +113,10 @@ import { ViteConfigFactory } from "./vite-build-config-factory";
   });
 
   /// 开始监听并触发编译
-  subStreams.userConfigStream.onNext(abortable.restart);
-  subStreams.packageJsonStream.onNext(abortable.restart);
-  subStreams.viteConfigStream.onNext(abortable.restart);
-  subStreams.tsConfigStream.onNext(abortable.restart);
+  subStreams.userConfigStream.onNext(() => (log("userConfig changed"), abortable.restart()));
+  subStreams.packageJsonStream.onNext(() => (log("packageJson changed"), abortable.restart()));
+  subStreams.viteConfigStream.onNext(() => (log("viteConfig changed"), abortable.restart()));
+  subStreams.tsConfigStream.onNext(() => (log("tsConfig changed"), abortable.restart()));
   if (subStreams.viteConfigStream.hasCurrent()) {
     abortable.start();
   }
