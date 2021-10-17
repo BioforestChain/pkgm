@@ -1,11 +1,11 @@
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
-import { debug } from "../logger";
+import { Debug } from "../logger";
 import { fileIO, getExtensionByFormat, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
-const log = debug("bfsp:config/package.json");
+const log = Debug("bfsp:config/package.json");
 // const format
 
 export const generatePackageJson = async (

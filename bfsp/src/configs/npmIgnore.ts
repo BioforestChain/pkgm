@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { debug } from "../logger";
+import { Debug } from "../logger";
 import { fileIO, isEqualSet, Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
 import { $BfspUserConfig } from "./bfspUserConfig";
 import { effectConfigIgnores } from "./commonIgnore";
@@ -18,7 +18,7 @@ export type $NpmIgnore = BFChainUtil.PromiseReturnType<typeof generateNpmIgnore>
 export const writeNpmIgnore = (projectDirpath: string, npmIgnore: $NpmIgnore) => {
   return fileIO.set(resolve(projectDirpath, ".npmignore"), Buffer.from([...npmIgnore].join("\n")));
 };
-const log = debug("bfsp:config/npmginore");
+const log = Debug("bfsp:config/npmginore");
 export const watchNpmIgnore = (
   projectDirpath: string,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,

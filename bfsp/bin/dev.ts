@@ -9,16 +9,16 @@ import { Worker } from "node:worker_threads";
 import type { RollupWatcher } from "rollup";
 import { build as buildBfsp } from "vite";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { createTscLogger, createViteLogger, debug } from "../src/logger";
+import { createTscLogger, createViteLogger, Debug } from "../src/logger";
 import { Closeable } from "../src/toolkit";
 import { ViteConfigFactory } from "./vite-build-config-factory";
 
-(async () => {
-  const log = debug("bfsp:bin/dev");
+export const doDev = async (options: { format?: Bfsp.Format; cwd?: string; profiles?: string[] }) => {
+  const log = Debug("bfsp:bin/dev");
 
-  const cwd = process.cwd();
-  const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
-  const root = fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
+  // const cwd = process.cwd();
+  // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
+  const { cwd: root = process.cwd(), format } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
 
   log("root", root);
 
@@ -52,7 +52,7 @@ import { ViteConfigFactory } from "./vite-build-config-factory";
         viteConfig,
         packageJson,
         tsConfig,
-        format: userConfig.userConfig.formats?.[0],
+        format: options?.format ?? userConfig.userConfig.formats?.[0],
       };
       if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
         return;
@@ -120,4 +120,4 @@ import { ViteConfigFactory } from "./vite-build-config-factory";
   if (subStreams.viteConfigStream.hasCurrent()) {
     abortable.start();
   }
-})();
+};

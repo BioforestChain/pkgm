@@ -9,8 +9,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
 import { CacheGetter, fileIO, folderIO, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
-import { debug } from "../logger";
-const log = debug("bfsp:config/#bfsp");
+import { Debug } from "../logger";
+const log = Debug("bfsp:config/#bfsp");
 
 // export const enum BUILD_MODE {
 //   DEVELOPMENT = "development",
@@ -130,7 +130,7 @@ export const parseExports = (exports: Bfsp.UserConfig["exports"]) => {
   };
 };
 
-const ALLOW_FORMATS = new Set<Bfsp.Format>(["iife", "cjs", "esm"]);
+export const ALLOW_FORMATS = new Set<Bfsp.Format>(["iife", "cjs", "esm"]);
 const parseFormats = (formats: Bfsp.UserConfig["formats"] = []) => {
   const formatSet = new Set(formats.filter((f) => ALLOW_FORMATS.has(f)));
   formats = [...formatSet];

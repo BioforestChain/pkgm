@@ -249,7 +249,7 @@ const tscLog = new (class TscLog extends ScrollableLog {
   }
   private _content = "";
   pushLine(line: string) {
-    this.box.setContent((this._content += line));
+    this.box.setContent((this._content += " " + line));
     this.box.screen.render();
   }
   clearScreen() {
@@ -264,7 +264,7 @@ const tscLog = new (class TscLog extends ScrollableLog {
   content: "" + chalk.cyanBright("starting..."),
   tags: true,
   /// 这边使用bg模式，是为了确保链接能点击到
-  border: "bg", // { type: "bg" /* ch:  '　' */ },
+  border: { type: "bg" }, // { type: "bg" /* ch:  '　' */ },
   label: " {bold}Tsc Builder{/bold} ",
   style: {
     border: {
@@ -336,10 +336,10 @@ export function createTscLogger() {
 }
 
 // import D from "debug";
-const D = require("debug");
+const D = require("debug") as typeof import("debug");
 import util from "node:util";
 
-export function debug(label: string) {
+export function Debug(label: string) {
   const d = D(label);
   let t = Date.now();
 
@@ -355,9 +355,28 @@ export function debug(label: string) {
       args = [util.format(...args)];
       D.formatArgs.call(d, args);
       screen.debug(...(args as any));
-      // screen.debug(util.format(...args));
     },
-    { enabled: false }
+    { enabled: d.enabled }
+  );
+}
+
+export function Warn(label: string) {
+  const d = D(label);
+  let t = Date.now();
+  return Object.assign(
+    (...args: unknown[]) => {
+      if (!d.enabled) {
+        return;
+      }
+      const now = Date.now();
+      d.diff = now - t;
+      t = now;
+
+      args = [chalk.yellow(util.format(...args))];
+      D.formatArgs.call(d, args);
+      screen.debug(...(args as any));
+    },
+    { enabled: true }
   );
 }
 

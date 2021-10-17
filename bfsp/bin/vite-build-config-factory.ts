@@ -5,30 +5,21 @@ import type { InlineConfig } from "vite";
 import { $PackageJson } from "../src/configs/packageJson";
 import { $TsConfig } from "../src/configs/tsConfig";
 import type { $ViteConfig } from "../src/configs/viteConfig";
-import { debug } from "../src/logger";
+import { Debug } from "../src/logger";
 import { getExtensionByFormat } from "../src/toolkit";
-const log = debug("bfsp:config/vite-config.ts");
+const log = Debug("bfsp:config/vite-config.ts");
 
 const FORMATS = ["cjs", "esm", "iife"] as const;
-type $Format = typeof FORMATS[number];
-
-export const getArg = <T extends string>(name: string) => {
-  const foundArg = process.argv.find((arg) => arg.startsWith(`--${name}=`));
-  if (foundArg) {
-    const index = foundArg.indexOf("=");
-    return foundArg.slice(index + 1) as unknown as T;
-  }
-};
 
 export const ViteConfigFactory = (options: {
   projectDirpath: string;
   viteConfig: $ViteConfig;
   packageJson: $PackageJson;
   tsConfig: $TsConfig;
-  format?: $Format;
-  platform?: string;
+  format?: Bfsp.Format;
+  profiles?: string[];
 }) => {
-  let { format = getArg("format") ?? "esm", platform = getArg("platfrom") ?? "default" } = options;
+  let { format = "esm", profiles = ["default"] } = options;
   if (FORMATS.includes(format as any) === false) {
     format = "esm";
   }
@@ -137,7 +128,12 @@ export const ViteConfigFactory = (options: {
             if (source.startsWith("#")) {
               const imports = subpathImports[source];
               if (imports) {
-                return imports[platform] ?? imports.default ?? null;
+                for (const profile of profiles) {
+                  if (profile in imports) {
+                    return imports[profile];
+                  }
+                }
+                return imports.default;
               }
             }
             return null;

@@ -1,10 +1,10 @@
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { debug } from "../logger";
+import { Debug } from "../logger";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import type { $TsConfig } from "./tsConfig";
-const log = debug("bfsp:config/vite.config.ts");
+const log = Debug("bfsp:config/vite.config.ts");
 // import { $TsConfig } from "./tsConfig";
 // import viteConfigTemplate from "../../assets/vite.config.template.ts?raw";
 

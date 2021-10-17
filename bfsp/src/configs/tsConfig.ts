@@ -1,6 +1,6 @@
 import chokidar from "chokidar";
 import path, { resolve } from "node:path";
-import { debug } from "../logger";
+import { Debug } from "../logger";
 import {
   $PathInfo,
   fileIO,
@@ -17,7 +17,7 @@ import {
   walkFiles,
 } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
-const log = debug("bfsp:config/tsconfig.json");
+const log = Debug("bfsp:config/tsconfig.json");
 
 export const isTsFile = (filepathInfo: $PathInfo) => {
   const { relative } = filepathInfo;

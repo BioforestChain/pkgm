@@ -6,7 +6,7 @@ const libFormat = (process.argv.find((arg) => arg.startsWith("--format="))?.spli
 
 export const input: InputOption = {
   index: "src/index.ts",
-  "dev.bin": "bin/dev.bin.ts",
+  "bfsp.bin": "bin/bfsp.bin.ts",
   "fmt.bin": "bin/fmt.bin.ts",
   "test.bin": "bin/test.bin.ts",
   "config.test": "tests/config.test.ts",
