@@ -1,7 +1,7 @@
 /// <reference path="./typings/index.d.ts"/>
 const ARGV = process.argv.slice(2);
 
-export const defineBin = <T extends Bfsp.Bin.CommandConfig>(
+export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
   funName: string,
   config: T,
   hanlder: (

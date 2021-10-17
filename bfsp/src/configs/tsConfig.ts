@@ -5,6 +5,8 @@ import {
   $PathInfo,
   fileIO,
   folderIO,
+  getSecondExtname,
+  getTwoExtnames,
   List,
   ListArray,
   ListSet,
@@ -19,31 +21,67 @@ import {
 import type { $BfspUserConfig } from "./bfspUserConfig";
 const log = Debug("bfsp:config/tsconfig.json");
 
-export const isTsFile = (filepathInfo: $PathInfo) => {
+// export const getFilename = (somepath: string) => {
+//   return somepath.match(/([^\\\/]+)\.[^\\\/]+$/)?.[1] ?? "";
+// };
+
+const isTsFile = (filepathInfo: $PathInfo) => {
   const { relative } = filepathInfo;
+  if (relative.endsWith("#bfsp.ts")) {
+    return false;
+  }
+  const { extname } = filepathInfo;
+  /// 在assets文件夹下的json文件
+  if ((extname === ".json" && toPosixPath(filepathInfo.relative).startsWith("./assets/")) === false) {
+    return false;
+  }
+  /// ts文件（忽略类型定义文件）
+  if (
+    ((extname === ".ts" && ".d" !== filepathInfo.secondExtname) ||
+      extname === ".tsx" ||
+      extname === ".cts" ||
+      extname === ".mts" ||
+      extname === ".ctsx" ||
+      extname === ".mtsx") === false
+  ) {
+    return false;
+  }
+
+  return notGitIgnored(filepathInfo.full); // promise<boolean>
+};
+
+const isTsExt = (extname: string) => {
   return (
-    /// 在assets文件夹下的json文件
-    ((relative.endsWith(".json") && toPosixPath(filepathInfo.relative).startsWith("./assets/")) ||
-      /// ts文件
-      (relative.endsWith(".ts") && !relative.endsWith(".d.ts") && !relative.endsWith("#bfsp.ts")) ||
-      relative.endsWith(".tsx") ||
-      relative.endsWith(".cts") ||
-      relative.endsWith(".mts") ||
-      relative.endsWith(".ctsx") ||
-      relative.endsWith(".mtsx")) &&
-    /// promise<boolean>
-    notGitIgnored(filepathInfo.full)
+    extname === ".ts" ||
+    extname === ".tsx" ||
+    extname === ".cts" ||
+    extname === ".mts" ||
+    extname === ".ctsx" ||
+    extname === ".mtsx"
   );
 };
 
-export const isTypeFile = (projectDirpath: string, filepath: string) =>
+const isTypeFile = (projectDirpath: string, filepath: string) =>
   filepath.endsWith(".type.ts") || filepath.startsWith("./typings/");
 
-export const isTestFile = (projectDirpath: string, filepath: string) =>
-  filepath.startsWith("./tests/") && (filepath.endsWith(".test.ts") || filepath.endsWith(".bm.ts"));
+const isTestFile = (projectDirpath: string, filepath: string) => {
+  if (filepath.startsWith("./tests/")) {
+    const exts = getTwoExtnames(filepath);
+    if (exts !== undefined) {
+      return isTsExt(exts.ext1) && (".test" === exts.ext2 || ".bm" === exts.ext1);
+    }
+  }
+  return false;
+};
 
-export const isBinFile = (projectDirpath: string, filepath: string) => {
-  return filepath.startsWith("./bin/") && (filepath.endsWith(".cmd.ts") || filepath.endsWith(".tui.ts"));
+const isBinFile = (projectDirpath: string, filepath: string) => {
+  if (filepath.startsWith("./bin/")) {
+    const exts = getTwoExtnames(filepath);
+    if (exts !== undefined) {
+      return isTsExt(exts.ext1) && (".cmd" === exts.ext2 || ".tui" === exts.ext1);
+    }
+  }
+  return false;
 };
 
 type TsFilesLists = {

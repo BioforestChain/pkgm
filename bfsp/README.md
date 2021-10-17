@@ -20,6 +20,8 @@
   - [x] 监听更新 typescript 相关的配置文件与自动生成的代码
 - [x] 将 bin 输出到 package.json
 - [ ] 提供`#{Profile}`模式
+  - [ ] 提供 package.json 的 exports 支持
+  - [ ] 提供 package.json 的 imports 支持
 - [x] 提供 test 指令
   > 前期使用 ava 来作为测试功能的后端,只需要启动 ava/cli 即可
   - [ ] 支持`?`选择器，比如输入 bfsp test ?，那么进入交互界面，用于选择特定的测试，执行并打印改指令，用于下一次快速执行

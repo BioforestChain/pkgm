@@ -597,6 +597,21 @@ export const Loopable = (title: string, fun: () => unknown) => {
 //#endregion
 
 //#region 路径相关的辅助函数
+export const getExtname = (somepath: string) => {
+  return somepath.match(/\.[^\\\/\.]+$/)?.[0] ?? "";
+};
+export const getSecondExtname = (somepath: string) => {
+  return somepath.match(/(\.[^\\\/\.]+)\.[^\\\/\.]+$/)?.[1] ?? "";
+};
+export const getTwoExtnames = (somepath: string) => {
+  const info = somepath.match(/(\.[^\\\/\.]+)(\.[^\\\/\.]+)$/);
+  if (info !== null) {
+    return {
+      ext1: info[2],
+      ext2: info[1],
+    };
+  }
+};
 export const PathInfoParser = (
   dir: string,
   somepath: string,
@@ -612,6 +627,16 @@ export const PathInfoParser = (
       const relativepath = isAbsolute ? path.relative(dir, somepath) : somepath;
       Object.defineProperty(info, "relative", { value: relativepath });
       return relativepath;
+    },
+    get extname() {
+      const extname = getExtname(somepath);
+      Object.defineProperty(info, "extname", { value: extname });
+      return extname;
+    },
+    get secondExtname() {
+      const secondExtname = getSecondExtname(somepath);
+      Object.defineProperty(info, "secondExtname", { value: secondExtname });
+      return secondExtname;
     },
     dir,
   };
