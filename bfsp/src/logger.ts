@@ -16,7 +16,7 @@ const screen = blessed.screen({
   useBCE: true,
   debug: true,
   sendFocus: true,
-  terminal: "xterm-256color",
+  terminal: chalk.supportsColor && chalk.supportsColor.has256 ? "xterm-256color" : "xterm",
   fullUnicode: true,
   title: "bfsp - power by @bfchain/pkgm",
 });
