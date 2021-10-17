@@ -33,6 +33,8 @@
   "files": [
     "assets/package.template.json",
     "bin/bfsp.bin.ts",
+    "bin/test.ts",
+    "bin/ava.ts",
     "bin/dev.ts",
     "bin/fmt.bin.ts",
     "bin/init.bin.ts",

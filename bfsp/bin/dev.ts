@@ -1,7 +1,6 @@
 import { sleep } from "@bfchain/util-extends-promise";
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import chalk from "chalk";
-import fs from "node:fs";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
@@ -9,16 +8,17 @@ import { Worker } from "node:worker_threads";
 import type { RollupWatcher } from "rollup";
 import { build as buildBfsp } from "vite";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { createTscLogger, createViteLogger, Debug } from "../src/logger";
+import { createDevTui, Debug } from "../src/logger";
 import { Closeable } from "../src/toolkit";
 import { ViteConfigFactory } from "./vite-build-config-factory";
 
-export const doDev = async (options: { format?: Bfsp.Format; cwd?: string; profiles?: string[] }) => {
+export const doDev = async (options: { format?: Bfsp.Format; root?: string; profiles?: string[] }) => {
   const log = Debug("bfsp:bin/dev");
+  const { createTscLogger, createViteLogger } = createDevTui();
 
   // const cwd = process.cwd();
   // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
-  const { cwd: root = process.cwd(), format } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
+  const { root = process.cwd(), format } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
 
   log("root", root);
 
@@ -52,7 +52,7 @@ export const doDev = async (options: { format?: Bfsp.Format; cwd?: string; profi
         viteConfig,
         packageJson,
         tsConfig,
-        format: options?.format ?? userConfig.userConfig.formats?.[0],
+        format: format ?? userConfig.userConfig.formats?.[0],
       };
       if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
         return;
@@ -84,7 +84,7 @@ export const doDev = async (options: { format?: Bfsp.Format; cwd?: string; profi
       const __filename = fileURLToPath(import.meta.url);
       const __dirname = dirname(__filename);
       const tsconfigPath = path.join(root, "tsconfig.json");
-      const tscWorker = new Worker(path.join(__dirname, "./tsc.mjs"), {
+      const tscWorker = new Worker(path.join(__dirname, "./tsc_worker.mjs"), {
         argv: ["--build", tsconfigPath, "-w"],
         stdin: false,
         stdout: false,

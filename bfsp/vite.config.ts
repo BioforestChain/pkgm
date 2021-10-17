@@ -12,7 +12,8 @@ export const input: InputOption = {
   "config.test": "tests/config.test.ts",
   bin: "bin.ts",
   test: "test.ts",
-  tsc: "bin/tsc.ts",
+  tsc_worker: "bin/tsc.ts",
+  ava_worker: "bin/ava.ts",
 };
 export const extension =
   {

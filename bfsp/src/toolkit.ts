@@ -9,6 +9,13 @@ import { createRequire } from "node:module";
 // console.log("requireRoot", requireRoot);
 export const require = createRequire(import.meta.url);
 
+export const tryRequireResolve = (require: NodeRequire, nm: string) => {
+  try {
+    return require.resolve(`@bfchain/pkgm/${nm}`);
+  } catch {}
+  return require.resolve(nm);
+};
+
 /**
  * 一个通用的基于时间的缓存器
  */

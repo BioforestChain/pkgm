@@ -1,7 +1,10 @@
+import { existsSync, statSync } from "node:fs";
+import path from "node:path";
 import { defineBin } from "../bin";
 import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
+import { Debug, Warn } from "../src/logger";
 import { doDev } from "./dev";
-import { Warn } from "../src/logger";
+import { doTest } from "./test";
 
 defineBin(
   "dev",
@@ -24,6 +27,34 @@ defineBin(
     if (profiles.length === 0) {
       profiles.push("default");
     }
-    return doDev({ format: format as Bfsp.Format, cwd: args[0], profiles });
+    return doDev({ format: format as Bfsp.Format, root: args[0], profiles });
+  }
+);
+
+defineBin(
+  "test",
+  {
+    args: [{ type: "rest", name: "tests", description: "test names" }],
+  } as const,
+  (params, args) => {
+    const log = Debug("bfsp:bin/test");
+
+    let root = process.cwd();
+    const tests = args[0];
+    {
+      let maybeCwd = tests[0];
+      if (maybeCwd !== undefined) {
+        maybeCwd = path.resolve(root, maybeCwd);
+        if (existsSync(maybeCwd) && statSync(maybeCwd).isDirectory()) {
+          root = maybeCwd;
+          tests.shift();
+        }
+      }
+    }
+    for (const test of tests) {
+      log("run test:", test);
+    }
+
+    return doTest({ root, tests });
   }
 );
