@@ -1,3 +1,4 @@
+import { sleep } from "@bfchain/util-extends-promise";
 import chokidar from "chokidar";
 import path, { resolve } from "node:path";
 import { Debug, Warn } from "../logger";
@@ -155,11 +156,11 @@ export class ProfileMap {
   }
   toTsPaths(profiles: string[] = ["default"]) {
     const paths: { [key: Bfsp.Profile]: string[] } = {};
+    log("profiles", profiles);
     for (const [privatePath, map] of this._map1) {
       const profilePaths = new Set<string>();
 
       /// 优先根据profiles来插入
-      log("profiles", profiles, map);
       for (let profile of profiles) {
         if (profile.startsWith("#") === false) {
           profile = "#" + profile;
@@ -408,7 +409,8 @@ export const watchTsConfig = (
   let tsConfig: $TsConfig | undefined;
   let preTsConfigJson = "";
   /// 循环处理监听到的事件
-  const looper = Loopable("watch tsconfigs", async () => {
+  const looper = Loopable("watch tsconfigs", async (reasons) => {
+    log("reasons:", reasons);
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
     if (tsConfig === undefined) {
       follower.push((tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig))));
@@ -428,6 +430,8 @@ export const watchTsConfig = (
         }
       }
       cachedEventList.clear();
+      log("add", addFileList);
+      log("unlink", removeFileList);
 
       /// 将变更的文件写入tsconfig中
       if (addFileList.length > 0) {
@@ -474,25 +478,26 @@ export const watchTsConfig = (
   let cachedEventList = new Map<string, EventType>();
   /// 收集监听到事件
   watcher.on("add", async (path) => {
-    log("add file", path);
     if (await isTsFile(PathInfoParser(projectDirpath, path))) {
+      log("add file", path);
       cachedEventList.set(path, "add");
-      looper.loop();
+      looper.loop("add file", 200);
     }
   });
   watcher.on("unlink", async (path) => {
-    log("unlink file", path);
     if (await isTsFile(PathInfoParser(projectDirpath, path))) {
+      log("unlink file", path);
       cachedEventList.set(path, "unlink");
-      looper.loop();
+      looper.loop("unlink file", 200);
     }
   });
   //#endregion
 
   //#region 监听依赖配置来触发更新
-  bfspUserConfigStream.onNext(looper.loop);
+  bfspUserConfigStream.onNext(() => looper.loop("bfsp user config changed"));
   //#endregion
 
-  looper.loop();
+  /// 初始化，使用400ms时间来进行防抖
+  looper.loop("init", 400);
   return new SharedAsyncIterable<$TsConfig>(follower);
 };

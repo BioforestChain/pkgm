@@ -19,7 +19,7 @@
 - [x] `bin/dev` 需要启动以下作业:
   - [x] 监听更新 typescript 相关的配置文件与自动生成的代码
 - [x] 将 bin 输出到 package.json
-- [ ] 提供`#{Profile}`模式
+- [x] 提供`#{Profile}`模式
   - [ ] 提供 package.json 的 exports 支持
   - [ ] 提供 package.json 的 imports 支持
 - [x] 提供 test 指令

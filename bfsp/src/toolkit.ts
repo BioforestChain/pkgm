@@ -440,7 +440,9 @@ export class ListArray<T> extends List<T> {
   }
   private _arr: T[];
   add(item: T): void {
-    this._arr[this._arr.length] = item;
+    if (this._arr.includes(item) === false) {
+      this._arr[this._arr.length] = item;
+    }
   }
   remove(item: T): void {
     const index = this._arr.indexOf(item);
@@ -570,25 +572,31 @@ export const Closeable = (title: string, fun: () => BFChainUtil.PromiseMaybe<DoC
   return abortable;
 };
 
-export const Loopable = (title: string, fun: () => unknown) => {
-  let lock = -1;
-  const doLoop = async () => {
+export const Loopable = (title: string, fun: (reasons: Set<unknown>) => unknown) => {
+  let lock: Set<unknown> | undefined; //= -1;
+  const doLoop = async (reason?: unknown, debounce?: number) => {
+    lock = new Set([reason]);
+    if (typeof debounce === "number" && debounce > 0) {
+      await sleep(debounce);
+    }
+    // lock.add(reason);
     do {
-      lock = 0;
+      const reasons = lock;
+      lock = new Set();
       try {
-        await fun();
+        await fun(reasons);
       } catch (err) {
         console.error(`error when '${title}' loopping!!`, err);
       }
-    } while (lock > 0);
-    lock = -1;
+    } while (lock.size > 0);
+    lock = undefined;
   };
   return {
-    loop() {
-      if (lock === -1) {
-        doLoop();
+    loop(reason?: unknown, debounce?: number) {
+      if (lock === undefined) {
+        doLoop(reason, debounce);
       } else {
-        lock += 1;
+        lock.add(reason);
       }
     },
   };
@@ -647,6 +655,7 @@ export type $PathInfo = ReturnType<typeof PathInfoParser>;
 
 import type { ModuleFormat } from "rollup";
 import { fileURLToPath } from "node:url";
+import { sleep } from "@bfchain/util-extends-promise";
 const EXTENSION_MAP = {
   es: ".mjs",
   esm: ".mjs",
