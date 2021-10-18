@@ -497,10 +497,13 @@ export class ListSet<T> extends List<T> {
 //   }
 //   readonly finishedAborted = new PromiseOut<void>();
 // }
-type DoClose = (reason?: unknown) => unknown;
+type DoClose<T> = (reasons: Set<T | undefined>) => unknown;
 
-export const Closeable = (title: string, fun: () => BFChainUtil.PromiseMaybe<DoClose>) => {
-  let aborter: DoClose | undefined;
+export const Closeable = <T1 = unknown, T2 = unknown>(
+  title: string,
+  fun: (reasons: Set<T1 | undefined>) => BFChainUtil.PromiseMaybe<DoClose<T2>>
+) => {
+  let aborter: DoClose<T2> | undefined;
   let closing = false;
   let starting = false;
 
@@ -522,59 +525,75 @@ export const Closeable = (title: string, fun: () => BFChainUtil.PromiseMaybe<DoC
   }
   const cmdQueue = new CmdQueue();
 
-  const looper = Loopable(title, async () => {
-    do {
-      const cmd = cmdQueue.getNext();
-      if (cmd === undefined) {
-        break;
-      }
-      if (cmd === "open") {
-        if (state === "closed") {
-          state = "opening";
-          try {
-            aborter = await fun();
-            state = "opened";
-          } catch (err) {
-            console.error(`open '${title}' failed`, err);
+  const looper = Loopable<[1, T1 | undefined] | [2, T2 | undefined] | [3, (T1 & T2) | undefined]>(
+    title,
+    async (reasons) => {
+      do {
+        const cmd = cmdQueue.getNext();
+        if (cmd === undefined) {
+          break;
+        }
+        if (cmd === "open") {
+          if (state === "closed") {
+            state = "opening";
+            try {
+              const openReason = new Set<T1 | undefined>();
+              for (const reason of reasons) {
+                if (reason && (reason[0] & 1) !== 0) {
+                  openReason.add(reason[1] as T1);
+                }
+              }
+              aborter = await fun(openReason);
+              state = "opened";
+            } catch (err) {
+              console.error(`open '${title}' failed`, err);
+              state = "closed";
+            }
+          }
+        } else {
+          if (state === "opened") {
+            state = "closing";
+            try {
+              const closeReason = new Set<T2 | undefined>();
+              for (const reason of reasons) {
+                if (reason && (reason[0] & 2) !== 0) {
+                  closeReason.add(reason[1] as T2);
+                }
+              }
+
+              await aborter!(closeReason);
+            } catch (err) {
+              console.error(`close '${title}' failed`, err);
+            }
+            aborter = undefined;
             state = "closed";
           }
         }
-      } else {
-        if (state === "opened") {
-          state = "closing";
-          try {
-            await aborter!();
-          } catch (err) {
-            console.error(`close '${title}' failed`, err);
-          }
-          aborter = undefined;
-          state = "closed";
-        }
-      }
-    } while (true);
-  });
+      } while (true);
+    }
+  );
 
   const abortable = {
-    start() {
+    start(reason?: T1) {
       cmdQueue.add("open");
-      looper.loop();
+      looper.loop([1, reason]);
     },
-    close(reason?: unknown) {
+    close(reason?: T2) {
       cmdQueue.add("close");
-      looper.loop();
+      looper.loop([2, reason]);
     },
-    restart(reason?: unknown) {
+    restart(reason?: T1 & T2) {
       cmdQueue.add("close");
       cmdQueue.add("open");
-      looper.loop();
+      looper.loop([3, reason]);
     },
   };
   return abortable;
 };
 
-export const Loopable = (title: string, fun: (reasons: Set<unknown>) => unknown) => {
-  let lock: Set<unknown> | undefined; //= -1;
-  const doLoop = async (reason?: unknown, debounce?: number) => {
+export const Loopable = <T = unknown>(title: string, fun: (reasons: Set<T | undefined>) => unknown) => {
+  let lock: Set<T | undefined> | undefined; //= -1;
+  const doLoop = async (reason?: T, debounce?: number) => {
     lock = new Set([reason]);
     if (typeof debounce === "number" && debounce > 0) {
       await sleep(debounce);
@@ -592,7 +611,7 @@ export const Loopable = (title: string, fun: (reasons: Set<unknown>) => unknown)
     lock = undefined;
   };
   return {
-    loop(reason?: unknown, debounce?: number) {
+    loop(reason?: T, debounce?: number) {
       if (lock === undefined) {
         doLoop(reason, debounce);
       } else {

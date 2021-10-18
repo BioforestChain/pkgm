@@ -18,7 +18,7 @@ defineCommand(
   (params, args) => {
     const warn = Warn("bfsp:bin/dev");
     let { format } = params;
-    if (ALLOW_FORMATS.has(format as any) === false) {
+    if (format !== undefined && ALLOW_FORMATS.has(format as any) === false) {
       warn(`invalid format: '${format}'`);
       format = undefined;
     }

@@ -112,19 +112,21 @@ export class ProfileMap {
       profileMap.set(pInfo.privatePath, (map = new Map()));
     }
     for (const profile of pInfo.profiles) {
-      let oldSourceFile = map.get(profile);
-      if (oldSourceFile !== undefined) {
-        if (typeof oldSourceFile === "string") {
-          oldSourceFile = new Set([oldSourceFile, profile]);
+      let sourceFiles = map.get(profile);
+      if (sourceFiles !== undefined) {
+        if (typeof sourceFiles === "string") {
+          sourceFiles = new Set([sourceFiles, pInfo.sourcePath]);
         } else {
-          oldSourceFile.add(profile);
+          sourceFiles.add(pInfo.sourcePath);
         }
-        if (oldSourceFile.size > 1) {
-          warn(`Duplicate profile:'${profile}' in files:${["", ...oldSourceFile].join("\n\t")}`);
-          continue;
-        }
+        // if (oldSourceFile.size > 1) {
+        //   warn(`Duplicate profile:'${profile}' in files:${["", ...oldSourceFile].join("\n\t")}`);
+        //   continue;
+        // }
+      } else {
+        sourceFiles = pInfo.sourcePath;
       }
-      map.set(profile, pInfo.sourcePath);
+      map.set(profile, sourceFiles);
     }
     this._map2.set(pInfo.sourcePath, pInfo);
   }
@@ -154,17 +156,23 @@ export class ProfileMap {
       }
     }
   }
-  toTsPaths(profiles: string[] = ["default"]) {
+  toTsPaths(_profileNameList: string[] = ["default"]) {
     const paths: { [key: Bfsp.Profile]: string[] } = {};
-    log("profiles", profiles);
+    log("profiles", _profileNameList);
+    const profileList = _profileNameList.map((profile) => {
+      if (profile.startsWith("#") === false) {
+        profile = "#" + profile;
+      }
+      return profile as Bfsp.Profile;
+    });
+
+    debugger;
     for (const [privatePath, map] of this._map1) {
       const profilePaths = new Set<string>();
 
+      // const multiProfileSources =
       /// 优先根据profiles来插入
-      for (let profile of profiles) {
-        if (profile.startsWith("#") === false) {
-          profile = "#" + profile;
-        }
+      for (const profile of profileList) {
         const sourceFiles = map.get(profile);
         if (sourceFiles === undefined) {
           continue;
@@ -172,7 +180,50 @@ export class ProfileMap {
         if (typeof sourceFiles === "string") {
           profilePaths.add(sourceFiles);
         } else {
-          profilePaths.add(sourceFiles.values().next().value!);
+          /// 从多个sourceFile中对比出于profiles匹配程度最高的sourceFile
+          let pInfoList: $ProfileInfo[] = [];
+          for (const sourceFile of sourceFiles) {
+            const pInfo = this._map2.get(sourceFile);
+            if (pInfo !== undefined) {
+              pInfoList.push(pInfo);
+            }
+          }
+          /// 1. 使用剩余的profiles来进行匹配，计算出得分
+          const restProfileList = profileList.slice(profileList.indexOf(profile) + 1);
+          if (restProfileList.length > 0) {
+            let maxProfileInfos = new Set<$ProfileInfo>();
+            let maxProfileInfoScore = 0;
+            for (const pInfo of pInfoList) {
+              let score = 0;
+              for (const [i, profile] of restProfileList.entries()) {
+                if (pInfo.profiles.includes(profile)) {
+                  score += 2 ** (restProfileList.length - i);
+                }
+              }
+              if (score === maxProfileInfoScore) {
+                maxProfileInfos.add(pInfo);
+              } else if (score > maxProfileInfoScore) {
+                maxProfileInfoScore =score
+                maxProfileInfos = new Set([pInfo]);
+              }
+            }
+
+            pInfoList = [...maxProfileInfos];
+            /// 如果只有一个最高分，直接返回；
+            if (pInfoList.length === 1) {
+              profilePaths.add(pInfoList[0].sourcePath);
+              continue;
+            }
+          }
+          /// 1. 使用少即是多的原则进行排序
+          /// 2. 根据文件名字顺序进行匹配
+          pInfoList.sort((a, b) => {
+            if (a.profiles.length === b.profiles.length) {
+              return a.sourcePath.localeCompare(b.sourcePath);
+            }
+            return a.profiles.length - b.profiles.length;
+          });
+          profilePaths.add(pInfoList[0].sourcePath);
         }
       }
 
@@ -444,7 +495,6 @@ export const watchTsConfig = (
       tsConfig.json.files = tsFilesLists.notestFiles.toArray();
       tsConfig.isolatedJson.files = tsFilesLists.notypeFiles.toArray();
       tsConfig.typingsJson.files = tsFilesLists.typeFiles.toArray();
-      log("tsConfig.tsTypingsConfig.files", tsConfig.typingsJson.files);
     }
 
     tsConfig.json.compilerOptions.paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);
@@ -470,7 +520,7 @@ export const watchTsConfig = (
       cwd: projectDirpath,
       ignoreInitial: false,
       followSymlinks: true,
-      ignored: ["*.d.ts", "#bfsp.ts", "node_modules"],
+      ignored: ["*.d.ts", "typings/dist", "dist", "#bfsp.ts", "node_modules"],
     }
   );
 

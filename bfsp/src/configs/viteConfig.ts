@@ -4,7 +4,7 @@ import { Debug } from "../logger";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import type { $TsConfig } from "./tsConfig";
-const log = Debug("bfsp:config/vite.config.ts");
+const log = Debug("bfsp:config/vite");
 // import { $TsConfig } from "./tsConfig";
 // import viteConfigTemplate from "../../assets/vite.config.template.ts?raw";
 

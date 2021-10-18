@@ -32,25 +32,24 @@ export const doDev = async (options: { format?: Bfsp.Format; root?: string; prof
 
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
 
-  const abortable = Closeable("bin:dev", async () => {
+  const abortable = Closeable<string, string>("bin:dev", async (reasons) => {
     /**防抖，避免不必要的多次调用 */
-    const debounce = new PromiseOut<unknown>();
+    const closeSign = new PromiseOut<unknown>();
     (async () => {
+      /// debounce
       await sleep(500);
-      if (debounce.is_finished) {
+      if (closeSign.is_finished) {
         log("skip vite build by debounce");
         return;
       }
 
       const userConfig = await subStreams.userConfigStream.getCurrent();
       const viteConfig = await subStreams.viteConfigStream.getCurrent();
-      const packageJson = await subStreams.packageJsonStream.getCurrent();
       const tsConfig = await subStreams.tsConfigStream.getCurrent();
 
       const viteConfigBuildOptions = {
         projectDirpath: root,
         viteConfig,
-        packageJson,
         tsConfig,
         format: format ?? userConfig.userConfig.formats?.[0],
       };
@@ -100,23 +99,23 @@ export const doDev = async (options: { format?: Bfsp.Format; root?: string; prof
       });
       //#endregion
 
-      debounce.onSuccess((reason) => {
+      closeSign.onSuccess((reason) => {
         log("close bfsp build, reason: ", reason);
+        preViteConfigBuildOptions = undefined;
         dev.close();
         tscWorker.terminate();
       });
     })();
 
     return (reason: unknown) => {
-      debounce.resolve(reason);
+      closeSign.resolve(reason);
     };
   });
 
   /// 开始监听并触发编译
-  subStreams.userConfigStream.onNext(() => (log("userConfig changed"), abortable.restart()));
-  subStreams.packageJsonStream.onNext(() => (log("packageJson changed"), abortable.restart()));
-  subStreams.viteConfigStream.onNext(() => (log("viteConfig changed"), abortable.restart()));
-  subStreams.tsConfigStream.onNext(() => (log("tsConfig changed"), abortable.restart()));
+  subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
+  subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
+  subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
   if (subStreams.viteConfigStream.hasCurrent()) {
     abortable.start();
   }

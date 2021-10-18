@@ -1,20 +1,19 @@
 import fs, { existsSync, statSync } from "node:fs";
 import { inspect } from "node:util";
+import path from "node:path";
 import typescript from "typescript";
 import type { InlineConfig } from "vite";
-import { $PackageJson } from "../src/configs/packageJson";
 import { $TsConfig } from "../src/configs/tsConfig";
 import type { $ViteConfig } from "../src/configs/viteConfig";
 import { Debug } from "../src/logger";
 import { getExtensionByFormat } from "../src/toolkit";
-const log = Debug("bfsp:config/vite-config.ts");
+const log = Debug("bfsp:config/vite");
 
 const FORMATS = ["cjs", "esm", "iife"] as const;
 
 export const ViteConfigFactory = (options: {
   projectDirpath: string;
   viteConfig: $ViteConfig;
-  packageJson: $PackageJson;
   tsConfig: $TsConfig;
   format?: Bfsp.Format;
   profiles?: string[];
@@ -73,7 +72,7 @@ export const ViteConfigFactory = (options: {
     },
     plugins: [
       (() => {
-        const parsedTsConfig: typescript.TranspileOptions = JSON.parse(JSON.stringify(options.tsConfig));
+        const parsedTsConfig: typescript.TranspileOptions = JSON.parse(JSON.stringify(options.tsConfig.json));
         const compilerOptions = (parsedTsConfig.compilerOptions ||= {});
         compilerOptions.emitDeclarationOnly = false;
         compilerOptions.noEmit = false;
@@ -95,6 +94,10 @@ export const ViteConfigFactory = (options: {
             try {
               const ts = fs.readFileSync(source, "utf8");
               if (!ts) {
+                return null;
+              }
+
+              if (ts.includes("@") === false) {
                 return null;
               }
 
@@ -120,21 +123,24 @@ export const ViteConfigFactory = (options: {
         };
       })(),
       (() => {
-        const subpathImports: any = options.packageJson.imports || {};
-        log("subpathImports", subpathImports);
+        const profileImports = options.tsConfig.json.compilerOptions.paths;
+        log("profileImports", profileImports);
+        const profileExternalId = "#PROFILE#";
         return {
-          name: "Subpath imports",
+          name: "Profile imports",
           resolveId(source: string) {
+            log("Profile imports", source);
             if (source.startsWith("#")) {
-              const imports = subpathImports[source];
-              if (imports) {
-                for (const profile of profiles) {
-                  if (profile in imports) {
-                    return imports[profile];
-                  }
-                }
-                return imports.default;
+              const imports = profileImports[source as Bfsp.Profile];
+              if (Array.isArray(imports)) {
+                return profileExternalId + path.resolve(projectDirpath, imports[0]);
               }
+            }
+            return null;
+          },
+          load(source: string) {
+            if (source.startsWith(profileExternalId)) {
+              return fs.readFileSync(source.slice(profileExternalId.length), "utf-8");
             }
             return null;
           },
