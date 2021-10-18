@@ -5,10 +5,13 @@ declare namespace Bfsp {
       [path in `.` | `./${string}`]: string;
     };
     formats?: Format[];
+    profiles?: string[];
   }
 
   type Format = "cjs" | "esm" | "iife";
   interface ConfigEnvInfo {
     mode: import("../src/configs/bfspUserConfig").BUILD_MODE;
   }
+
+  type Profile = `#${string}`;
 }

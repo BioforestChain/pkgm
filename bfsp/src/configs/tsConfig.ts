@@ -1,10 +1,11 @@
 import chokidar from "chokidar";
 import path, { resolve } from "node:path";
-import { Debug } from "../logger";
+import { Debug, Warn } from "../logger";
 import {
   $PathInfo,
   fileIO,
   folderIO,
+  getExtname,
   getSecondExtname,
   getTwoExtnames,
   List,
@@ -19,7 +20,8 @@ import {
   walkFiles,
 } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
-const log = Debug("bfsp:config/tsconfig.json");
+const log = Debug("bfsp:config/tsconfig");
+const warn = Warn("bfsp:config/tsconfig");
 
 // export const getFilename = (somepath: string) => {
 //   return somepath.match(/([^\\\/]+)\.[^\\\/]+$/)?.[1] ?? "";
@@ -31,23 +33,15 @@ const isTsFile = (filepathInfo: $PathInfo) => {
     return false;
   }
   const { extname } = filepathInfo;
-  /// 在assets文件夹下的json文件
-  if ((extname === ".json" && toPosixPath(filepathInfo.relative).startsWith("./assets/")) === false) {
-    return false;
-  }
-  /// ts文件（忽略类型定义文件）
   if (
-    ((extname === ".ts" && ".d" !== filepathInfo.secondExtname) ||
-      extname === ".tsx" ||
-      extname === ".cts" ||
-      extname === ".mts" ||
-      extname === ".ctsx" ||
-      extname === ".mtsx") === false
+    /// 在assets文件夹下的json文件
+    (extname === ".json" && toPosixPath(filepathInfo.relative).startsWith("./assets/")) ||
+    /// ts文件（忽略类型定义文件）
+    (isTsExt(extname) && ".d" !== filepathInfo.secondExtname)
   ) {
-    return false;
+    return notGitIgnored(filepathInfo.full); // promise<boolean>
   }
-
-  return notGitIgnored(filepathInfo.full); // promise<boolean>
+  return false;
 };
 
 const isTsExt = (extname: string) => {
@@ -84,6 +78,119 @@ const isBinFile = (projectDirpath: string, filepath: string) => {
   return false;
 };
 
+export class ProfileMap {
+  static getProfileInfo = (somepath: string) => {
+    let privatePath = somepath;
+    let profiles: Bfsp.Profile[] | undefined;
+    while (true) {
+      const execRes = /\#[^\\\/\.]+/.exec(privatePath);
+      if (execRes === null) {
+        break;
+      }
+      privatePath = privatePath.slice(0, execRes.index) + privatePath.slice(execRes.index + execRes[0].length);
+      (profiles ??= []).push(...(execRes[0].match(/\#[^\#]+/g) as any));
+    }
+    if (profiles !== undefined && profiles.length > 0) {
+      const extLen = getExtname(privatePath).length;
+      if (extLen !== 0) {
+        privatePath = privatePath.slice(0, -extLen);
+      }
+      const pInfo: $ProfileInfo = { privatePath, profiles, sourcePath: somepath };
+      return pInfo;
+    }
+  };
+  private _map1 = new Map<
+    /* #filepath */ string,
+    Map</* profile */ string, /* filepath#profile */ string | /* duplication filepath#profile */ Set<string>>
+  >();
+  private _map2 = new Map</* filepath#profile */ string, $ProfileInfo>();
+  addProfileInfo(pInfo: $ProfileInfo) {
+    const profileMap = this._map1;
+    let map = profileMap.get(pInfo.privatePath);
+    if (map === undefined) {
+      profileMap.set(pInfo.privatePath, (map = new Map()));
+    }
+    for (const profile of pInfo.profiles) {
+      let oldSourceFile = map.get(profile);
+      if (oldSourceFile !== undefined) {
+        if (typeof oldSourceFile === "string") {
+          oldSourceFile = new Set([oldSourceFile, profile]);
+        } else {
+          oldSourceFile.add(profile);
+        }
+        if (oldSourceFile.size > 1) {
+          warn(`Duplicate profile:'${profile}' in files:${["", ...oldSourceFile].join("\n\t")}`);
+          continue;
+        }
+      }
+      map.set(profile, pInfo.sourcePath);
+    }
+    this._map2.set(pInfo.sourcePath, pInfo);
+  }
+  removeProfileInfo(sourcePath: string) {
+    const pInfo = this._map2.get(sourcePath);
+    if (pInfo === undefined) {
+      return false;
+    }
+    this._map2.delete(sourcePath);
+    const profileMap = this._map1;
+    const map = profileMap.get(pInfo.privatePath);
+    if (map === undefined) {
+      return false;
+    }
+    for (const profile of pInfo.profiles) {
+      let oldSourceFile = map.get(profile);
+      if (oldSourceFile === undefined) {
+        continue;
+      }
+      if (typeof oldSourceFile === "string") {
+        map.delete(profile);
+      } else {
+        oldSourceFile.delete(sourcePath);
+        if (oldSourceFile.size === 1) {
+          map.set(profile, oldSourceFile.values().next().value!);
+        }
+      }
+    }
+  }
+  toTsPaths(profiles: string[] = ["default"]) {
+    const paths: { [key: Bfsp.Profile]: string[] } = {};
+    for (const [privatePath, map] of this._map1) {
+      const profilePaths = new Set<string>();
+
+      /// 优先根据profiles来插入
+      log("profiles", profiles, map);
+      for (let profile of profiles) {
+        if (profile.startsWith("#") === false) {
+          profile = "#" + profile;
+        }
+        const sourceFiles = map.get(profile);
+        if (sourceFiles === undefined) {
+          continue;
+        }
+        if (typeof sourceFiles === "string") {
+          profilePaths.add(sourceFiles);
+        } else {
+          profilePaths.add(sourceFiles.values().next().value!);
+        }
+      }
+
+      /// 否则使用默认顺序来插入
+      for (const sourceFiles of map.values()) {
+        if (typeof sourceFiles === "string") {
+          profilePaths.add(sourceFiles);
+        } else {
+          profilePaths.add(sourceFiles.values().next().value!);
+        }
+      }
+
+      paths[`#${privatePath.slice(2 /* './' */)}`] = [...profilePaths];
+    }
+    return paths;
+  }
+}
+export type $ProfileInfo = { privatePath: string; sourcePath: string; profiles: Bfsp.Profile[] };
+
 type TsFilesLists = {
   allFiles: List<string>;
   notypeFiles: List<string>;
@@ -91,6 +198,7 @@ type TsFilesLists = {
   typeFiles: List<string>;
   testFiles: List<string>;
   binFiles: List<string>;
+  profileMap: ProfileMap;
 };
 export const groupTsFilesByAdd = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
   for (const filepath of tsFiles) {
@@ -110,6 +218,12 @@ export const groupTsFilesByAdd = (projectDirpath: string, tsFiles: Iterable<stri
 
     if (isBinFile(projectDirpath, filepath)) {
       lists.binFiles.add(filepath);
+    }
+
+    const pInfo = ProfileMap.getProfileInfo(filepath);
+
+    if (pInfo !== undefined) {
+      lists.profileMap.addProfileInfo(pInfo);
     }
   }
 };
@@ -132,6 +246,8 @@ export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<s
     if (isBinFile(projectDirpath, filepath)) {
       lists.binFiles.remove(filepath);
     }
+
+    lists.profileMap.removeProfileInfo(filepath);
   }
 };
 
@@ -149,6 +265,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
     typeFiles: new ListSet<string>(),
     testFiles: new ListSet<string>(),
     binFiles: new ListSet<string>(),
+    profileMap: new ProfileMap(),
   };
 
   groupTsFilesByAdd(projectDirpath, allTsFileList, tsFilesLists);
@@ -177,6 +294,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
       resolveJsonModule: true,
       // baseUrl: "./",
       // types: ["node"],
+      paths: tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles),
       esModuleInterop: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
@@ -216,24 +334,24 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
   return {
     tsFilesLists,
 
-    tsConfig,
-    tsIsolatedConfig,
-    tsTypingsConfig,
+    json: tsConfig,
+    isolatedJson: tsIsolatedConfig,
+    typingsJson: tsTypingsConfig,
   };
 };
 
 export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
 export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserConfig, tsConfig: $TsConfig) => {
   return Promise.all([
-    fileIO.set(resolve(projectDirpath, "tsconfig.json"), Buffer.from(JSON.stringify(tsConfig.tsConfig, null, 2))),
+    fileIO.set(resolve(projectDirpath, "tsconfig.json"), Buffer.from(JSON.stringify(tsConfig.json, null, 2))),
     fileIO.set(
-      resolve(projectDirpath, tsConfig.tsConfig.references[0].path),
-      Buffer.from(JSON.stringify(tsConfig.tsIsolatedConfig, null, 2))
+      resolve(projectDirpath, tsConfig.json.references[0].path),
+      Buffer.from(JSON.stringify(tsConfig.isolatedJson, null, 2))
     ),
     (async () => {
       await fileIO.set(
-        resolve(projectDirpath, tsConfig.tsConfig.references[1].path),
-        Buffer.from(JSON.stringify(tsConfig.tsTypingsConfig, null, 2))
+        resolve(projectDirpath, tsConfig.json.references[1].path),
+        Buffer.from(JSON.stringify(tsConfig.typingsJson, null, 2))
       );
       /**index文件可以提交 */
       const indexFilepath = resolve(projectDirpath, "typings/index.d.ts");
@@ -288,6 +406,7 @@ export const watchTsConfig = (
   const follower = new SharedFollower<$TsConfig>();
 
   let tsConfig: $TsConfig | undefined;
+  let preTsConfigJson = "";
   /// 循环处理监听到的事件
   const looper = Loopable("watch tsconfigs", async () => {
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
@@ -295,6 +414,7 @@ export const watchTsConfig = (
       follower.push((tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig))));
     }
 
+    const { tsFilesLists } = tsConfig;
     while (cachedEventList.size !== 0) {
       // 归类, 然后清空缓存
       const addFileList: string[] = [];
@@ -310,7 +430,6 @@ export const watchTsConfig = (
       cachedEventList.clear();
 
       /// 将变更的文件写入tsconfig中
-      const { tsFilesLists } = tsConfig;
       if (addFileList.length > 0) {
         groupTsFilesByAdd(projectDirpath, addFileList, tsFilesLists);
       }
@@ -318,18 +437,26 @@ export const watchTsConfig = (
         groupTsFilesByRemove(projectDirpath, removeFileList, tsFilesLists);
       }
 
-      tsConfig.tsConfig.files = tsFilesLists.notestFiles.toArray();
-      tsConfig.tsIsolatedConfig.files = tsFilesLists.notypeFiles.toArray();
-      tsConfig.tsTypingsConfig.files = tsFilesLists.typeFiles.toArray();
-      log("tsConfig.tsTypingsConfig.files", tsConfig.tsTypingsConfig.files);
-
-      if (write) {
-        await writeTsConfig(projectDirpath, bfspUserConfig, tsConfig);
-      }
-
-      log("tsconfig changed!!");
-      follower.push(tsConfig);
+      tsConfig.json.files = tsFilesLists.notestFiles.toArray();
+      tsConfig.isolatedJson.files = tsFilesLists.notypeFiles.toArray();
+      tsConfig.typingsJson.files = tsFilesLists.typeFiles.toArray();
+      log("tsConfig.tsTypingsConfig.files", tsConfig.typingsJson.files);
     }
+
+    tsConfig.json.compilerOptions.paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);
+
+    const newTsConfigJson = JSON.stringify(tsConfig.json);
+    if (preTsConfigJson === newTsConfigJson) {
+      return;
+    }
+    preTsConfigJson = newTsConfigJson;
+
+    if (write) {
+      await writeTsConfig(projectDirpath, bfspUserConfig, tsConfig);
+    }
+
+    log("tsconfig changed!!");
+    follower.push(tsConfig);
   });
 
   //#region 监听文件变动来触发更新

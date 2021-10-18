@@ -1,8 +1,7 @@
 import chokidar from "chokidar";
 import { build } from "esbuild";
 import { createHash } from "node:crypto";
-import { existsSync, writeFileSync } from "node:fs";
-import { unlink } from "node:fs/promises";
+import { existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -169,6 +168,7 @@ export const readUserConfig = async (
       const cache_filename = `#bfsp.mjs`;
       const cache_filepath = resolve(dirname, cache_filename);
       try {
+        log("complie #bfsp");
         await build({
           entryPoints: [filename],
           absWorkingDir: dirname,
@@ -181,7 +181,7 @@ export const readUserConfig = async (
         });
         return await _readFromMjs(cache_filepath, options.refresh);
       } finally {
-        existsSync(cache_filepath) && (await unlink(cache_filepath));
+        existsSync(cache_filepath) && unlinkSync(cache_filepath);
       }
     }
     // if (filename === "#bfsp.mjs") {
