@@ -17,6 +17,7 @@ export const ViteConfigFactory = (options: {
   tsConfig: $TsConfig;
   format?: Bfsp.Format;
   profiles?: string[];
+  outDir?: string;
 }) => {
   let { format = "esm", profiles = ["default"] } = options;
   if (FORMATS.includes(format as any) === false) {
@@ -24,7 +25,7 @@ export const ViteConfigFactory = (options: {
   }
   const { projectDirpath, viteConfig } = options;
   const extension = getExtensionByFormat(format);
-  const outDir = format ? `dist/${format}` : undefined;
+  const outDir = options.outDir || (format ? `dist/${format}` : undefined);
 
   const viteBuildConfig: Readonly<InlineConfig> = {
     root: projectDirpath,
