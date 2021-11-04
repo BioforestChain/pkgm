@@ -37,6 +37,7 @@
     "bin/ava.ts",
     "bin/dev.ts",
     "bin/build.ts",
+    "bin/terser.ts",
     "bin/fmt.bin.ts",
     "bin/init.bin.ts",
     "bin/test.bin.ts",
@@ -54,6 +55,7 @@
     "src/configs/viteConfig.ts",
     "src/index.ts",
     "tests/config.test.ts",
+    "tests/build.test.ts",
     "bin.ts",
   ],
   "references": [

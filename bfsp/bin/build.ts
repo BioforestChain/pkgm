@@ -1,161 +1,314 @@
+import os from "node:os";
+import { sleep } from "@bfchain/util-extends-promise";
+import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import chalk from "chalk";
-import { existsSync, mkdirSync } from "node:fs";
+import { readdir, rmdir, stat } from "node:fs/promises";
+import fs from "fs";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { Worker } from "node:worker_threads";
+import type { RollupWatcher } from "rollup";
 import { build as buildBfsp } from "vite";
-import { fileIO, getExtensionByFormat } from "../src";
-import { $BfspProjectConfig, getBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { generatePackageJson } from "../src/configs/packageJson";
-import { $TsConfig, generateTsConfig } from "../src/configs/tsConfig";
-import { generateViteConfig } from "../src/configs/viteConfig";
+import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
+import { $TsConfig, generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
 import { createDevTui, Debug } from "../src/logger";
+import { Closeable, fileIO, folderIO, walkFiles } from "../src/toolkit";
 import { ViteConfigFactory } from "./vite-build-config-factory";
+import { renameSync } from "node:fs";
+import { $BfspUserConfig, parseExports, parseFormats } from "../src";
+import { generateViteConfig } from "../src/configs/viteConfig";
 
-const log = Debug("bfsp:bin/build");
-const { createTscLogger, createViteLogger } = createDevTui();
+const { createViteLogger, createTscLogger } = createDevTui();
+// const { createTscLogger } = {
+//   createTscLogger() {
+//     return {
+//       write(s: string) {
+//         console.log(s);
+//       },
+//       clear() {
+//         console.clear();
+//       },
+//       stop() {},
+//     };
+//   },
+// };
 
-const viteLogger = createViteLogger("info", {});
-export const doBuild = async (options: { root?: string; format?: Bfsp.Format; profiles?: string[] }) => {
-  /**
-   * 1. 按照要求使用tsc验证
-   * 2. vite执行打包
-   * 3. 根据Profiles生成配置文件( node=>package.json, web=>manifest or (none) )
-   *    当前只区分node和web，因为没有类似platform/runtime的字段，所以用profile关键字作区分
-   * 3.1 针对每个包含node/web关键字的profile做打包，输出到dist/{profile}下
-   */
-
-  const { profiles } = options;
-  if (!profiles) {
-    return;
-  }
-
-  let format = options.format;
-  const { root = process.cwd() } = options;
-  log("root", root);
-  const config = await getBfspProjectConfig(root);
-  const tsConfig = await generateTsConfig(config.projectDirpath, config.bfspUserConfig);
-  tsConfig.json.compilerOptions.target = "es2019";
-  tsConfig.json.compilerOptions.module = "es2019";
-
-  const viteConfig = await generateViteConfig(config.projectDirpath, config.bfspUserConfig, tsConfig);
-
-  const results: { profile: string; path: string }[] = []; // 统计打包结果输出到日志面板
-
-  for (const x of profiles) {
-    // platform coercion
-    let platform: "web" | "node" | "unknown" = "unknown";
-    if (x.indexOf("node") >= 0) {
-      platform = "node";
-      format = format || "cjs";
-    } else if (x.indexOf("web") >= 0) {
-      platform = "web";
-      format = "iife";
-    }
-
-    // build
-    const baseOutDir = path.join(config.projectDirpath, "dist", x, config.bfspUserConfig.userConfig.name);
-    const outDir = path.join(baseOutDir);
-    const viteConfigBuildOptions = {
-      projectDirpath: config.projectDirpath,
-      viteConfig,
-      tsConfig,
-      format,
-      outDir,
-    };
-    await doBuildInternal({ config, viteConfigBuildOptions });
-
-    // platform specific
-    if (platform === "node") {
-      const packageJson = await generatePackageJson(config.projectDirpath, config.bfspUserConfig, tsConfig);
-      packageJson.main = `${format}/index${getExtensionByFormat(format!)}`;
-      delete (packageJson as any).scripts;
-      const fileName = path.join(baseOutDir, "package.json");
-
-      if (!existsSync(outDir)) {
-        mkdirSync(outDir, { recursive: true });
-      }
-      fileIO.set(fileName, Buffer.from(JSON.stringify(packageJson, null, 2)));
-    }
-    results.push({ profile: x, path: baseOutDir });
-  }
-
-  results
-    .sort((x, y) => x.profile.localeCompare(y.profile))
-    .forEach((x) => {
-      viteLogger.info(`${chalk.cyan(x.profile)} bundled at: ${x.path}`);
-    });
-};
-const doBuildInternal = async (options: {
-  config: $BfspProjectConfig;
-  viteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory>;
-}) => {
-  const { config, viteConfigBuildOptions } = options;
-
-  const tscLogger = createTscLogger();
-  log("running bfsp build!");
-
+interface RunTscOption {
+  tsconfigPath: string;
+  onMessage: (s: string) => void;
+  onClear: () => void;
+  onSuccess?: () => void;
+  onExit?: () => void;
+  watch?: boolean;
+}
+const runTsc = (opts: RunTscOption) => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const tsconfigPath = path.join(config.projectDirpath, "tsconfig.json");
-
-  const compilation = new Promise<boolean>((resolveCompilation) => {
-    const tscWorker = new Worker(path.join(__dirname, "./tsc_worker.mjs"), {
-      argv: ["--build", tsconfigPath],
-      stdin: false,
-      stdout: false,
-      stderr: false,
-    });
-    tscWorker.on("message", (data) => {
-      const cmd = data[0];
-      if (cmd === "clearScreen") {
-        tscLogger.clear();
-      } else if (cmd === "write") {
-        const s = data[1];
-        const foundErrors = s.match(/Found (\d+) error/);
-        if (foundErrors !== null) {
-          // no need for error count check. ts won't report 'found 0 error' when not in watch mode
-          tscWorker.terminate();
-          resolveCompilation(false);
-        }
-        tscLogger.write(s);
-      } else if (cmd === "exit") {
-        tscWorker.terminate();
-        resolveCompilation(data[1] === 0); // exitCode===0 for success
-      }
-    });
+  const workerMjsPath = path.join(__dirname, "../tsc_worker.mjs");
+  const tscWorker = new Worker(workerMjsPath, {
+    argv: ["--build", opts.tsconfigPath, opts.watch ? "-w" : ""],
+    stdin: false,
+    stdout: false,
+    stderr: false,
   });
-  const success = await compilation;
-  if (!success) {
+  const ret = {
+    stop() {
+      tscWorker.terminate();
+    },
+  };
+
+  tscWorker.on("message", (data) => {
+    const cmd = data[0];
+    if (cmd === "clearScreen") {
+      opts.onClear();
+    } else if (cmd === "write") {
+      const foundErrors = data[1].match(/Found (\d+) error/);
+      if (foundErrors !== null) {
+        const errorCount = parseInt(foundErrors[1]);
+        if (errorCount === 0) {
+          opts.onSuccess && opts.onSuccess();
+        }
+      }
+      opts.onMessage(data[1]);
+    } else if (cmd === "exit") {
+      opts.onExit && opts.onExit();
+    }
+  });
+  return ret;
+};
+export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) => void) {
+  if (items.length < numContainer) {
+    items.forEach((x) => cb([x]));
     return;
   }
+  const avg = Math.floor(items.length / numContainer);
+  const mod = items.length % numContainer;
+  for (let i = 0; i < numContainer; i++) {
+    const start = i * avg;
+    const slicedItems = items.slice(start, start + avg);
+    if (mod > 0 && i < mod) {
+      slicedItems.push(items[items.length - mod + i]);
+    }
+    cb(slicedItems);
+  }
+}
+const runTerser = async (sourceDir: string) => {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = dirname(__filename);
 
-  const viteBuildConfig = ViteConfigFactory(viteConfigBuildOptions);
-
-  try {
-    await buildBfsp({
-      ...viteBuildConfig,
-      build: {
-        ...viteBuildConfig.build,
-        minify: true,
-        watch: null,
-        sourcemap: true,
-        rollupOptions: {
-          ...viteBuildConfig.build?.rollupOptions,
-          watch: false,
-          onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
-        },
-      },
-      mode: "production",
-      customLogger: viteLogger,
+  const files = [] as string[];
+  await recurDo(sourceDir, (p) => {
+    if (/\.[mc]?js[x]?$/.test(p)) {
+      files.push(p);
+    }
+  });
+  const logger = createTscLogger();
+  const workerCount = os.cpus().length - 1;
+  const tasks = [] as Promise<{ path: string; success: boolean }[]>[];
+  rearrange(workerCount, files, (items) => {
+    const task = new Promise<{ path: string; success: boolean }[]>((resolve) => {
+      const worker = new Worker(path.join(__dirname, "../terser_worker.mjs"));
+      worker.on("message", (v) => {
+        if (v.results) {
+          worker.terminate();
+          resolve(v.results);
+        }
+      });
+      worker.postMessage({ paths: items });
     });
+    tasks.push(task);
+  });
+  const results = (await Promise.all(tasks)).flatMap((v) => v.flatMap((x) => x)).filter((x) => !x.success);
+  if (results.length > 0) {
+    results.forEach((x) => {
+      logger.write(`minify fail: ${x.path}`);
+    });
+  }
+};
+const recurDo = async (p: string, cb: (f: string) => void) => {
+  if ((await stat(p)).isFile()) {
+    cb(p);
+  } else {
+    const files = await readdir(p);
+    for (const f of files) {
+      await recurDo(path.join(p, f), cb);
+    }
+  }
+};
+const tscOutRoot = `./node_modules/.bfsp/tsc`;
+const bundleOutRoot = `./node_modules/.bfsp/build`;
+const finalOutRoot = `./build`;
 
-    tscLogger.clear();
-    tscLogger.write("build complete");
-    tscLogger.stop();
-  } catch (e) {
-    // viteLogger will log exception message , so e is unused here
-    viteLogger.error("bundle error");
+// 任务：生成阶段2的tsconfig
+const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsConfig: $TsConfig, files: string[]) => {
+  const tscOutStage2TypingsRoot = path.resolve(outDir, "typings");
+  const c = JSON.parse(JSON.stringify(tsConfig)) as typeof tsConfig;
+  c.json.compilerOptions.noEmit = false; // true无法生成js文件
+  c.json.compilerOptions.target = "es2019";
+  c.json.compilerOptions.outDir = outDir;
+  c.isolatedJson.compilerOptions.outDir = outDir;
+  c.typingsJson.compilerOptions.outDir = tscOutStage2TypingsRoot;
+  delete (c.json as any).references;
+
+  c.json.files = files; //Object.keys(userConfig.exportsDetail.formatedExports).map((x) => `${x}.ts`);
+
+  await fileIO.setVal(
+    path.resolve(path.join(bundlePath, "tsconfig.json")),
+    Buffer.from(JSON.stringify(c.json, null, 2))
+  );
+  return c;
+};
+
+const taskRenameJsToTs = async (rp: string) => {
+  const files: string[] = [];
+  await recurDo(rp, (p) => {
+    if (/\.[mc]?js[x]?$/.test(p)) {
+      let newPath = p;
+      newPath = newPath.replace(/(.*)\.[mc]?js[x]?$/, "$1.ts");
+      renameSync(p, newPath);
+      files.push(newPath);
+    }
+  });
+  return files;
+};
+const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactory>) => {
+  const viteLogger = createViteLogger("info", {});
+  await buildBfsp({
+    ...viteBuildConfig,
+    build: {
+      ...viteBuildConfig.build,
+      minify: false,
+      watch: null,
+      rollupOptions: {
+        ...viteBuildConfig.build?.rollupOptions,
+        onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
+      },
+    },
+    customLogger: viteLogger,
+  });
+};
+export const doBuild = async (options: { format?: Bfsp.Format; root?: string; profiles?: string[] }) => {
+  const log = Debug("bfsp:bin/build");
+
+  const { root = process.cwd(), format } = options;
+
+  log("root", root);
+
+  const config = await getBfspProjectConfig(root);
+
+  /// 初始化写入配置
+  const subConfigs = await writeBfspProjectConfig(config);
+
+  await rmdir(tscOutRoot, { recursive: true });
+  await rmdir(bundleOutRoot, { recursive: true });
+
+  /// 监听项目变动
+  const subStreams = watchBfspProjectConfig(config!, subConfigs);
+  const tscLogger = createTscLogger();
+
+  const abortable = Closeable<string, string>("bin:build", async (reasons) => {
+    /**防抖，避免不必要的多次调用 */
+    const closeSign = new PromiseOut<unknown>();
+    (async () => {
+      /// debounce
+      await sleep(500);
+      if (closeSign.is_finished) {
+        log("skip vite build by debounce");
+        return;
+      }
+
+      const userConfig = await subStreams.userConfigStream.getCurrent();
+      const tsConfig = await subStreams.tsConfigStream.getCurrent();
+
+      log("running bfsp build!");
+
+      const baseRunTscOpts = {
+        onClear: () => tscLogger.clear(),
+        onMessage: (s) => tscLogger.write(s),
+      } as RunTscOption;
+
+      // watch模式监听ts代码改动
+      const tscWatcher = runTsc({
+        ...baseRunTscOpts,
+        tsconfigPath: path.join(root, "tsconfig.json"),
+        onSuccess: async () => {
+          // tsc验证没问题，开始执行vite打包
+          const buildUserConfigs = userConfig.userConfig.build || [userConfig.userConfig];
+          for (const x of buildUserConfigs) {
+            const userConfigBuild = Object.assign({}, userConfig.userConfig, x);
+            const bundlePath = path.join(bundleOutRoot, userConfigBuild.name);
+
+            const viteConfig1 = await generateViteConfig(
+              root,
+              {
+                userConfig: userConfigBuild,
+                exportsDetail: parseExports(userConfigBuild.exports),
+                formats: parseFormats(userConfigBuild.formats),
+              },
+              tsConfig
+            );
+
+            const c = ViteConfigFactory({
+              projectDirpath: root,
+              viteConfig: viteConfig1,
+              tsConfig,
+              format: format ?? userConfigBuild.formats?.[0],
+              outDir: bundlePath,
+            });
+            await taskViteBuild({ ...c, mode: "development" }); // vite 打包
+
+            const files = await taskRenameJsToTs(path.join(root, bundlePath)); // 改打包出来的文件后缀 js=>ts
+
+            // 在打包出来的目录生成tsconfig，主要是为了es2020->es2019
+            const outDir = path.resolve(finalOutRoot, `${userConfigBuild.name}-${options.profiles!.join("-")}`);
+            const distDir = path.join(outDir, "dist");
+            await taskWriteTsConfigStage2(
+              bundlePath,
+              distDir,
+              tsConfig,
+              files.map((x) => path.relative(path.join(root, bundlePath), x))
+            );
+            const packageJson = {
+              name: userConfigBuild.name,
+              files: ["dist"],
+              ...userConfigBuild.packageJson,
+            };
+
+            // 打包目录执行tsc
+            const handle = runTsc({
+              ...baseRunTscOpts,
+              tsconfigPath: path.resolve(path.join(bundlePath, "tsconfig.json")),
+              onExit: async () => {
+                handle.stop();
+                // 写入package.json
+                fileIO.setVal(path.join(outDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
+                await runTerser(distDir); // 压缩
+                tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} at ${chalk.blue(outDir)}`);
+              },
+            });
+          }
+        },
+
+        watch: true,
+      });
+
+      closeSign.onSuccess((reason) => {
+        log("close bfsp build, reason: ", reason);
+        tscWatcher.stop();
+      });
+    })();
+
+    return (reason: unknown) => {
+      closeSign.resolve(reason);
+    };
+  });
+
+  /// 开始监听并触发编译
+  subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
+  subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
+  subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
+  if (subStreams.viteConfigStream.hasCurrent()) {
+    abortable.start();
   }
 };
