@@ -34,8 +34,11 @@
     "assets/package.template.json",
     "bin/ava/worker.ts",
     "bin/tsc/worker.ts",
+    "bin/tsc/runner.ts",
     "bin/terser/worker.ts",
+    "bin/terser/runner.ts",
     "bin/vite/configFactory.ts",
+    "bin/util.ts",
     "bin/bfsp.cmd.ts",
     "bin/test.ts",
     "bin/dev.bin.ts",
@@ -59,6 +62,8 @@
     "tests/config.test.ts",
     "tests/build.test.ts",
     "bin.ts",
+    "./bin/RunTscOption.ts",
+    "./bin/rearrange.ts",
   ],
   "references": [
     // {

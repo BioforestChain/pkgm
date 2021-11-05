@@ -200,15 +200,16 @@ export const folderIO = new ReaddirCache();
 
 export async function* walkFiles(
   dirpath: string,
-  dirFilter: (dirpath: string) => BFChainUtil.PromiseMaybe<boolean> = () => true
+  opts: { dirFilter?: (dirpath: string) => BFChainUtil.PromiseMaybe<boolean>; refreshCache?: boolean } = {}
 ): AsyncGenerator<string> {
-  for (const basename of await folderIO.get(dirpath)) {
+  const { dirFilter = () => true } = opts;
+  for (const basename of await folderIO.get(dirpath, opts.refreshCache)) {
     const somepath = path.resolve(dirpath, basename);
     try {
       if (statSync(somepath).isFile()) {
         yield somepath;
       } else if (await dirFilter(somepath)) {
-        yield* walkFiles(somepath);
+        yield* walkFiles(somepath, opts);
       }
     } catch {}
   }

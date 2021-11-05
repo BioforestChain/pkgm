@@ -10,6 +10,7 @@ import { build as buildBfsp } from "vite";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { createDevTui, Debug } from "../src/logger";
 import { Closeable } from "../src/toolkit";
+import { runTsc } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
 
 export const doDev = async (options: { format?: Bfsp.Format; root?: string; profiles?: string[] }) => {
@@ -80,31 +81,20 @@ export const doDev = async (options: { format?: Bfsp.Format; root?: string; prof
 
       //#region tsc
 
-      const __filename = fileURLToPath(import.meta.url);
-      const __dirname = dirname(__filename);
-      const tsconfigPath = path.join(root, "tsconfig.json");
-      const tscWorker = new Worker(path.join(__dirname, "./tsc_worker.mjs"), {
-        argv: ["--build", tsconfigPath, "-w"],
-        stdin: false,
-        stdout: false,
-        stderr: false,
-      });
       const tscLogger = createTscLogger();
-      tscWorker.on("message", (data) => {
-        const cmd = data[0];
-        if (cmd === "clearScreen") {
-          tscLogger.clear();
-        } else if (cmd === "write") {
-          tscLogger.write(data[1]);
-        }
+      const tscWatcher = runTsc({
+        onClear: () => tscLogger.clear(),
+        onMessage: (s) => tscLogger.write(s),
+        tsconfigPath: path.join(root, "tsconfig.json"),
       });
+
       //#endregion
 
       closeSign.onSuccess((reason) => {
         log("close bfsp build, reason: ", reason);
         preViteConfigBuildOptions = undefined;
         dev.close();
-        tscWorker.terminate();
+        tscWatcher.stop();
       });
     })();
 

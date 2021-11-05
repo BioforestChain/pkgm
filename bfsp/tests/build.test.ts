@@ -1,5 +1,5 @@
 import test from "ava";
-import { rearrange } from "../bin/build.core";
+import { rearrange } from "../bin/util";
 
 test("rearrange less 1", async (t) => {
   const items2 = [] as number[][];

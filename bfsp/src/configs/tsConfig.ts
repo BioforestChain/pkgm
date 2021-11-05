@@ -60,11 +60,9 @@ const isTypeFile = (projectDirpath: string, filepath: string) =>
   filepath.endsWith(".type.ts") || filepath.startsWith("./typings/");
 
 const isTestFile = (projectDirpath: string, filepath: string) => {
-  if (filepath.startsWith("./tests/")) {
-    const exts = getTwoExtnames(filepath);
-    if (exts !== undefined) {
-      return isTsExt(exts.ext1) && (".test" === exts.ext2 || ".bm" === exts.ext1);
-    }
+  const exts = getTwoExtnames(filepath);
+  if (exts !== undefined) {
+    return ".test" === exts.ext1 || (filepath.startsWith("./tests/") && ".bm" === exts.ext1);
   }
   return false;
 };
@@ -203,7 +201,7 @@ export class ProfileMap {
               if (score === maxProfileInfoScore) {
                 maxProfileInfos.add(pInfo);
               } else if (score > maxProfileInfoScore) {
-                maxProfileInfoScore =score
+                maxProfileInfoScore = score;
                 maxProfileInfos = new Set([pInfo]);
               }
             }
@@ -304,7 +302,7 @@ export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<s
 };
 
 export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $BfspUserConfig) => {
-  const allTsFileList = await walkFiles(projectDirpath, (fullDirpath) => notGitIgnored(fullDirpath))
+  const allTsFileList = await walkFiles(projectDirpath, { dirFilter: (fullDirpath) => notGitIgnored(fullDirpath) })
     .map((fullFilepath) => PathInfoParser(projectDirpath, fullFilepath, true))
     .filter((pathInfo) => isTsFile(pathInfo))
     .map((pathInfo) => toPosixPath(pathInfo.relative))

@@ -2,124 +2,21 @@ import { sleep } from "@bfchain/util-extends-promise";
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import chalk from "chalk";
 import { renameSync } from "node:fs";
-import { readdir, rm, stat } from "node:fs/promises";
-import os from "node:os";
-import path, { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { Worker } from "node:worker_threads";
+import { rm } from "node:fs/promises";
+import path from "node:path";
 import { build as buildBfsp } from "vite";
 import { parseExports, parseFormats } from "../src";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { $TsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import { createDevTui, Debug } from "../src/logger";
-import { Closeable, fileIO } from "../src/toolkit";
+import { Closeable, fileIO, walkFiles } from "../src/toolkit";
+import { runTerser } from "./terser/runner";
+import { runTsc, RunTscOption } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
 
 const { createViteLogger, createTscLogger } = createDevTui();
 
-interface RunTscOption {
-  tsconfigPath: string;
-  onMessage: (s: string) => void;
-  onClear: () => void;
-  onSuccess?: () => void;
-  onExit?: () => void;
-  watch?: boolean;
-}
-const runTsc = (opts: RunTscOption) => {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  const workerMjsPath = path.join(__dirname, "../tsc_worker.mjs");
-  const tscWorker = new Worker(workerMjsPath, {
-    argv: ["--build", opts.tsconfigPath, opts.watch ? "-w" : ""],
-    stdin: false,
-    stdout: false,
-    stderr: false,
-  });
-  const ret = {
-    stop() {
-      tscWorker.terminate();
-    },
-  };
-
-  tscWorker.on("message", (data) => {
-    const cmd = data[0];
-    if (cmd === "clearScreen") {
-      opts.onClear();
-    } else if (cmd === "write") {
-      const foundErrors = data[1].match(/Found (\d+) error/);
-      if (foundErrors !== null) {
-        const errorCount = parseInt(foundErrors[1]);
-        if (errorCount === 0) {
-          opts.onSuccess && opts.onSuccess();
-        }
-      }
-      opts.onMessage(data[1]);
-    } else if (cmd === "exit") {
-      opts.onExit && opts.onExit();
-    }
-  });
-  return ret;
-};
-export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) => void) {
-  if (items.length < numContainer) {
-    items.forEach((x) => cb([x]));
-    return;
-  }
-  const avg = Math.floor(items.length / numContainer);
-  const mod = items.length % numContainer;
-  for (let i = 0; i < numContainer; i++) {
-    const start = i * avg;
-    const slicedItems = items.slice(start, start + avg);
-    if (mod > 0 && i < mod) {
-      slicedItems.push(items[items.length - mod + i]);
-    }
-    cb(slicedItems);
-  }
-}
-const runTerser = async (sourceDir: string) => {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-
-  const files = [] as string[];
-  await recurDo(sourceDir, (p) => {
-    if (/\.[mc]?js[x]?$/.test(p)) {
-      files.push(p);
-    }
-  });
-  const logger = createTscLogger();
-  const workerCount = os.cpus().length - 1;
-  const tasks = [] as Promise<{ path: string; success: boolean }[]>[];
-  rearrange(workerCount, files, (items) => {
-    const task = new Promise<{ path: string; success: boolean }[]>((resolve) => {
-      const worker = new Worker(path.join(__dirname, "../terser_worker.mjs"));
-      worker.on("message", (v) => {
-        if (v.results) {
-          worker.terminate();
-          resolve(v.results);
-        }
-      });
-      worker.postMessage({ paths: items });
-    });
-    tasks.push(task);
-  });
-  const results = (await Promise.all(tasks)).flatMap((v) => v.flatMap((x) => x)).filter((x) => !x.success);
-  if (results.length > 0) {
-    results.forEach((x) => {
-      logger.write(`minify fail: ${x.path}`);
-    });
-  }
-};
-const recurDo = async (p: string, cb: (f: string) => void) => {
-  if ((await stat(p)).isFile()) {
-    cb(p);
-  } else {
-    const files = await readdir(p);
-    for (const f of files) {
-      await recurDo(path.join(p, f), cb);
-    }
-  }
-};
 const tscOutRoot = `./node_modules/.bfsp/tsc`;
 const bundleOutRoot = `./node_modules/.bfsp/build`;
 const finalOutRoot = `./build`;
@@ -146,14 +43,14 @@ const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsCon
 
 const taskRenameJsToTs = async (rp: string) => {
   const files: string[] = [];
-  await recurDo(rp, (p) => {
+  for await (const p of walkFiles(rp, { refreshCache: true })) {
     if (/\.[mc]?js[x]?$/.test(p)) {
       let newPath = p;
       newPath = newPath.replace(/(.*)\.[mc]?js[x]?$/, "$1.ts");
       renameSync(p, newPath);
       files.push(newPath);
     }
-  });
+  }
   return files;
 };
 const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactory>) => {
@@ -169,6 +66,7 @@ const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactor
         onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
       },
     },
+    mode: "production",
     customLogger: viteLogger,
   });
 };
@@ -267,7 +165,7 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
                 handle.stop();
                 // 写入package.json
                 fileIO.setVal(path.join(outDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
-                await runTerser(distDir); // 压缩
+                await runTerser({ sourceDir: distDir, logError: (s) => tscLogger.write(s) }); // 压缩
                 tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} at ${chalk.blue(outDir)}`);
               },
             });
