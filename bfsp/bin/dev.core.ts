@@ -83,6 +83,7 @@ export const doDev = async (options: { format?: Bfsp.Format; root?: string; prof
 
       const tscLogger = createTscLogger();
       const tscWatcher = runTsc({
+        watch: true,
         onClear: () => tscLogger.clear(),
         onMessage: (s) => tscLogger.write(s),
         tsconfigPath: path.join(root, "tsconfig.json"),
