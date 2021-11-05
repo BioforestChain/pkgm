@@ -190,9 +190,9 @@ class ReaddirCache extends CacheGetter<string, string[]> {
   hasVal(dirpath: string) {
     return existsSync(dirpath) && statSync(dirpath).isDirectory();
   }
-  async tryInit(dirpath: string) {
+  async tryInit(dirpath: string, options?: { recursive?: boolean }) {
     if (this.hasVal(dirpath) === false) {
-      return mkdirSync(dirpath);
+      return mkdirSync(dirpath, options);
     }
   }
 }

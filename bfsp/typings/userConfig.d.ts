@@ -6,6 +6,10 @@ declare namespace Bfsp {
     };
     formats?: Format[];
     profiles?: string[];
+    build?: Partial<UserConfig>[];
+    packageJson?: {
+      version: string;
+    };
   }
 
   type Format = "cjs" | "esm" | "iife";

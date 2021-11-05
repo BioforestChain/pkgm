@@ -166,7 +166,7 @@ export class ProfileMap {
       return profile as Bfsp.Profile;
     });
 
-    debugger;
+    // debugger;
     for (const [privatePath, map] of this._map1) {
       const profilePaths = new Set<string>();
 

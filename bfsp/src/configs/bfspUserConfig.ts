@@ -130,7 +130,7 @@ export const parseExports = (exports: Bfsp.UserConfig["exports"]) => {
 };
 
 export const ALLOW_FORMATS = new Set<Bfsp.Format>(["iife", "cjs", "esm"]);
-const parseFormats = (formats: Bfsp.UserConfig["formats"] = []) => {
+export const parseFormats = (formats: Bfsp.UserConfig["formats"] = []) => {
   const formatSet = new Set(formats.filter((f) => ALLOW_FORMATS.has(f)));
   formats = [...formatSet];
   if (formats.length === 0) {

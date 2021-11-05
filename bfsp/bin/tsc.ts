@@ -26,10 +26,13 @@ export function doTsc() {
 
   if (parentPort) {
     ts.sys.clearScreen = () => {
-      parentPort!.postMessage("clearScreen");
+      parentPort!.postMessage(["clearScreen"]);
     };
     ts.sys.write = (s) => {
       parentPort!.postMessage(["write", s]);
+    };
+    ts.sys.exit = (c) => {
+      parentPort!.postMessage(["exit", c]);
     };
     ts.sys.writeOutputIsTTY = () => true;
   }

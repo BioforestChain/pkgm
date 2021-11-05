@@ -18,7 +18,7 @@ const screen = blessed.screen({
   sendFocus: true,
   terminal: chalk.supportsColor && chalk.supportsColor.has256 ? "xterm-256color" : "xterm",
   fullUnicode: true,
-  title: "bfsp - power by @bfchain/pkgm",
+  title: "bfsp - powered by @bfchain/pkgm",
 });
 screen.render();
 
@@ -342,6 +342,9 @@ export function createDevTui() {
       },
       clear() {
         tscLog.clearScreen();
+      },
+      stop() {
+        tscStateHelper.stopBuilding();
       },
     };
   }

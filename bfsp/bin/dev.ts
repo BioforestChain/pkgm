@@ -91,9 +91,10 @@ export const doDev = async (options: { format?: Bfsp.Format; root?: string; prof
       });
       const tscLogger = createTscLogger();
       tscWorker.on("message", (data) => {
-        if (data === "clearScreen") {
+        const cmd = data[0];
+        if (cmd === "clearScreen") {
           tscLogger.clear();
-        } else if (Array.isArray(data) && data[0] === "write") {
+        } else if (cmd === "write") {
           tscLogger.write(data[1]);
         }
       });
