@@ -13,7 +13,7 @@ export interface RunTscOption {
 export const runTsc = (opts: RunTscOption) => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const workerMjsPath = path.join(__dirname, "../tsc_worker.mjs");
+  const workerMjsPath = path.join(__dirname, "./tsc_worker.mjs");
   const tscWorker = new Worker(workerMjsPath, {
     argv: ["--build", opts.tsconfigPath, opts.watch ? "-w" : ""],
     stdin: false,

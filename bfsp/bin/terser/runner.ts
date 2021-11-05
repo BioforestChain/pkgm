@@ -19,7 +19,7 @@ export const runTerser = async (opts: { sourceDir: string; logError: (log: strin
   const tasks = [] as Promise<{ path: string; success: boolean }[]>[];
   rearrange(workerCount, files, (items) => {
     const task = new Promise<{ path: string; success: boolean }[]>((resolve) => {
-      const worker = new Worker(path.join(__dirname, "../terser_worker.mjs"));
+      const worker = new Worker(path.join(__dirname, "./terser_worker.mjs"));
       worker.on("message", (v) => {
         if (v.results) {
           worker.terminate();

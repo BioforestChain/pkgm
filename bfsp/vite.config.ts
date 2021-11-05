@@ -1,6 +1,8 @@
-import { defineConfig } from "vite";
+import { closeSync, existsSync, openSync, readFileSync, writeSync, writeFileSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import type { InputOption, ModuleFormat } from "rollup";
-import { existsSync, statSync } from "node:fs";
+import { defineConfig } from "vite";
 
 const libFormat = (process.argv.find((arg) => arg.startsWith("--format="))?.split("=")[1] ?? "esm") as ModuleFormat;
 
@@ -60,5 +62,27 @@ export default defineConfig((info) => {
         },
       },
     },
+    plugins: [
+      {
+        name: "shebang",
+        banner: async () => {},
+        closeBundle: async () => {
+          // const __filename = fileURLToPath(import.meta.url);
+          // console.log(__filename)
+          // const __dirname = path.dirname(__filename);
+          const packageJsonPath = path.resolve(__dirname, "./package.json");
+          const packageJson = new Function(`return ${readFileSync(packageJsonPath, "utf-8")}`)();
+          const bin = packageJson.bin;
+          if (!(typeof bin === "object" && bin)) {
+            return;
+          }
+          for (const binname in bin) {
+            const binFilepath = path.resolve(__dirname, bin[binname]);
+            writeFileSync(binFilepath, "#!/usr/bin/env node\n" + readFileSync(binFilepath));
+            console.log(`inserted shebang to ${binFilepath}`);
+          }
+        },
+      },
+    ],
   };
 });
