@@ -62,7 +62,7 @@ const isTypeFile = (projectDirpath: string, filepath: string) =>
 const isTestFile = (projectDirpath: string, filepath: string) => {
   const exts = getTwoExtnames(filepath);
   if (exts !== undefined) {
-    return ".test" === exts.ext1 || (filepath.startsWith("./tests/") && ".bm" === exts.ext1);
+    return ".test" === exts.ext2 || (filepath.startsWith("./tests/") && ".bm" === exts.ext2);
   }
   return false;
 };
@@ -71,7 +71,7 @@ const isBinFile = (projectDirpath: string, filepath: string) => {
   if (filepath.startsWith("./bin/")) {
     const exts = getTwoExtnames(filepath);
     if (exts !== undefined) {
-      return isTsExt(exts.ext1) && (".cmd" === exts.ext2 || ".tui" === exts.ext1);
+      return isTsExt(exts.ext2) && (".cmd" === exts.ext2 || ".tui" === exts.ext2);
     }
   }
   return false;
