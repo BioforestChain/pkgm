@@ -11,19 +11,66 @@ export const LogLevels: Record<LogLevel, number> = {
   warn: 2,
   info: 3,
 };
-const screen = blessed.screen({
-  smartCSR: true,
-  useBCE: true,
-  debug: true,
-  sendFocus: true,
-  terminal: chalk.supportsColor && chalk.supportsColor.has256 ? "xterm-256color" : "xterm",
-  fullUnicode: true,
-  title: "bfsp - powered by @bfchain/pkgm",
-});
-screen.render();
+let screen: Widgets.Screen | undefined;
+const getScreen = () => {
+  debugger;
+  if (screen === undefined) {
+    screen = blessed.screen({
+      smartCSR: true,
+      useBCE: true,
+      debug: true,
+      sendFocus: true,
+      terminal: chalk.supportsColor && chalk.supportsColor.has256 ? "xterm-256color" : "xterm",
+      fullUnicode: true,
+      title: "bfsp - powered by @bfchain/pkgm",
+    });
+    screen.render();
+
+    queueMicrotask(() => {
+      //// 关闭进程的交互
+
+      let asking = false;
+      let dangerQuestion: Widgets.QuestionElement | undefined;
+      function initDangerQuestion() {
+        const dangerQuestion = blessed.question({
+          parent: screen,
+          border: "line",
+          height: "shrink",
+          width: "half",
+          top: "center",
+          left: "center",
+          label: " {red-fg}WARNING{/red-fg} ",
+          style: { border: { fg: "yellow" } },
+          tags: true,
+          keys: true,
+          vi: true,
+        });
+        dangerQuestion._.okay.content = `${chalk.underline("Y")}es`;
+        dangerQuestion._.cancel.content = `${chalk.underline("N")}o`;
+        return dangerQuestion;
+      }
+
+      screen!.key([/* "escape", "q",  */ "C-c"], function (ch, key) {
+        dangerQuestion ??= initDangerQuestion();
+
+        if (asking) {
+          return process.exit(0);
+        }
+        asking = true;
+        dangerQuestion.ask("confirm to exit?", (err, confirmed) => {
+          asking = false;
+          if (confirmed) {
+            return process.exit(0);
+          }
+        });
+      });
+    });
+  }
+  return screen;
+};
 
 export function destroyScreen() {
-  screen.destroy();
+  screen?.destroy();
 }
 
 class ScrollableLog {
@@ -93,6 +140,7 @@ class ScrollableLog {
 }
 
 export function createDevTui() {
+  const screen = getScreen();
   const viteLog = new ScrollableLog({
     top: "60%",
     left: "left",
@@ -407,41 +455,3 @@ export function Warn(label: string) {
     { enabled: true }
   );
 }
-
-//// 关闭进程的交互
-
-let asking = false;
-let dangerQuestion: Widgets.QuestionElement | undefined;
-function initDangerQuestion() {
-  const dangerQuestion = blessed.question({
-    parent: screen,
-    border: "line",
-    height: "shrink",
-    width: "half",
-    top: "center",
-    left: "center",
-    label: " {red-fg}WARNING{/red-fg} ",
-    style: { border: { fg: "yellow" } },
-    tags: true,
-    keys: true,
-    vi: true,
-  });
-  dangerQuestion._.okay.content = `${chalk.underline("Y")}es`;
-  dangerQuestion._.cancel.content = `${chalk.underline("N")}o`;
-  return dangerQuestion;
-}
-
-screen.key([/* "escape", "q",  */ "C-c"], function (ch, key) {
-  dangerQuestion ??= initDangerQuestion();
-
-  if (asking) {
-    return process.exit(0);
-  }
-  asking = true;
-  dangerQuestion.ask("confirm to exit?", (err, confirmed) => {
-    asking = false;
-    if (confirmed) {
-      return process.exit(0);
-    }
-  });
-});

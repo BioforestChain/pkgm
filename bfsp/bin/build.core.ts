@@ -15,7 +15,13 @@ import { runTerser } from "./terser/runner";
 import { runTsc, RunTscOption } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
 
-const { createViteLogger, createTscLogger } = createDevTui();
+let devTui: ReturnType<typeof createDevTui> | undefined;
+const getDevTui = () => {
+  if (devTui === undefined) {
+    devTui = createDevTui();
+  }
+  return devTui;
+};
 
 const tscOutRoot = `./node_modules/.bfsp/tsc`;
 const bundleOutRoot = `./node_modules/.bfsp/build`;
@@ -54,7 +60,7 @@ const taskRenameJsToTs = async (rp: string) => {
   return files;
 };
 const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactory>) => {
-  const viteLogger = createViteLogger("info", {});
+  const viteLogger = getDevTui().createViteLogger("info", {});
   await buildBfsp({
     ...viteBuildConfig,
     build: {
@@ -88,7 +94,7 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
   } catch (e) {}
   /// 监听项目变动
   const subStreams = watchBfspProjectConfig(config!, subConfigs);
-  const tscLogger = createTscLogger();
+  const tscLogger = getDevTui().createTscLogger();
 
   const abortable = Closeable<string, string>("bin:build", async (reasons) => {
     /**防抖，避免不必要的多次调用 */
