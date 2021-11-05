@@ -8,6 +8,8 @@ export const defaultGitIgnores = new Set([
   ".npm",
   ".vscode",
   ".bfsp",
+  "node_modules",
+  "dist",
   ".gitignore",
   "*.tsbuildinfo",
   ".npmignore",

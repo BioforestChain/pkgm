@@ -7,6 +7,7 @@ import { defaultGitIgnores } from "./gitIgnore";
 export const defaultNpmIgnores = new Set(defaultGitIgnores);
 // 测试文件夹默认不导出
 defaultNpmIgnores.add("tests");
+defaultNpmIgnores.delete("dist");
 defaultNpmIgnores.delete("package.json");
 
 export const generateNpmIgnore = async (projectDirpath: string, config: Bfsp.UserConfig) => {
