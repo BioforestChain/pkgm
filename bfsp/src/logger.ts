@@ -328,6 +328,11 @@ export function createDevTui() {
     // const box = tscLog.box;
 
     tscStateHelper.startBuilding();
+    const autoUpdateLabel = (opts: { errorCount: number }) => {
+      tscLog.setLabel(
+        opts.errorCount === 0 ? chalk.red.greenBright("SUCCESS") : chalk.red.bold(`[${opts.errorCount}] ERROR`)
+      );
+    };
 
     return {
       write(s: string) {
@@ -337,9 +342,7 @@ export function createDevTui() {
           tscStateHelper.stopBuilding();
           const errorCount = parseInt(foundErrors[1]);
 
-          tscLog.setLabel(
-            errorCount === 0 ? chalk.red.greenBright("SUCCESS") : chalk.red.bold(`[${errorCount}] ERROR`)
-          );
+          autoUpdateLabel({ errorCount });
         } else {
           tscStateHelper.startBuilding();
         }
@@ -350,6 +353,7 @@ export function createDevTui() {
       stop() {
         tscStateHelper.stopBuilding();
       },
+      updateLabel: autoUpdateLabel,
     };
   }
 

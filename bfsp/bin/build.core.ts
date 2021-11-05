@@ -156,16 +156,22 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
               ...userConfigBuild.packageJson,
             };
 
+            tscLogger.write(`minify ${chalk.cyan(userConfigBuild.name)}\n`);
             // 打包目录执行tsc
             const handle = runTsc({
               ...baseRunTscOpts,
+              onMessage: () => {}, /// 此时会有异常日志，直接忽略就行，因为是js文件
               tsconfigPath: path.resolve(path.join(bundlePath, "tsconfig.json")),
               onExit: async () => {
                 handle.stop();
                 // 写入package.json
                 fileIO.setVal(path.join(outDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
                 await runTerser({ sourceDir: distDir, logError: (s) => tscLogger.write(s) }); // 压缩
+                tscLogger.clear();
                 tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} at ${chalk.blue(outDir)}\n`);
+
+                tscLogger.updateLabel({ errorCount: 0 });
+                tscLogger.stop();
               },
             });
           }
