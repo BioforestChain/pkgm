@@ -7,7 +7,7 @@ import path from "node:path";
 import { build as buildBfsp } from "vite";
 import { parseExports, parseFormats } from "../src";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { $TsConfig } from "../src/configs/tsConfig";
+import { $TsConfig, generateTsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import { createDevTui, Debug } from "../src/logger";
 import { Closeable, fileIO, walkFiles } from "../src/toolkit";
@@ -81,10 +81,11 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
 
   /// 初始化写入配置
   const subConfigs = await writeBfspProjectConfig(config);
-
-  await rm(tscOutRoot, { recursive: true });
-  await rm(bundleOutRoot, { recursive: true });
-
+  try {
+    await rm(tscOutRoot, { recursive: true });
+    await rm(bundleOutRoot, { recursive: true });
+    await rm(finalOutRoot, { recursive: true });
+  } catch (e) {}
   /// 监听项目变动
   const subStreams = watchBfspProjectConfig(config!, subConfigs);
   const tscLogger = createTscLogger();
@@ -101,7 +102,6 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
       }
 
       const userConfig = await subStreams.userConfigStream.getCurrent();
-      const tsConfig = await subStreams.tsConfigStream.getCurrent();
 
       log("running bfsp build!");
 
@@ -121,20 +121,19 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
             const userConfigBuild = Object.assign({}, userConfig.userConfig, x);
             const bundlePath = path.join(bundleOutRoot, userConfigBuild.name);
 
-            const viteConfig1 = await generateViteConfig(
-              root,
-              {
-                userConfig: userConfigBuild,
-                exportsDetail: parseExports(userConfigBuild.exports),
-                formats: parseFormats(userConfigBuild.formats),
-              },
-              tsConfig
-            );
+            const userConfig1 = {
+              userConfig: userConfigBuild,
+              exportsDetail: parseExports(userConfigBuild.exports),
+              formats: parseFormats(userConfigBuild.formats),
+            };
+            const tsConfig1 = await generateTsConfig(root, userConfig1);
+
+            const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
 
             const c = ViteConfigFactory({
               projectDirpath: root,
               viteConfig: viteConfig1,
-              tsConfig,
+              tsConfig: tsConfig1,
               format: format ?? userConfigBuild.formats?.[0],
               outDir: bundlePath,
             });
@@ -143,12 +142,12 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
             const files = await taskRenameJsToTs(path.join(root, bundlePath)); // 改打包出来的文件后缀 js=>ts
 
             // 在打包出来的目录生成tsconfig，主要是为了es2020->es2019
-            const outDir = path.resolve(finalOutRoot, `${userConfigBuild.name}-${options.profiles!.join("-")}`);
+            const outDir = path.resolve(finalOutRoot, `${userConfigBuild.name}`);
             const distDir = path.join(outDir, "dist");
             await taskWriteTsConfigStage2(
               bundlePath,
               distDir,
-              tsConfig,
+              tsConfig1,
               files.map((x) => path.relative(path.join(root, bundlePath), x))
             );
             const packageJson = {
@@ -166,7 +165,7 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
                 // 写入package.json
                 fileIO.setVal(path.join(outDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
                 await runTerser({ sourceDir: distDir, logError: (s) => tscLogger.write(s) }); // 压缩
-                tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} at ${chalk.blue(outDir)}`);
+                tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} at ${chalk.blue(outDir)}\n`);
               },
             });
           }
