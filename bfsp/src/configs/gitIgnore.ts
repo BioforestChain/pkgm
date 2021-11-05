@@ -2,25 +2,12 @@ import { resolve } from "node:path";
 import { Debug } from "../logger";
 import { fileIO, isEqualSet, Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
 import { $BfspUserConfig } from "./bfspUserConfig";
-import { effectConfigIgnores } from "./commonIgnore";
+import { defaultIgnores, effectConfigIgnores } from "./commonIgnore";
 
-export const defaultGitIgnores = new Set([
-  ".npm",
-  ".vscode",
-  ".bfsp",
-  "node_modules",
-  "dist",
-  ".gitignore",
-  "*.tsbuildinfo",
-  ".npmignore",
-  ".*.ts",
-  "typings/dist",
-  "typings/dist.d.ts",
-  "package.json",
-  "tsconfig.isolated.json",
-  "tsconfig.typings.json",
-  "tsconfig.json",
-]);
+export const defaultGitIgnores = new Set(defaultIgnores);
+for (const item of ["package.json", "dist", "build"]) {
+  defaultGitIgnores.add(item);
+}
 
 export const generateGitIgnore = async (projectDirpath: string, config: Bfsp.UserConfig) => {
   return effectConfigIgnores(defaultGitIgnores, config?.gitignore);

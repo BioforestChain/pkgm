@@ -7,6 +7,22 @@ export type IgnoreUserConfig =
 
 export type IgnoreRules = Set<string>;
 
+export const defaultIgnores = new Set([
+  ".npm",
+  ".vscode",
+  ".bfsp",
+  "node_modules",
+  ".gitignore",
+  "*.tsbuildinfo",
+  ".npmignore",
+  ".*.ts",
+  "typings/dist",
+  "typings/dist.d.ts",
+  "tsconfig.isolated.json",
+  "tsconfig.typings.json",
+  "tsconfig.json",
+]);
+
 export const effectConfigIgnores = (ignoreRules: IgnoreRules, ignoreConfig?: IgnoreUserConfig) => {
   if (ignoreConfig !== undefined) {
     if (Array.isArray(ignoreConfig)) {

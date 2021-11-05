@@ -2,13 +2,12 @@ import { resolve } from "node:path";
 import { Debug } from "../logger";
 import { fileIO, isEqualSet, Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
 import { $BfspUserConfig } from "./bfspUserConfig";
-import { effectConfigIgnores } from "./commonIgnore";
-import { defaultGitIgnores } from "./gitIgnore";
-export const defaultNpmIgnores = new Set(defaultGitIgnores);
-// 测试文件夹默认不导出
-defaultNpmIgnores.add("tests");
-defaultNpmIgnores.delete("dist");
-defaultNpmIgnores.delete("package.json");
+import { defaultIgnores, effectConfigIgnores } from "./commonIgnore";
+
+export const defaultNpmIgnores = new Set(defaultIgnores);
+for (const item of ["tests", "dist", "build"]) {
+  defaultNpmIgnores.add(item);
+}
 
 export const generateNpmIgnore = async (projectDirpath: string, config: Bfsp.UserConfig) => {
   return effectConfigIgnores(defaultNpmIgnores, config.npmignore);
