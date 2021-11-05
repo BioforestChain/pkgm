@@ -22,6 +22,10 @@ const screen = blessed.screen({
 });
 screen.render();
 
+export function destroyScreen() {
+  screen.destroy();
+}
+
 class ScrollableLog {
   readonly box: Widgets.BoxElement;
   constructor(options: Widgets.BoxOptions = {}) {

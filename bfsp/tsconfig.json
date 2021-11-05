@@ -47,6 +47,7 @@
     "bin/build.core.ts",
     "bin/fmt.bin.ts",
     "bin/init.bin.ts",
+    "bin/init.core.ts",
     "bin/test.bin.ts",
     "src/logger.ts",
     "src/bfspConfig.ts",
