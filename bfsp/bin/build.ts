@@ -1,38 +1,22 @@
-import os from "node:os";
 import { sleep } from "@bfchain/util-extends-promise";
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import chalk from "chalk";
-import { readdir, rmdir, stat } from "node:fs/promises";
-import fs from "fs";
+import { renameSync } from "node:fs";
+import { readdir, rm, stat } from "node:fs/promises";
+import os from "node:os";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isDeepStrictEqual } from "node:util";
 import { Worker } from "node:worker_threads";
-import type { RollupWatcher } from "rollup";
 import { build as buildBfsp } from "vite";
+import { parseExports, parseFormats } from "../src";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { $TsConfig, generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
-import { createDevTui, Debug } from "../src/logger";
-import { Closeable, fileIO, folderIO, walkFiles } from "../src/toolkit";
-import { ViteConfigFactory } from "./vite-build-config-factory";
-import { renameSync } from "node:fs";
-import { $BfspUserConfig, parseExports, parseFormats } from "../src";
+import { $TsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
+import { createDevTui, Debug } from "../src/logger";
+import { Closeable, fileIO } from "../src/toolkit";
+import { ViteConfigFactory } from "./vite-build-config-factory";
 
 const { createViteLogger, createTscLogger } = createDevTui();
-// const { createTscLogger } = {
-//   createTscLogger() {
-//     return {
-//       write(s: string) {
-//         console.log(s);
-//       },
-//       clear() {
-//         console.clear();
-//       },
-//       stop() {},
-//     };
-//   },
-// };
 
 interface RunTscOption {
   tsconfigPath: string;
@@ -200,8 +184,8 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
   /// 初始化写入配置
   const subConfigs = await writeBfspProjectConfig(config);
 
-  await rmdir(tscOutRoot, { recursive: true });
-  await rmdir(bundleOutRoot, { recursive: true });
+  await rm(tscOutRoot, { recursive: true });
+  await rm(bundleOutRoot, { recursive: true });
 
   /// 监听项目变动
   const subStreams = watchBfspProjectConfig(config!, subConfigs);
