@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createContext, runInContext, Script } from "node:vm";
 import { isMainThread, parentPort } from "node:worker_threads";
-import { require, tryRequireResolve } from "../src/toolkit";
+import { require, tryRequireResolve } from "../../src/toolkit";
 
 export function doTsc() {
   const tscPath = path.resolve(tryRequireResolve(require, "typescript"), "../tsc.js");

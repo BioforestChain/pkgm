@@ -3,10 +3,10 @@ import { inspect } from "node:util";
 import path from "node:path";
 import typescript from "typescript";
 import type { InlineConfig } from "vite";
-import { $TsConfig } from "../src/configs/tsConfig";
-import type { $ViteConfig } from "../src/configs/viteConfig";
-import { Debug } from "../src/logger";
-import { getExtensionByFormat } from "../src/toolkit";
+import { $TsConfig } from "../../src/configs/tsConfig";
+import type { $ViteConfig } from "../../src/configs/viteConfig";
+import { Debug } from "../../src/logger";
+import { getExtensionByFormat } from "../../src/toolkit";
 const log = Debug("bfsp:config/vite");
 
 const FORMATS = ["cjs", "esm", "iife"] as const;

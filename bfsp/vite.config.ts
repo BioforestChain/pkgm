@@ -6,16 +6,14 @@ const libFormat = (process.argv.find((arg) => arg.startsWith("--format="))?.spli
 
 export const input: InputOption = {
   index: "src/index.ts",
-  "bfsp.bin": "bin/bfsp.bin.ts",
-  "fmt.bin": "bin/fmt.bin.ts",
-  "test.bin": "bin/test.bin.ts",
-  "config.test": "tests/config.test.ts",
-  "build.test": "tests/build.test.ts",
   bin: "bin.ts",
   test: "test.ts",
-  tsc_worker: "bin/tsc.ts",
-  ava_worker: "bin/ava.ts",
-  terser_worker: "bin/terser.ts",
+  "bfsp.bin": "bin/bfsp.cmd.ts",
+  "config.test": "tests/config.test.ts",
+  "build.test": "tests/build.test.ts",
+  tsc_worker: "bin/tsc/worker.ts",
+  ava_worker: "bin/ava/worker.ts",
+  terser_worker: "bin/terser/worker.ts",
 };
 export const extension =
   {

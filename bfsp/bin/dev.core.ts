@@ -10,7 +10,7 @@ import { build as buildBfsp } from "vite";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { createDevTui, Debug } from "../src/logger";
 import { Closeable } from "../src/toolkit";
-import { ViteConfigFactory } from "./vite-build-config-factory";
+import { ViteConfigFactory } from "./vite/configFactory";
 
 export const doDev = async (options: { format?: Bfsp.Format; root?: string; profiles?: string[] }) => {
   const log = Debug("bfsp:bin/dev");

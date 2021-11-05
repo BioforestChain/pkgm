@@ -1,15 +1,33 @@
-import { createServer } from "vite";
-import { fileURLToPath } from "node:url";
-// typeof __dirname === 
-const __dirname = fileURLToPath(import.meta.url);
-(async () => {
-  const server = await createServer({
-    // 任何合法的用户配置选项，加上 `mode` 和 `configFile`
-    configFile: false,
-    root: __dirname,
-    server: {
-      port: 1337,
-    },
-  });
-  await server.listen();
-})();
+import { existsSync, statSync } from "node:fs";
+import path from "node:path";
+import { defineCommand } from "../bin";
+import { Debug } from "../src/logger";
+import { doTest } from "./test";
+
+defineCommand(
+  "test",
+  {
+    args: [{ type: "rest", name: "tests", description: "test names" }],
+  } as const,
+  (params, args) => {
+    const log = Debug("bfsp:bin/test");
+
+    let root = process.cwd();
+    const tests = args[0];
+    {
+      let maybeCwd = tests[0];
+      if (maybeCwd !== undefined) {
+        maybeCwd = path.resolve(root, maybeCwd);
+        if (existsSync(maybeCwd) && statSync(maybeCwd).isDirectory()) {
+          root = maybeCwd;
+          tests.shift();
+        }
+      }
+    }
+    for (const test of tests) {
+      log("run test:", test);
+    }
+
+    return doTest({ root, tests });
+  }
+);

@@ -14,7 +14,7 @@ import { $TsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import { createDevTui, Debug } from "../src/logger";
 import { Closeable, fileIO } from "../src/toolkit";
-import { ViteConfigFactory } from "./vite-build-config-factory";
+import { ViteConfigFactory } from "./vite/configFactory";
 
 const { createViteLogger, createTscLogger } = createDevTui();
 

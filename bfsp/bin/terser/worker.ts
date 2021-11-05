@@ -3,7 +3,7 @@ import { isMainThread, parentPort } from "node:worker_threads";
 import { readFile, writeFile } from "node:fs/promises";
 
 if (!isMainThread) {
-  parentPort.on("message", async (v: { paths: string[] }) => {
+  parentPort!.on("message", async (v: { paths: string[] }) => {
     const { paths } = v;
     const tasks = paths.map((p) => {
       return new Promise(async (resolve) => {
@@ -11,7 +11,11 @@ if (!isMainThread) {
         try {
           const source = await readFile(p);
           const output = await minify(source.toString());
-          await writeFile(p, output.code);
+          if (output.code !== undefined) {
+            await writeFile(p, output.code);
+          } else {
+            ret.success = false;
+          }
         } catch (e) {
           ret.success = false;
         }
@@ -19,6 +23,6 @@ if (!isMainThread) {
       });
     });
     const results = await Promise.all(tasks);
-    parentPort.postMessage({ results });
+    parentPort!.postMessage({ results });
   });
 }

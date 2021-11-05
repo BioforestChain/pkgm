@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { createContext, runInContext } from "node:vm";
 import { isMainThread, parentPort, workerData } from "node:worker_threads";
-import { require, tryRequireResolve } from "../src/toolkit";
+import { require, tryRequireResolve } from "../../src/toolkit";
 
 export function doAva(root = process.cwd()) {
   //   const log = parentPort ? (...args) => parentPort!.postMessage(["log", args]) : console.log;

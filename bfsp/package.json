@@ -18,11 +18,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsp": "./dist/bfsp.bin.mjs",
-    "bfsp-dev": "./dist/dev.bin.mjs",
-    "bfsp-build": "./dist/build.bin.mjs",
-    "bfsp-fmt": "./dist/fmt.bin.mjs",
-    "bfsp-test": "./dist/test.bin.mjs"
+    "bfsp": "./dist/bfsp.bin.mjs"
   },
   "scripts": {
     "ndb": "ndb --experimental-modules ",
