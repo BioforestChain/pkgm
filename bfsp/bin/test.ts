@@ -5,6 +5,7 @@ export const doTest = async (options: {
   root?: string;
   tests?: string[];
   logger?: { outWrite: (str: string) => void; errWrite: (str: string) => void };
+  debug?: boolean;
 }) => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -15,6 +16,7 @@ export const doTest = async (options: {
     argv: [],
     workerData: {
       root: options.root || process.cwd(),
+      debug: options.debug,
     },
     stdin: pipeStdIo,
     stdout: pipeStdIo,

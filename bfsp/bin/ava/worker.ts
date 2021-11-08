@@ -20,17 +20,22 @@ export function doAva(root = process.cwd()) {
     __dirname: path.dirname(avaPath),
   });
 
-  runInContext(
-    readFileSync(avaPath, "utf-8").replace(
-      `conf = await loadConfig({configFile});`,
-      `conf = await loadConfig({configFile,resolveFrom:${JSON.stringify(root)}});`
-    ),
-    context
-  );
-
   return {
     context,
-    start() {
+    start(options: { debug?: boolean } = {}) {
+      runInContext(
+        readFileSync(avaPath, "utf-8")
+          .replace(
+            `conf = await loadConfig({configFile});`,
+            `conf = await loadConfig({configFile,resolveFrom:${JSON.stringify(root)}});`
+          )
+          .replace(
+            `const activeInspector = require('inspector').url() !== undefined;`,
+            `const activeInspector = ${options.debug ? true : false}`
+          ),
+        context
+      );
+
       context.exports.run();
     },
   };
@@ -38,5 +43,5 @@ export function doAva(root = process.cwd()) {
 
 /// 如果在worker中,直接运行即可
 if (isMainThread === false) {
-  doAva(workerData.root).start();
+  doAva(workerData.root).start({ debug: workerData.debug });
 }

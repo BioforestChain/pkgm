@@ -3,6 +3,7 @@ import path from "node:path";
 import { defineCommand } from "../bin";
 import { Debug } from "../src/logger";
 import { doTest } from "./test";
+import inspector from "node:inspector";
 
 defineCommand(
   "test",
@@ -28,6 +29,6 @@ defineCommand(
       log("run test:", test);
     }
 
-    return doTest({ root, tests });
+    return doTest({ root, tests, debug: inspector.url() !== undefined });
   }
 );
