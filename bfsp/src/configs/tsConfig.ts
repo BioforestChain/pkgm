@@ -357,7 +357,8 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
         path: "./tsconfig.typings.json",
       },
     ] as const,
-    files: tsFilesLists.notestFiles.toArray(),
+    // files: tsFilesLists.notestFiles.toArray(),
+    files: [],
   };
   const tsIsolatedConfig = {
     extends: "./tsconfig.json",
@@ -490,7 +491,7 @@ export const watchTsConfig = (
         groupTsFilesByRemove(projectDirpath, removeFileList, tsFilesLists);
       }
 
-      tsConfig.json.files = tsFilesLists.notestFiles.toArray();
+      // tsConfig.json.files = tsFilesLists.notestFiles.toArray();
       tsConfig.isolatedJson.files = tsFilesLists.notypeFiles.toArray();
       tsConfig.typingsJson.files = tsFilesLists.typeFiles.toArray();
     }

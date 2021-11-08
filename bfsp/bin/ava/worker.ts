@@ -19,7 +19,7 @@ export function doAva(root = process.cwd()) {
     __filename: avaPath,
     __dirname: path.dirname(avaPath),
   });
-  debugger;
+
   runInContext(
     readFileSync(avaPath, "utf-8").replace(
       `conf = await loadConfig({configFile});`,
