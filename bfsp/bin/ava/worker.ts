@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
+// import { setTimeout } from "node:timers/promises";
 import path from "node:path";
 import { createContext, runInContext } from "node:vm";
 import { isMainThread, parentPort, workerData } from "node:worker_threads";
@@ -22,7 +23,7 @@ export function doAva(root = process.cwd()) {
 
   return {
     context,
-    start(options: { debug?: boolean } = {}) {
+    async start(options: { debug?: boolean } = {}) {
       runInContext(
         readFileSync(avaPath, "utf-8")
           .replace(
@@ -36,7 +37,11 @@ export function doAva(root = process.cwd()) {
         context
       );
 
-      context.exports.run();
+      await context.exports.run();
+
+      setTimeout(() => {
+        process.exit(0);
+      }, 100);
     },
   };
 }

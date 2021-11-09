@@ -10,7 +10,7 @@ defineCommand(
   {
     args: [{ type: "rest", name: "tests", description: "test names" }],
   } as const,
-  (params, args) => {
+  async (params, args) => {
     const log = Debug("bfsp:bin/test");
 
     let root = process.cwd();
@@ -29,6 +29,7 @@ defineCommand(
       log("run test:", test);
     }
 
-    return doTest({ root, tests, debug: inspector.url() !== undefined });
+    await doTest({ root, tests, debug: inspector.url() !== undefined });
+    process.exit(0);
   }
 );

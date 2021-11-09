@@ -30,5 +30,6 @@ export const doTest = async (options: {
       logger.errWrite(data);
     });
   }
+  return new Promise<void>((resolve) => avaWorker.on("exit", resolve));
   //   avaWorker.
 };
