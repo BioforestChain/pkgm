@@ -1,4 +1,5 @@
 {
+  "name": "",
   "main": "*.cjs",
   "types": "*.ts",
   "type": "module",

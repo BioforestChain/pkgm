@@ -1,13 +1,13 @@
 import { sleep } from "@bfchain/util-extends-promise";
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import chalk from "chalk";
-import { renameSync } from "node:fs";
+import { renameSync, existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import { build as buildBfsp } from "vite";
 import { parseExports, parseFormats } from "../src";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { $TsConfig, generateTsConfig } from "../src/configs/tsConfig";
+import { $TsConfig, generateTsConfig, isTestFile } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import { createDevTui, Debug } from "../src/logger";
 import { Closeable, fileIO, walkFiles } from "../src/toolkit";
@@ -47,17 +47,19 @@ const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsCon
   return c;
 };
 
-const taskRenameJsToTs = async (rp: string) => {
-  const files: string[] = [];
-  for await (const p of walkFiles(rp, { refreshCache: true })) {
-    if (/\.[mc]?js[x]?$/.test(p)) {
-      let newPath = p;
-      newPath = newPath.replace(/(.*)\.[mc]?js[x]?$/, "$1.ts");
-      renameSync(p, newPath);
-      files.push(newPath);
+const taskRenameJsToTs = async (root: string) => {
+  const renameFileMap = new Map<string, string>();
+  for await (const filepath of walkFiles(root, { refreshCache: true })) {
+    if (/\.[mc]?js[x]?$/.test(filepath)) {
+      const newFilepath = filepath.replace(/(.*)\.[mc]?js[x]?$/, "$1.ts");
+      if (isTestFile("", newFilepath)) {
+        continue;
+      }
+      renameSync(filepath, newFilepath);
+      renameFileMap.set(path.relative(root, filepath), path.relative(root, newFilepath));
     }
   }
-  return files;
+  return renameFileMap;
 };
 const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactory>) => {
   const viteLogger = getDevTui().createViteLogger("info", {});
@@ -76,10 +78,10 @@ const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactor
     customLogger: viteLogger,
   });
 };
-export const doBuild = async (options: { format?: Bfsp.Format; root?: string; profiles?: string[] }) => {
+export const doBuild = async (options: { root?: string; profiles?: string[] }) => {
   const log = Debug("bfsp:bin/build");
 
-  const { root = process.cwd(), format } = options;
+  const { root = process.cwd() } = options;
 
   log("root", root);
 
@@ -87,11 +89,9 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
 
   /// 初始化写入配置
   const subConfigs = await writeBfspProjectConfig(config);
-  try {
-    await rm(tscOutRoot, { recursive: true });
-    await rm(bundleOutRoot, { recursive: true });
-    await rm(finalOutRoot, { recursive: true });
-  } catch (e) {}
+  existsSync(tscOutRoot) && (await rm(tscOutRoot, { recursive: true }));
+  existsSync(finalOutRoot) && (await rm(finalOutRoot, { recursive: true }));
+
   /// 监听项目变动
   const subStreams = watchBfspProjectConfig(config!, subConfigs);
   const tscLogger = getDevTui().createTscLogger();
@@ -121,65 +121,102 @@ export const doBuild = async (options: { format?: Bfsp.Format; root?: string; pr
         ...baseRunTscOpts,
         tsconfigPath: path.join(root, "tsconfig.json"),
         onSuccess: async () => {
-          // tsc验证没问题，开始执行vite打包
-          const buildUserConfigs = userConfig.userConfig.build || [userConfig.userConfig];
-          for (const x of buildUserConfigs) {
-            const userConfigBuild = Object.assign({}, userConfig.userConfig, x);
-            const bundlePath = path.join(bundleOutRoot, userConfigBuild.name);
+          try {
+            /// tsc验证没问题，开始执行vite打包
+            /// @todo 以下流程包裹成 closeable
 
-            const userConfig1 = {
-              userConfig: userConfigBuild,
-              exportsDetail: parseExports(userConfigBuild.exports),
-              formats: parseFormats(userConfigBuild.formats),
-            };
-            const tsConfig1 = await generateTsConfig(root, userConfig1);
+            const buildUserConfigs = userConfig.userConfig.build
+              ? userConfig.userConfig.build.map((build) => ({
+                  ...userConfig.userConfig,
+                  ...build,
+                }))
+              : [userConfig.userConfig];
+            for (const buildConfig of buildUserConfigs.slice()) {
+              if (buildConfig.formats !== undefined && buildConfig.formats.length > 1) {
+                const singleFormatConfigs = buildConfig.formats.map((format) => ({
+                  ...buildConfig,
+                  formats: [format],
+                }));
+                buildUserConfigs.splice(buildUserConfigs.indexOf(buildConfig), 1, ...singleFormatConfigs);
+              }
+            }
 
-            const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
+            for (const [i, x] of buildUserConfigs.entries()) {
+              tscLogger.write(`start build task: ${i + 1}/${buildUserConfigs.length}\n`);
+              tscLogger.write(`removing bundleOutRoot: ${bundleOutRoot}\n`);
+              existsSync(bundleOutRoot) && (await rm(bundleOutRoot, { recursive: true }));
 
-            const c = ViteConfigFactory({
-              projectDirpath: root,
-              viteConfig: viteConfig1,
-              tsConfig: tsConfig1,
-              format: format ?? userConfigBuild.formats?.[0],
-              outDir: bundlePath,
-            });
-            await taskViteBuild({ ...c, mode: "development" }); // vite 打包
+              const userConfigBuild = Object.assign({}, userConfig.userConfig, x);
+              const bundlePath = path.join(bundleOutRoot, userConfigBuild.name);
 
-            const files = await taskRenameJsToTs(path.join(root, bundlePath)); // 改打包出来的文件后缀 js=>ts
+              const userConfig1 = {
+                userConfig: userConfigBuild,
+                exportsDetail: parseExports(userConfigBuild.exports),
+                formats: parseFormats(userConfigBuild.formats),
+              };
+              tscLogger.write(`generate TsConfig\n`);
+              const tsConfig1 = await generateTsConfig(root, userConfig1);
 
-            // 在打包出来的目录生成tsconfig，主要是为了es2020->es2019
-            const outDir = path.resolve(finalOutRoot, `${userConfigBuild.name}`);
-            const distDir = path.join(outDir, "dist");
-            await taskWriteTsConfigStage2(
-              bundlePath,
-              distDir,
-              tsConfig1,
-              files.map((x) => path.relative(path.join(root, bundlePath), x))
-            );
-            const packageJson = {
-              name: userConfigBuild.name,
-              files: ["dist"],
-              ...userConfigBuild.packageJson,
-            };
+              tscLogger.write(`generate ViteConfig\n`);
+              const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
 
-            tscLogger.write(`minify ${chalk.cyan(userConfigBuild.name)}\n`);
-            // 打包目录执行tsc
-            const handle = runTsc({
-              ...baseRunTscOpts,
-              onMessage: () => {}, /// 此时会有异常日志，直接忽略就行，因为是js文件
-              tsconfigPath: path.resolve(path.join(bundlePath, "tsconfig.json")),
-              onExit: async () => {
-                handle.stop();
-                // 写入package.json
-                fileIO.setVal(path.join(outDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
-                await runTerser({ sourceDir: distDir, logError: (s) => tscLogger.write(s) }); // 压缩
-                tscLogger.clear();
-                tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} at ${chalk.blue(outDir)}\n`);
+              const format = userConfigBuild.formats?.[0] ?? "esm";
+              const c = ViteConfigFactory({
+                projectDirpath: root,
+                viteConfig: viteConfig1,
+                tsConfig: tsConfig1,
+                format,
+                // outDir: bundlePath,
+              });
+              const defaultOurDir = c.build!.outDir!;
+              c.build!.outDir = bundlePath;
+              await taskViteBuild({ ...c, mode: "development" }); // vite 打包
 
-                tscLogger.updateLabel({ errorCount: 0 });
-                tscLogger.stop();
-              },
-            });
+              tscLogger.write(`prepare es2020 files for complie to es2019\n`);
+              const renameFileMap = await taskRenameJsToTs(path.join(root, bundlePath)); // 改打包出来的文件后缀 js=>ts
+
+              const packageJson = {
+                ...(await subStreams.packageJsonStream.getCurrent()),
+                files: ["dist"],
+                scripts: undefined,
+                devDependencies: undefined,
+                ...userConfigBuild.packageJson,
+              };
+
+              tscLogger.write(`complile to es2019\n`);
+              // 在打包出来的目录生成tsconfig，主要是为了es2020->es2019
+              const outDir = path.resolve(finalOutRoot, packageJson.name);
+              const distDir = path.join(outDir, defaultOurDir);
+              await taskWriteTsConfigStage2(bundlePath, distDir, tsConfig1, [...renameFileMap.values()]);
+
+              // 打包目录执行tsc
+              await runTsc({
+                ...baseRunTscOpts,
+                projectMode: true,
+                onMessage: () => {}, /// 此时会有异常日志，直接忽略就行，因为是js文件
+                tsconfigPath: path.resolve(path.join(bundlePath, "tsconfig.json")),
+              });
+
+              /// 写入package.json
+              fileIO.setVal(path.join(outDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
+
+              /// 执行代码压缩
+              tscLogger.write(`minify ${chalk.cyan(userConfigBuild.name)}\n`);
+              await runTerser({ sourceDir: distDir, logError: (s) => tscLogger.write(s) }); // 压缩
+              tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} [${format}] at ${chalk.blue(outDir)}\n`);
+
+              /// 最后再将js文件的后缀换回去
+              for (const [jsFilename, tsFilename] of renameFileMap) {
+                renameSync(path.join(distDir, tsFilename.slice(0, -2) + "js"), path.join(distDir, jsFilename));
+              }
+              tscLogger.write("rename done\n");
+
+              /// 修改样式
+              tscLogger.updateLabel({ errorCount: 0 });
+              tscLogger.stop();
+            }
+          } catch (e) {
+            tscLogger.write(chalk.red(e));
           }
         },
 

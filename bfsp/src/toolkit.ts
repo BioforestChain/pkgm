@@ -40,9 +40,7 @@ export abstract class CacheGetter<K, V> {
     let cache = this._cache.get(key);
     const now = Date.now();
     if (refresh || cache === undefined || now - cache.time > this.cacheTime) {
-      if (cache === undefined) {
-        cache = { time: now, value: await this.getVal(key) };
-      }
+      cache = { time: now, value: await this.getVal(key) };
       this._cache.set(key, cache);
     }
     return cache.value;

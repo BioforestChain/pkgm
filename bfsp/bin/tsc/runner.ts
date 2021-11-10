@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
 
 export interface RunTscOption {
+  projectMode?: boolean;
   tsconfigPath: string;
   onMessage: (s: string) => void;
   onClear: () => void;
@@ -15,16 +16,19 @@ export const runTsc = (opts: RunTscOption) => {
   const __dirname = dirname(__filename);
   const workerMjsPath = path.join(__dirname, "./tsc_worker.mjs");
   const tscWorker = new Worker(workerMjsPath, {
-    argv: ["--build", opts.tsconfigPath, opts.watch ? "-w" : ""],
+    argv: [opts.projectMode ? "-p" : "--build", opts.tsconfigPath, opts.watch ? "-w" : ""].filter(
+      Boolean /* 一定要过滤掉空字符串，否则可能会被识别成文件名 */
+    ),
     stdin: false,
     stdout: false,
     stderr: false,
   });
-  const ret = {
+  let resolve: Function;
+  const ret = Object.assign(new Promise<void>((cb) => (resolve = cb)), {
     stop() {
       tscWorker.terminate();
     },
-  };
+  });
 
   tscWorker.on("message", (data) => {
     const cmd = data[0];
@@ -40,7 +44,9 @@ export const runTsc = (opts: RunTscOption) => {
       }
       opts.onMessage(data[1]);
     } else if (cmd === "exit") {
-      opts.onExit && opts.onExit();
+      resolve();
+      ret.stop();
+      opts.onExit?.();
     }
   });
   return ret;

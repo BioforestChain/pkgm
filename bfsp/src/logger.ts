@@ -13,7 +13,6 @@ export const LogLevels: Record<LogLevel, number> = {
 };
 let screen: Widgets.Screen | undefined;
 const getScreen = () => {
-  debugger;
   if (screen === undefined) {
     screen = blessed.screen({
       smartCSR: true,
@@ -430,7 +429,7 @@ export function Debug(label: string) {
 
       args = [util.format(...args)];
       D.formatArgs.call(d, args);
-      screen.debug(...(args as any));
+      getScreen().debug(...(args as any));
     },
     { enabled: d.enabled }
   );
@@ -450,7 +449,7 @@ export function Warn(label: string) {
 
       args = [chalk.yellow(util.format(...args))];
       D.formatArgs.call(d, args);
-      screen.debug(...(args as any));
+      getScreen().debug(...(args as any));
     },
     { enabled: true }
   );

@@ -1,6 +1,5 @@
 import path from "node:path";
 import { defineCommand } from "../bin";
-import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
 import { Warn } from "../src/logger";
 import { doBuild } from "./build.core";
 
@@ -15,11 +14,6 @@ defineCommand(
   } as const,
   (params, args) => {
     const warn = Warn("bfsp:bin/build");
-    let { format } = params;
-    if (format !== undefined && ALLOW_FORMATS.has(format as any) === false) {
-      warn(`invalid format: '${format}'`);
-      format = undefined;
-    }
 
     const profiles = params?.profiles?.split(",") || [];
     if (profiles.length === 0) {
@@ -31,6 +25,6 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
-    return doBuild({ format: format as Bfsp.Format, root, profiles });
+    return doBuild({ root, profiles });
   }
 );

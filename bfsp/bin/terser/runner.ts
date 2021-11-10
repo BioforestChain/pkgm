@@ -15,7 +15,7 @@ export const runTerser = async (opts: { sourceDir: string; logError: (log: strin
       files.push(p);
     }
   }
-  const workerCount = os.cpus().length - 1;
+  const workerCount = Math.max(1, os.cpus().length / 2 - 1);
   const tasks = [] as Promise<{ path: string; success: boolean }[]>[];
   rearrange(workerCount, files, (items) => {
     const task = new Promise<{ path: string; success: boolean }[]>((resolve) => {

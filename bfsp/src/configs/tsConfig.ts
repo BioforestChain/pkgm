@@ -59,7 +59,7 @@ const isTsExt = (extname: string) => {
 const isTypeFile = (projectDirpath: string, filepath: string) =>
   filepath.endsWith(".type.ts") || filepath.startsWith("./typings/");
 
-const isTestFile = (projectDirpath: string, filepath: string) => {
+export const isTestFile = (projectDirpath: string, filepath: string) => {
   const exts = getTwoExtnames(filepath);
   if (exts !== undefined) {
     return ".test" === exts.ext2 || (filepath.startsWith("./tests/") && ".bm" === exts.ext2);
@@ -358,7 +358,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
       },
     ] as const,
     // files: tsFilesLists.notestFiles.toArray(),
-    files: [],
+    files: [] as string[],
   };
   const tsIsolatedConfig = {
     extends: "./tsconfig.json",
