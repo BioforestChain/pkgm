@@ -2,15 +2,15 @@ import { sleep } from "@bfchain/util-extends-promise";
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import chalk from "chalk";
 import { renameSync, existsSync } from "node:fs";
-import { rm } from "node:fs/promises";
+import { copyFile, rm } from "node:fs/promises";
 import path from "node:path";
 import { build as buildBfsp } from "vite";
 import { parseExports, parseFormats } from "../src";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { $TsConfig, generateTsConfig, isTestFile } from "../src/configs/tsConfig";
+import { $TsConfig, generateTsConfig, isTestFile, TSC_OUT_ROOT } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import { createDevTui, Debug } from "../src/logger";
-import { Closeable, fileIO, walkFiles } from "../src/toolkit";
+import { Closeable, fileIO, folderIO, toPosixPath, walkFiles } from "../src/toolkit";
 import { runTerser } from "./terser/runner";
 import { runTsc, RunTscOption } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
@@ -23,13 +23,13 @@ const getDevTui = () => {
   return devTui;
 };
 
-const tscOutRoot = `./.bfsp/tsc`;
-const bundleOutRoot = `./.bfsp/build`;
-const finalOutRoot = `./build`;
+const CACHE_BUILD_OUT_ROOT = `./.bfsp/build`;
+const BUILD_OUT_ROOT = `./build`;
 
+const jsonClone = <T>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;
 // 任务：生成阶段2的tsconfig，用于es2020到es2019
 const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsConfig: $TsConfig, files: string[]) => {
-  const tsconfigJson = JSON.parse(JSON.stringify(tsConfig.json)) as typeof tsConfig["json"];
+  const tsconfigJson = jsonClone(tsConfig.json) as typeof tsConfig["json"];
 
   tsconfigJson.compilerOptions = {
     ...tsconfigJson.compilerOptions,
@@ -90,8 +90,8 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
   log("root", root);
 
   const config = await getBfspProjectConfig(root);
-  existsSync(tscOutRoot) && (await rm(tscOutRoot, { recursive: true }));
-  existsSync(finalOutRoot) && (await rm(finalOutRoot, { recursive: true }));
+  existsSync(TSC_OUT_ROOT) && (await rm(TSC_OUT_ROOT, { recursive: true }));
+  existsSync(BUILD_OUT_ROOT) && (await rm(BUILD_OUT_ROOT, { recursive: true }));
 
   /// 初始化写入配置
   const subConfigs = await writeBfspProjectConfig(config);
@@ -145,13 +145,15 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
               }
             }
 
+            const buildOutDirs = new Set<string>();
+
             for (const [i, x] of buildUserConfigs.entries()) {
               log(`start build task: ${i + 1}/${buildUserConfigs.length}\n`);
-              log(`removing bundleOutRoot: ${bundleOutRoot}\n`);
-              existsSync(bundleOutRoot) && (await rm(bundleOutRoot, { recursive: true }));
+              log(`removing bundleOutRoot: ${CACHE_BUILD_OUT_ROOT}\n`);
+              existsSync(CACHE_BUILD_OUT_ROOT) && (await rm(CACHE_BUILD_OUT_ROOT, { recursive: true }));
 
               const userConfigBuild = Object.assign({}, userConfig.userConfig, x);
-              const bundlePath = path.join(bundleOutRoot, userConfigBuild.name);
+              const cacheBuildOutRoot = path.join(CACHE_BUILD_OUT_ROOT, userConfigBuild.name);
 
               const userConfig1 = {
                 userConfig: userConfigBuild,
@@ -173,41 +175,57 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
                 // outDir: bundlePath,
               });
               const defaultOurDir = c.build!.outDir!;
-              c.build!.outDir = bundlePath;
+              c.build!.outDir = cacheBuildOutRoot;
               await taskViteBuild({ ...c, mode: "development" }); // vite 打包
 
               log(`prepare es2020 files for complie to es2019\n`);
-              const renameFileMap = await taskRenameJsToTs(path.join(root, bundlePath)); // 改打包出来的文件后缀 js=>ts
+              const renameFileMap = await taskRenameJsToTs(path.join(root, cacheBuildOutRoot)); // 改打包出来的文件后缀 js=>ts
 
-              const packageJson = {
+              const packageJson = jsonClone({
                 ...(await subStreams.packageJsonStream.getCurrent()),
-                files: ["dist"],
+                files: ["dist", "source"],
                 scripts: undefined,
                 devDependencies: undefined,
                 ...userConfigBuild.packageJson,
-              };
+              });
+              /// 将package.json的types路径进行修改
+              {
+                const repathTypePath = (typePath: string) => {
+                  const typesPathInfo = path.parse(typePath);
+                  return toPosixPath(
+                    path.join("source/isolated", path.join(typesPathInfo.dir, typesPathInfo.name + ".d.ts"))
+                  );
+                };
+                for (const exportConfig of Object.values(packageJson.exports)) {
+                  exportConfig.types = repathTypePath(exportConfig.types);
+                }
+                packageJson.types = repathTypePath(packageJson.types);
+              }
 
               log(`complile to es2019\n`);
               // 在打包出来的目录生成tsconfig，主要是为了es2020->es2019
-              const outDir = path.resolve(finalOutRoot, packageJson.name);
-              const distDir = path.join(outDir, defaultOurDir);
-              await taskWriteTsConfigStage2(bundlePath, distDir, tsConfig1, [...renameFileMap.values()]);
+              const buildOutDir = path.resolve(BUILD_OUT_ROOT, packageJson.name);
+              buildOutDirs.add(buildOutDir);
+
+              /**dev默认输出的dist文件夹 */
+              const distDir = path.join(buildOutDir, defaultOurDir);
+              await taskWriteTsConfigStage2(cacheBuildOutRoot, distDir, tsConfig1, [...renameFileMap.values()]);
 
               // 打包目录执行tsc
               await runTsc({
                 ...baseRunTscOpts,
                 projectMode: true,
                 onMessage: () => {}, /// 此时会有异常日志，直接忽略就行，因为是js文件
-                tsconfigPath: path.resolve(path.join(bundlePath, "tsconfig.json")),
+                tsconfigPath: path.resolve(path.join(cacheBuildOutRoot, "tsconfig.json")),
               });
 
               /// 写入package.json
-              fileIO.setVal(path.join(outDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
+              fileIO.setVal(path.join(buildOutDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
 
               /// 执行代码压缩
               log(`minify ${chalk.cyan(userConfigBuild.name)}\n`);
               await runTerser({ sourceDir: distDir, logError: (s) => tscLogger.write(s) }); // 压缩
-              tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} [${format}] at ${chalk.blue(outDir)}\n`);
+              tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} [${format}] at ${chalk.blue(buildOutDir)}\n`);
 
               /// 最后再将js文件的后缀换回去
               for (const [jsFilename, tsFilename] of renameFileMap) {
@@ -218,6 +236,18 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
               /// 修改样式
               tscLogger.updateLabel({ errorCount: 0 });
               tscLogger.stop();
+            }
+
+            /// 复制 .d.ts 文件到 source 文件夹中
+            for (const buildOutDir of buildOutDirs) {
+              const tscOutRoot = path.join(root, TSC_OUT_ROOT);
+              for await (const filepath of walkFiles(tscOutRoot, { refreshCache: true })) {
+                if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
+                  const destFilepath = path.join(buildOutDir, "source", path.relative(tscOutRoot, filepath));
+                  await folderIO.tryInit(path.dirname(destFilepath));
+                  await copyFile(filepath, destFilepath);
+                }
+              }
             }
           } catch (e) {
             tscLogger.write(chalk.red(e));

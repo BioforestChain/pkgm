@@ -3,17 +3,18 @@
   "main": "*.cjs",
   "types": "*.ts",
   "type": "module",
-  "exports": {},
+  "exports": {
+    ".": {
+      "import": "",
+      "require": "",
+      "types": ""
+    }
+  },
   "imports": {},
   "scripts": {
-    "dev": "yarn dev:esm",
-    "dev:esm": "vite build --watch --minify=false --sourcemap=true --format=esm",
-    "dev:cjs": "vite build --watch --minify=false --sourcemap=true --format=cjs",
-    "-postinstall": "bfsp hook postinstall",
-    "build:esm": "vite build -- --format=esm",
-    "build:cjs": "vite build -- --format=cjs",
-    "build": "tsc && yarn build:esm && yarn build:cjs",
-    "test": "ava"
+    "dev": "bfsp dev",
+    "build": "bfsp build",
+    "test": "bfsp test"
   },
   "files": ["!test"],
   "devDependencies": {

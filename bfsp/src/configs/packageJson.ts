@@ -56,15 +56,18 @@ export const generatePackageJson = async (
     const exportsItem = (packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
       import: getDistFilepath("esm", output),
-      types: "",
+      types: input,
     });
-    {
-      const filepath = getDistFilepath(defaultFormat, output)!;
-      exportsItem.types = filepath.slice(0, -getExtname(filepath).length) + ".d.ts";
-    }
+    // {
+    //   const filepath = getDistFilepath(defaultFormat, output)!;
+    //   exportsItem.types = filepath.slice(0, -getExtname(filepath).length) + ".d.ts";
+    // }
   }
-  packageJson.main = packageJson.exports["."][defaultFormat === "esm" ? "import" : "require"];
-  packageJson.types = packageJson.exports["."].types; // viteConfig.mainEntry;
+  const defaultExportConfig = packageJson.exports["."];
+  if (defaultExportConfig !== undefined) {
+    packageJson.main = packageJson.exports["."][defaultFormat === "esm" ? "import" : "require"];
+    packageJson.types = packageJson.exports["."].types; // viteConfig.mainEntry;
+  }
   //#endregion
 
   //#region bin 导出

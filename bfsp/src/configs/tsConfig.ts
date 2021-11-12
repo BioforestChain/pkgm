@@ -29,6 +29,8 @@ const warn = Warn("bfsp:config/tsconfig");
 //   return somepath.match(/([^\\\/]+)\.[^\\\/]+$/)?.[1] ?? "";
 // };
 
+export const TSC_OUT_ROOT = `./.bfsp/tsc`;
+
 const isTsFile = (filepathInfo: $PathInfo) => {
   const { relative } = filepathInfo;
   if (relative.endsWith("#bfsp.ts")) {
@@ -334,7 +336,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
       target: "es2020",
       module: "es2020",
       lib: ["ES2020"],
-      outDir: "./.bfsp/tsc",
+      outDir: TSC_OUT_ROOT,
       importHelpers: true,
       isolatedModules: false,
       strict: true,
@@ -370,7 +372,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
     extends: "./tsconfig.json",
     compilerOptions: {
       isolatedModules: true,
-      outDir: "./.bfsp/tsc/isolated",
+      outDir: `${TSC_OUT_ROOT}/isolated`,
       noEmit: false,
     },
     files: tsFilesLists.isolatedFiles.toArray(),
@@ -385,7 +387,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
     extends: "./tsconfig.json",
     compilerOptions: {
       isolatedModules: false,
-      outDir: "./.bfsp/tsc/typings",
+      outDir: `${TSC_OUT_ROOT}/typings`,
       noEmit: false,
     },
     files: tsFilesLists.typeFiles.toArray(),
