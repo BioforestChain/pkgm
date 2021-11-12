@@ -23,11 +23,11 @@ const getDevTui = () => {
   return devTui;
 };
 
-const tscOutRoot = `./node_modules/.bfsp/tsc`;
-const bundleOutRoot = `./node_modules/.bfsp/build`;
+const tscOutRoot = `./.bfsp/tsc`;
+const bundleOutRoot = `./.bfsp/build`;
 const finalOutRoot = `./build`;
 
-// 任务：生成阶段2的tsconfig
+// 任务：生成阶段2的tsconfig，用于es2020到es2019
 const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsConfig: $TsConfig, files: string[]) => {
   const tsconfigJson = JSON.parse(JSON.stringify(tsConfig.json)) as typeof tsConfig["json"];
 
@@ -90,11 +90,11 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
   log("root", root);
 
   const config = await getBfspProjectConfig(root);
+  existsSync(tscOutRoot) && (await rm(tscOutRoot, { recursive: true }));
+  existsSync(finalOutRoot) && (await rm(finalOutRoot, { recursive: true }));
 
   /// 初始化写入配置
   const subConfigs = await writeBfspProjectConfig(config);
-  existsSync(tscOutRoot) && (await rm(tscOutRoot, { recursive: true }));
-  existsSync(finalOutRoot) && (await rm(finalOutRoot, { recursive: true }));
 
   /// 监听项目变动
   const subStreams = watchBfspProjectConfig(config!, subConfigs);
@@ -146,8 +146,8 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
             }
 
             for (const [i, x] of buildUserConfigs.entries()) {
-              tscLogger.write(`start build task: ${i + 1}/${buildUserConfigs.length}\n`);
-              tscLogger.write(`removing bundleOutRoot: ${bundleOutRoot}\n`);
+              log(`start build task: ${i + 1}/${buildUserConfigs.length}\n`);
+              log(`removing bundleOutRoot: ${bundleOutRoot}\n`);
               existsSync(bundleOutRoot) && (await rm(bundleOutRoot, { recursive: true }));
 
               const userConfigBuild = Object.assign({}, userConfig.userConfig, x);
@@ -158,10 +158,10 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
                 exportsDetail: parseExports(userConfigBuild.exports),
                 formats: parseFormats(userConfigBuild.formats),
               };
-              tscLogger.write(`generate TsConfig\n`);
+              log(`generate TsConfig\n`);
               const tsConfig1 = await generateTsConfig(root, userConfig1);
 
-              tscLogger.write(`generate ViteConfig\n`);
+              log(`generate ViteConfig\n`);
               const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
 
               const format = userConfigBuild.formats?.[0] ?? "esm";
@@ -176,7 +176,7 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
               c.build!.outDir = bundlePath;
               await taskViteBuild({ ...c, mode: "development" }); // vite 打包
 
-              tscLogger.write(`prepare es2020 files for complie to es2019\n`);
+              log(`prepare es2020 files for complie to es2019\n`);
               const renameFileMap = await taskRenameJsToTs(path.join(root, bundlePath)); // 改打包出来的文件后缀 js=>ts
 
               const packageJson = {
@@ -187,7 +187,7 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
                 ...userConfigBuild.packageJson,
               };
 
-              tscLogger.write(`complile to es2019\n`);
+              log(`complile to es2019\n`);
               // 在打包出来的目录生成tsconfig，主要是为了es2020->es2019
               const outDir = path.resolve(finalOutRoot, packageJson.name);
               const distDir = path.join(outDir, defaultOurDir);
@@ -205,7 +205,7 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
               fileIO.setVal(path.join(outDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
 
               /// 执行代码压缩
-              tscLogger.write(`minify ${chalk.cyan(userConfigBuild.name)}\n`);
+              log(`minify ${chalk.cyan(userConfigBuild.name)}\n`);
               await runTerser({ sourceDir: distDir, logError: (s) => tscLogger.write(s) }); // 压缩
               tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} [${format}] at ${chalk.blue(outDir)}\n`);
 
@@ -213,7 +213,7 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
               for (const [jsFilename, tsFilename] of renameFileMap) {
                 renameSync(path.join(distDir, tsFilename.slice(0, -2) + "js"), path.join(distDir, jsFilename));
               }
-              tscLogger.write("rename done\n");
+              log("rename done\n");
 
               /// 修改样式
               tscLogger.updateLabel({ errorCount: 0 });

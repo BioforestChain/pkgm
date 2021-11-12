@@ -63,8 +63,6 @@
     "tests/config.test.ts",
     "tests/build.test.ts",
     "bin.ts",
-    "./bin/RunTscOption.ts",
-    "./bin/rearrange.ts",
   ],
   "references": [
     // {

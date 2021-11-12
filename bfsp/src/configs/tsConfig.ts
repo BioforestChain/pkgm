@@ -1,6 +1,7 @@
 import { sleep } from "@bfchain/util-extends-promise";
 import chokidar from "chokidar";
 import path, { resolve } from "node:path";
+import { dirname } from "node:path";
 import { Debug, Warn } from "../logger";
 import {
   $PathInfo,
@@ -243,27 +244,32 @@ export type $ProfileInfo = { privatePath: string; sourcePath: string; profiles: 
 
 type TsFilesLists = {
   allFiles: List<string>;
-  notypeFiles: List<string>;
-  notestFiles: List<string>;
+  isolatedFiles: List<string>;
   typeFiles: List<string>;
   testFiles: List<string>;
   binFiles: List<string>;
   profileMap: ProfileMap;
 };
-export const groupTsFilesByAdd = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
+const groupTsFilesByAdd = (
+  projectDirpath: string,
+  bfspUserConfig: $BfspUserConfig,
+  tsFiles: Iterable<string>,
+  lists: TsFilesLists
+) => {
   for (const filepath of tsFiles) {
     lists.allFiles.add(filepath);
 
-    if (isTypeFile(projectDirpath, filepath)) {
+    const isType = isTypeFile(projectDirpath, filepath);
+    const isTest = isTestFile(projectDirpath, filepath);
+    if (isType) {
       lists.typeFiles.add(filepath);
-    } else {
-      lists.notypeFiles.add(filepath);
+    }
+    if (isTest) {
+      lists.testFiles.add(filepath);
     }
 
-    if (isTestFile(projectDirpath, filepath)) {
-      lists.testFiles.add(filepath);
-    } else {
-      lists.notestFiles.add(filepath);
+    if (isType === false /* && isTest === false */) {
+      lists.isolatedFiles.add(filepath);
     }
 
     if (isBinFile(projectDirpath, filepath)) {
@@ -277,20 +283,20 @@ export const groupTsFilesByAdd = (projectDirpath: string, tsFiles: Iterable<stri
     }
   }
 };
-export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
+const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
   for (const filepath of tsFiles) {
     lists.allFiles.remove(filepath);
 
     if (isTypeFile(projectDirpath, filepath)) {
       lists.typeFiles.remove(filepath);
     } else {
-      lists.notypeFiles.remove(filepath);
+      lists.isolatedFiles.remove(filepath);
     }
 
     if (isTestFile(projectDirpath, filepath)) {
       lists.testFiles.remove(filepath);
     } else {
-      lists.notestFiles.remove(filepath);
+      lists.isolatedFiles.remove(filepath);
     }
 
     if (isBinFile(projectDirpath, filepath)) {
@@ -310,15 +316,14 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
 
   const tsFilesLists: TsFilesLists = {
     allFiles: new ListSet(allTsFileList),
-    notypeFiles: new ListArray<string>(),
-    notestFiles: new ListArray<string>(),
+    isolatedFiles: new ListArray<string>(),
     typeFiles: new ListSet<string>(),
     testFiles: new ListSet<string>(),
     binFiles: new ListSet<string>(),
     profileMap: new ProfileMap(),
   };
 
-  groupTsFilesByAdd(projectDirpath, allTsFileList, tsFilesLists);
+  groupTsFilesByAdd(projectDirpath, bfspUserConfig, allTsFileList, tsFilesLists);
 
   const tsConfig = {
     compilerOptions: {
@@ -329,7 +334,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
       target: "es2020",
       module: "es2020",
       lib: ["ES2020"],
-      outDir: "./node_modules/.bfsp/tsc",
+      outDir: "./.bfsp/tsc",
       importHelpers: true,
       isolatedModules: false,
       strict: true,
@@ -360,22 +365,27 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
     // files: tsFilesLists.notestFiles.toArray(),
     files: [] as string[],
   };
+
   const tsIsolatedConfig = {
     extends: "./tsconfig.json",
     compilerOptions: {
       isolatedModules: true,
-      outDir: "./node_modules/.bfsp/tsc",
+      outDir: "./.bfsp/tsc/isolated",
       noEmit: false,
     },
-    files: tsFilesLists.notypeFiles.toArray(),
-    references: [],
+    files: tsFilesLists.isolatedFiles.toArray(),
+    references: [
+      {
+        path: "./tsconfig.typings.json",
+      },
+    ],
   };
 
   const tsTypingsConfig = {
     extends: "./tsconfig.json",
     compilerOptions: {
       isolatedModules: false,
-      outDir: "./typings/dist",
+      outDir: "./.bfsp/tsc/typings",
       noEmit: false,
     },
     files: tsFilesLists.typeFiles.toArray(),
@@ -404,19 +414,16 @@ export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserC
         resolve(projectDirpath, tsConfig.json.references[1].path),
         Buffer.from(JSON.stringify(tsConfig.typingsJson, null, 2))
       );
+      const { outDir } = tsConfig.typingsJson.compilerOptions;
+      const outDirInfo = path.parse(outDir);
       /**index文件可以提交 */
-      const indexFilepath = resolve(projectDirpath, "typings/index.d.ts");
+      const indexFilepath = resolve(projectDirpath, outDirInfo.dir, "index.d.ts");
       /**dist文件不可以提交，所以自动生成的代码都在dist中，index中只保留对dist的引用 */
-      const distFilepath = resolve(projectDirpath, "typings/dist.d.ts");
+      const distFilepath = resolve(projectDirpath, outDirInfo.dir, "dist.d.ts");
       // const parseToEsmPath = (filepath: string) =>
       //   toPosixPath(path.relative("typings", filepath.slice(0, -path.extname(filepath).length)));
       const parseTypingFileToEsmPath = (filepath: string) =>
-        toPosixPath(
-          path.relative(
-            "typings",
-            path.join("typings/dist", filepath.slice(0, -path.extname(filepath).length) + ".d.ts")
-          )
-        );
+        toPosixPath(path.join(outDirInfo.base, filepath.slice(0, -path.extname(filepath).length) + ".d.ts"));
       const indexFileCodeReg =
         /\/\/▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼[\w\W]+?\/\/▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲/g;
       const indexFileSnippet = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\n/// <reference path="./dist.d.ts"/>\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
@@ -429,7 +436,7 @@ export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserC
           .join("\n");
 
       /// 自动创建的相关文件与代码
-      await folderIO.tryInit(resolve(projectDirpath, "typings"));
+      await folderIO.tryInit(resolve(projectDirpath, outDir));
       await fileIO.set(distFilepath, Buffer.from(distFileContent));
       const indexFileContent = (await fileIO.has(indexFilepath)) ? (await fileIO.get(indexFilepath)).toString() : "";
 
@@ -485,14 +492,14 @@ export const watchTsConfig = (
 
       /// 将变更的文件写入tsconfig中
       if (addFileList.length > 0) {
-        groupTsFilesByAdd(projectDirpath, addFileList, tsFilesLists);
+        groupTsFilesByAdd(projectDirpath, bfspUserConfig, addFileList, tsFilesLists);
       }
       if (removeFileList.length > 0) {
         groupTsFilesByRemove(projectDirpath, removeFileList, tsFilesLists);
       }
 
       // tsConfig.json.files = tsFilesLists.notestFiles.toArray();
-      tsConfig.isolatedJson.files = tsFilesLists.notypeFiles.toArray();
+      tsConfig.isolatedJson.files = tsFilesLists.isolatedFiles.toArray();
       tsConfig.typingsJson.files = tsFilesLists.typeFiles.toArray();
     }
 
@@ -523,7 +530,7 @@ export const watchTsConfig = (
       cwd: projectDirpath,
       ignoreInitial: false,
       followSymlinks: true,
-      ignored: ["*.d.ts", "typings/dist", "dist", "#bfsp.ts", "node_modules"],
+      ignored: ["*.d.ts", ".bfsp", "#bfsp.ts", "node_modules"],
     }
   );
 
