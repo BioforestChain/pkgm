@@ -2,7 +2,15 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { Debug } from "../logger";
-import { fileIO, getExtensionByFormat, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
+import {
+  fileIO,
+  getExtensionByFormat,
+  getExtname,
+  Loopable,
+  SharedAsyncIterable,
+  SharedFollower,
+  toPosixPath,
+} from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
 const log = Debug("bfsp:config/package.json");
@@ -37,8 +45,6 @@ export const generatePackageJson = async (
     return toPosixPath(path.join(`dist/${format}`, `${outputName}${getExtensionByFormat(format)}`));
   };
 
-  packageJson.types = `typings/@index.d.ts`; // viteConfig.mainEntry;
-
   //#region exports 导出
   packageJson.exports = {};
   for (const [posixKey, input] of Object.entries(bfspUserConfig.exportsDetail.formatedExports)) {
@@ -47,12 +53,18 @@ export const generatePackageJson = async (
       console.error(`no found output by input: '${input}'`);
       continue;
     }
-    packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
+    const exportsItem = (packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
       import: getDistFilepath("esm", output),
-    };
+      types: "",
+    });
+    {
+      const filepath = getDistFilepath(defaultFormat, output)!;
+      exportsItem.types = filepath.slice(0, -getExtname(filepath).length) + ".d.ts";
+    }
   }
   packageJson.main = packageJson.exports["."][defaultFormat === "esm" ? "import" : "require"];
+  packageJson.types = packageJson.exports["."].types; // viteConfig.mainEntry;
   //#endregion
 
   //#region bin 导出

@@ -498,7 +498,11 @@ export const watchTsConfig = (
 
     tsConfig.json.compilerOptions.paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);
 
-    const newTsConfigJson = JSON.stringify(tsConfig.json);
+    const newTsConfigJson = JSON.stringify({
+      json: tsConfig.json,
+      isolated: tsConfig.isolatedJson,
+      typings: tsConfig.typingsJson,
+    });
     if (preTsConfigJson === newTsConfigJson) {
       return;
     }

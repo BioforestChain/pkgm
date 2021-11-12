@@ -29,22 +29,26 @@ const finalOutRoot = `./build`;
 
 // 任务：生成阶段2的tsconfig
 const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsConfig: $TsConfig, files: string[]) => {
-  const tscOutStage2TypingsRoot = path.resolve(outDir, "typings");
-  const c = JSON.parse(JSON.stringify(tsConfig)) as typeof tsConfig;
-  c.json.compilerOptions.noEmit = false; // true无法生成js文件
-  c.json.compilerOptions.target = "es2019";
-  c.json.compilerOptions.outDir = outDir;
-  c.isolatedJson.compilerOptions.outDir = outDir;
-  c.typingsJson.compilerOptions.outDir = tscOutStage2TypingsRoot;
-  delete (c.json as any).references;
+  const tsconfigJson = JSON.parse(JSON.stringify(tsConfig.json)) as typeof tsConfig["json"];
 
-  c.json.files = files; //Object.keys(userConfig.exportsDetail.formatedExports).map((x) => `${x}.ts`);
+  tsconfigJson.compilerOptions = {
+    ...tsconfigJson.compilerOptions,
+    composite: false,
+    noEmit: false,
+    target: "es2019",
+    outDir: outDir,
+    declaration: false,
+  };
+
+  Reflect.deleteProperty(tsconfigJson, "references");
+
+  tsconfigJson.files = files;
 
   await fileIO.setVal(
     path.resolve(path.join(bundlePath, "tsconfig.json")),
-    Buffer.from(JSON.stringify(c.json, null, 2))
+    Buffer.from(JSON.stringify(tsconfigJson, null, 2))
   );
-  return c;
+  return tsconfigJson;
 };
 
 const taskRenameJsToTs = async (root: string) => {
