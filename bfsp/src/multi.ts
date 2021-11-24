@@ -99,6 +99,7 @@ export type $TsPathInfo = {
 };
 export function watchTsPathInfo() {
   const follower = new SharedFollower<$TsPathInfo>();
+  let previousTsPaths: $TsPathInfo;
   const looper = Loopable("watch pathinfo", async (reasons) => {
     const paths: $TsPathInfo = {};
     tree.forEach((x) => {
@@ -108,7 +109,10 @@ export function watchTsPathInfo() {
       }
       paths[x.data.cfg.name] = [path];
     });
-    follower.push(paths);
+    if (!previousTsPaths || !isDeepStrictEqual(previousTsPaths, paths)) {
+      follower.push(paths);
+      previousTsPaths = paths;
+    }
   });
   configCbs.push((p, cfg) => looper.loop("pathinfo changed"));
   looper.loop("init", 200);
