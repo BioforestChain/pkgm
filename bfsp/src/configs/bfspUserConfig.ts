@@ -1,4 +1,3 @@
-import chokidar from "chokidar";
 import { build } from "esbuild";
 import { createHash } from "node:crypto";
 import { existsSync, writeFileSync, unlinkSync } from "node:fs";
@@ -18,6 +17,7 @@ import {
   toPosixPath,
 } from "../toolkit";
 import { Debug } from "../logger";
+import { registerMulti } from "../multi";
 const log = Debug("bfsp:config/#bfsp");
 
 // export const enum BUILD_MODE {
@@ -238,34 +238,10 @@ export const watchBfspUserConfig = (
 ) => {
   const follower = new SharedFollower<$BfspUserConfig>();
 
-  let curBfspUserConfig: $BfspUserConfig | undefined;
-
-  const looper = Loopable("watch bfsp user config", async () => {
-    if (curBfspUserConfig === undefined) {
-      // 初始的值 放出来
-      follower.push((curBfspUserConfig = await (options.bfspUserConfigInitPo ?? getBfspUserConfig(projectDirpath))));
-    }
-
-    const userConfig = await readUserConfig(projectDirpath, {
-      refresh: true,
-    });
-    if (userConfig !== undefined) {
-      if (isDeepStrictEqual(curBfspUserConfig?.userConfig, userConfig)) {
-        return;
-      }
-      log("bfspuserConfig changed!!");
-      follower.push((curBfspUserConfig = _getBfspUserConfig(userConfig)));
-    }
-  });
-
   /// 监听配置用户的配置文件
-  const watcher = chokidar.watch(["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"], {
-    cwd: projectDirpath,
-    ignoreInitial: false,
+  registerMulti(projectDirpath, (cfg) => {
+    follower.push(cfg);
   });
-  watcher.on("change", looper.loop);
-  watcher.on("add", looper.loop);
 
-  looper.loop();
   return new SharedAsyncIterable<$BfspUserConfig>(follower);
 };

@@ -7,13 +7,19 @@ import { isDeepStrictEqual } from "node:util";
 import { Worker } from "node:worker_threads";
 import type { RollupWatcher } from "rollup";
 import { build as buildBfsp } from "vite";
+import { $BfspUserConfig } from "../src";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { createDevTui, Debug } from "../src/logger";
 import { Closeable } from "../src/toolkit";
 import { runTsc } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
 
-export const doDev = async (options: { format?: Bfsp.Format; root?: string; profiles?: string[] }) => {
+export const doDev = async (options: {
+  format?: Bfsp.Format;
+  root?: string;
+  profiles?: string[];
+  cfg: $BfspUserConfig;
+}) => {
   const log = Debug("bfsp:bin/dev");
   const { createTscLogger, createViteLogger } = createDevTui();
 
@@ -23,7 +29,7 @@ export const doDev = async (options: { format?: Bfsp.Format; root?: string; prof
 
   log("root", root);
 
-  const config = await getBfspProjectConfig(root);
+  const config = { projectDirpath: root, bfspUserConfig: options.cfg };
 
   /// 初始化写入配置
   const subConfigs = await writeBfspProjectConfig(config);
@@ -49,6 +55,7 @@ export const doDev = async (options: { format?: Bfsp.Format; root?: string; prof
       const tsConfig = await subStreams.tsConfigStream.getCurrent();
 
       const viteConfigBuildOptions = {
+        userConfig: userConfig.userConfig,
         projectDirpath: root,
         viteConfig,
         tsConfig,

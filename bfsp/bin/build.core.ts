@@ -13,6 +13,7 @@ import { createDevTui, Debug } from "../src/logger";
 import { Closeable, fileIO, folderIO, toPosixPath, walkFiles } from "../src/toolkit";
 import { runTerser } from "./terser/runner";
 import { runTsc, RunTscOption } from "./tsc/runner";
+import { writeJsonConfig } from "./util";
 import { ViteConfigFactory } from "./vite/configFactory";
 
 let devTui: ReturnType<typeof createDevTui> | undefined;
@@ -43,11 +44,8 @@ const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsCon
   Reflect.deleteProperty(tsconfigJson, "references");
 
   tsconfigJson.files = files;
+  await writeJsonConfig(path.resolve(path.join(bundlePath, "tsconfig.json")), tsconfigJson);
 
-  await fileIO.setVal(
-    path.resolve(path.join(bundlePath, "tsconfig.json")),
-    Buffer.from(JSON.stringify(tsconfigJson, null, 2))
-  );
   return tsconfigJson;
 };
 

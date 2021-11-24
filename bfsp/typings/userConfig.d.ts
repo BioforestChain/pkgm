@@ -6,7 +6,7 @@ declare namespace Bfsp {
     };
     formats?: Format[];
     profiles?: string[];
-    build?: Partial<UserConfig>[];
+    build?: Partial<Omit<UserConfig, "build">>[];
     packageJson?: {
       version: string;
     };

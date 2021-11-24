@@ -59,9 +59,11 @@
     "src/configs/packageJson.ts",
     "src/configs/tsConfig.ts",
     "src/configs/viteConfig.ts",
+    "src/multi.ts",
     "src/index.ts",
     "tests/config.test.ts",
     "tests/build.test.ts",
+    "tests/util.test.ts",
     "bin.ts",
   ],
   "references": [
