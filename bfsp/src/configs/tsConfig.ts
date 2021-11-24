@@ -23,6 +23,7 @@ import {
 } from "../toolkit";
 import { $TsPathInfo } from "../multi";
 import type { $BfspUserConfig } from "./bfspUserConfig";
+import { writeJsonConfig } from "../../bin/util";
 const log = Debug("bfsp:config/tsconfig");
 const warn = Warn("bfsp:config/tsconfig");
 
@@ -407,16 +408,12 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
 export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
 export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserConfig, tsConfig: $TsConfig) => {
   return Promise.all([
-    fileIO.set(resolve(projectDirpath, "tsconfig.json"), Buffer.from(JSON.stringify(tsConfig.json, null, 2))),
-    fileIO.set(
-      resolve(projectDirpath, tsConfig.json.references[0].path),
-      Buffer.from(JSON.stringify(tsConfig.isolatedJson, null, 2))
-    ),
+    writeJsonConfig(resolve(projectDirpath, "tsconfig.json"), tsConfig.json),
+    writeJsonConfig(resolve(projectDirpath, tsConfig.json.references[0].path), tsConfig.isolatedJson),
+    ,
     (async () => {
-      await fileIO.set(
-        resolve(projectDirpath, tsConfig.json.references[1].path),
-        Buffer.from(JSON.stringify(tsConfig.typingsJson, null, 2))
-      );
+      await writeJsonConfig(resolve(projectDirpath, tsConfig.json.references[1].path), tsConfig.typingsJson);
+
       const { outDir } = tsConfig.typingsJson.compilerOptions;
       const outDirInfo = path.parse(outDir);
       /**index文件可以提交 */
