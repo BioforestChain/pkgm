@@ -1,3 +1,4 @@
+import { initMulti, watchTsPathInfo } from "../src/multi";
 import { defineCommand } from "../bin";
 import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
 import { Warn } from "../src/logger";
@@ -31,6 +32,14 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
-    return doDev({ format: format as Bfsp.Format, root, profiles });
+    const tasks = new Map<string, ReturnType<typeof doDev>>();
+    initMulti(root, (p, cfg) => {
+      const dir = path.dirname(p);
+      if (tasks.has(dir)) {
+        return;
+      }
+      tasks.set(dir, doDev({ format: format as Bfsp.Format, root: path.resolve(dir), profiles, cfg }));
+    });
+    watchTsPathInfo();
   }
 );

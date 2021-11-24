@@ -11,6 +11,7 @@ import { parseExtensionAndFormat } from "../../src/toolkit";
 const log = Debug("bfsp:config/vite");
 
 export const ViteConfigFactory = (options: {
+  userConfig: Bfsp.UserConfig;
   projectDirpath: string;
   viteConfig: $ViteConfig;
   tsConfig: $TsConfig;
@@ -51,6 +52,9 @@ export const ViteConfigFactory = (options: {
                 }
               }
             : (source, importer, isResolved) => {
+                if (source.startsWith(options.userConfig.name)) {
+                  return true;
+                }
                 if (source.startsWith("node:")) {
                   return true;
                 }

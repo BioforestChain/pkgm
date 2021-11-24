@@ -21,6 +21,7 @@ import {
   toPosixPath,
   walkFiles,
 } from "../toolkit";
+import { $TsPathInfo } from "../multi";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 const log = Debug("bfsp:config/tsconfig");
 const warn = Warn("bfsp:config/tsconfig");
@@ -457,6 +458,7 @@ export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserC
 export const watchTsConfig = (
   projectDirpath: string,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
+  tsPathInfoStream: SharedAsyncIterable<$TsPathInfo>,
   options: {
     tsConfigInitPo?: BFChainUtil.PromiseMaybe<$TsConfig>;
     write?: boolean;
@@ -471,6 +473,7 @@ export const watchTsConfig = (
   const looper = Loopable("watch tsconfigs", async (reasons) => {
     log("reasons:", reasons);
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
+    const tsPathInfo = await tsPathInfoStream.getCurrent();
     if (tsConfig === undefined) {
       follower.push((tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig))));
     }
@@ -505,7 +508,8 @@ export const watchTsConfig = (
       tsConfig.typingsJson.files = tsFilesLists.typeFiles.toArray();
     }
 
-    tsConfig.json.compilerOptions.paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);
+    const paths = Object.assign(tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles), tsPathInfo);
+    tsConfig.json.compilerOptions.paths = paths;
 
     const newTsConfigJson = JSON.stringify({
       json: tsConfig.json,
