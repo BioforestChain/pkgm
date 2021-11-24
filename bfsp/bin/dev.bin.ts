@@ -40,6 +40,5 @@ defineCommand(
       }
       tasks.set(dir, doDev({ format: format as Bfsp.Format, root: path.resolve(dir), profiles, cfg }));
     });
-    watchTsPathInfo();
   }
 );
