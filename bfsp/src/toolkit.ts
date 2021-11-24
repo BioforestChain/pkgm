@@ -1,10 +1,15 @@
+import { sleep } from "@bfchain/util-extends-promise";
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import ignore from "ignore";
+import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { readdir, readFile, unlink, writeFile } from "node:fs/promises";
-import path from "node:path";
-
 import { createRequire } from "node:module";
+import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
+//#endregion
+import type { ModuleFormat } from "rollup";
+
 // const requireRoot = fileURLToPath(new URL("../", import.meta.url).href);
 // console.log("requireRoot", requireRoot);
 export const require = createRequire(import.meta.url);
@@ -88,7 +93,6 @@ type GitIgnore = {
   basedir: string;
   rules: string[];
 };
-import { isDeepStrictEqual } from "node:util";
 class GitignoreCache extends CacheGetter<string, GitIgnore[]> {
   isEqual(key: string, val1: GitIgnore[], val2: GitIgnore[]): boolean {
     return isDeepStrictEqual(val1, val2);
@@ -282,7 +286,6 @@ AGP.toSharable = function () {
   return new SharedAsyncIterable(this);
 };
 
-import { EventEmitter } from "node:events";
 EventEmitter.defaultMaxListeners = 100;
 export class SharedAsyncIterable<T> implements AsyncIterable<T> {
   private _current?: T;
@@ -669,11 +672,6 @@ export const PathInfoParser = (
   return info;
 };
 export type $PathInfo = ReturnType<typeof PathInfoParser>;
-//#endregion
-
-import type { ModuleFormat } from "rollup";
-import { fileURLToPath } from "node:url";
-import { sleep } from "@bfchain/util-extends-promise";
 const EXTENSION_MAP = {
   es: ".mjs",
   esm: ".mjs",
@@ -682,8 +680,11 @@ const EXTENSION_MAP = {
   commonjs: ".cjs",
   iife: ".js",
 };
-export const getExtensionByFormat = (format: ModuleFormat): ".js" | ".mjs" | ".cjs" => {
-  return (EXTENSION_MAP as any)[format] || ".js";
+export const parseExtensionAndFormat = (format: ModuleFormat | Bfsp.Format) => {
+  if (typeof format === "object") {
+    return { format: format.format, extension: format.ext };
+  }
+  return { format: format, extension: ((EXTENSION_MAP as any)[format] || ".js") as Bfsp.JsFormat };
 };
 export const isEqualSet = <T>(set1: Set<T>, set2?: Set<T>) => {
   if (set2 === undefined) {

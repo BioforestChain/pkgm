@@ -7,7 +7,16 @@ import path, { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
-import { CacheGetter, fileIO, folderIO, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
+import {
+  CacheGetter,
+  fileIO,
+  folderIO,
+  Loopable,
+  parseExtensionAndFormat,
+  SharedAsyncIterable,
+  SharedFollower,
+  toPosixPath,
+} from "../toolkit";
 import { Debug } from "../logger";
 const log = Debug("bfsp:config/#bfsp");
 
@@ -129,14 +138,18 @@ export const parseExports = (exports: Bfsp.UserConfig["exports"]) => {
   };
 };
 
-export const ALLOW_FORMATS = new Set<Bfsp.Format>(["iife", "cjs", "esm"]);
-export const parseFormats = (formats: Bfsp.UserConfig["formats"] = []) => {
-  const formatSet = new Set(formats.filter((f) => ALLOW_FORMATS.has(f)));
-  formats = [...formatSet];
-  if (formats.length === 0) {
-    formats.push("esm");
+export const ALLOW_FORMATS = new Set<Bfsp.JsFormat>(["iife", "cjs", "esm"]);
+export const parseFormats = (formats: Bfsp.Format[] = []) => {
+  const feList = formats.map((f) => parseExtensionAndFormat(f)).filter((fe) => ALLOW_FORMATS.has(fe.format as any));
+  const feMap = new Map(feList.map((fe) => [fe.format + "/" + fe.extension, fe]));
+  const validFeList = [...feMap.values()];
+  if (validFeList.length === 0) {
+    validFeList.push(parseExtensionAndFormat("esm"));
   }
-  return formats;
+  return validFeList as {
+    format: Bfsp.JsFormat;
+    extension: Bfsp.JsExtension;
+  }[];
 };
 
 const bfspTsconfigFilepath = path.join(
@@ -211,7 +224,7 @@ const _getBfspUserConfig = (userConfig: Bfsp.UserConfig) => {
   return {
     userConfig,
     exportsDetail: parseExports(userConfig.exports),
-    formats: parseFormats(userConfig.formats),
+    formatExts: parseFormats(userConfig.formats),
   };
 };
 

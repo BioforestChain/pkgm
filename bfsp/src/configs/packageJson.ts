@@ -4,7 +4,7 @@ import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { Debug } from "../logger";
 import {
   fileIO,
-  getExtensionByFormat,
+  parseExtensionAndFormat,
   getExtname,
   Loopable,
   SharedAsyncIterable,
@@ -24,25 +24,33 @@ export const generatePackageJson = async (
   const packageJson = JSON.parse(packageJsonTemplate);
   packageJson.name = bfspUserConfig.userConfig.name;
   const { exportsMap } = bfspUserConfig.exportsDetail;
-  const indexOutput = exportsMap.getOutput(bfspUserConfig.exportsDetail.indexFile)!;
 
-  const { formats } = bfspUserConfig;
-  const hasCjs = formats.includes("cjs");
-  const hasEsm = formats.includes("esm");
-  const hasIife = formats.includes("iife");
-  const defaultFormat = formats[0];
+  const { formatExts } = bfspUserConfig;
+  const hasCjs = formatExts.find((fe) => fe.format === "cjs");
+  const hasEsm = formatExts.find((fe) => fe.format === "esm");
+  const hasIife = formatExts.find((fe) => fe.format === "iife");
+  const defaultFormat = formatExts[0];
 
-  const getDistFilepath = (format: Bfsp.Format, outputName: string): string | undefined => {
-    if (format === "cjs" && hasCjs === false) {
-      return getDistFilepath("iife", outputName);
+  const getDistFilepath = (format: Bfsp.JsFormat, outputName: string): string | undefined => {
+    let fe = hasIife || defaultFormat;
+    switch (format) {
+      case "cjs":
+        if (hasCjs !== undefined) {
+          fe = hasCjs;
+        }
+        break;
+      case "esm":
+        if (hasEsm !== undefined) {
+          fe = hasEsm;
+        }
+        break;
+      case "iife":
+        if (hasIife !== undefined) {
+          fe = hasIife;
+        }
+        break;
     }
-    if (format === "esm" && hasEsm === false) {
-      return getDistFilepath("iife", outputName);
-    }
-    if (format === "iife" && hasIife === false) {
-      return;
-    }
-    return toPosixPath(path.join(`dist/${format}`, `${outputName}${getExtensionByFormat(format)}`));
+    return toPosixPath(path.join(`dist/${fe.format}`, `${outputName}${fe.extension}`));
   };
 
   //#region exports 导出
@@ -53,19 +61,15 @@ export const generatePackageJson = async (
       console.error(`no found output by input: '${input}'`);
       continue;
     }
-    const exportsItem = (packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
+    packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
       import: getDistFilepath("esm", output),
       types: input,
-    });
-    // {
-    //   const filepath = getDistFilepath(defaultFormat, output)!;
-    //   exportsItem.types = filepath.slice(0, -getExtname(filepath).length) + ".d.ts";
-    // }
+    };
   }
   const defaultExportConfig = packageJson.exports["."];
   if (defaultExportConfig !== undefined) {
-    packageJson.main = packageJson.exports["."][defaultFormat === "esm" ? "import" : "require"];
+    packageJson.main = packageJson.exports["."][defaultFormat.format === "esm" ? "import" : "require"];
     packageJson.types = packageJson.exports["."].types; // viteConfig.mainEntry;
   }
   //#endregion

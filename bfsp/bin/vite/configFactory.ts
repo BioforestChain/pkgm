@@ -5,11 +5,10 @@ import typescript from "typescript";
 import type { InlineConfig } from "vite";
 import { $TsConfig } from "../../src/configs/tsConfig";
 import type { $ViteConfig } from "../../src/configs/viteConfig";
+import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
 import { Debug } from "../../src/logger";
-import { getExtensionByFormat } from "../../src/toolkit";
+import { parseExtensionAndFormat } from "../../src/toolkit";
 const log = Debug("bfsp:config/vite");
-
-const FORMATS = ["cjs", "esm", "iife"] as const;
 
 export const ViteConfigFactory = (options: {
   projectDirpath: string;
@@ -19,12 +18,11 @@ export const ViteConfigFactory = (options: {
   profiles?: string[];
   outDir?: string;
 }) => {
-  let { format = "esm", profiles = ["default"] } = options;
-  if (FORMATS.includes(format as any) === false) {
-    format = "esm";
-  }
   const { projectDirpath, viteConfig } = options;
-  const extension = getExtensionByFormat(format);
+
+  const fe = parseExtensionAndFormat(options.format ?? "esm");
+  const format = ALLOW_FORMATS.has(fe.format as any) ? (fe.format as Bfsp.JsFormat) : "esm";
+  const extension = fe.extension;
   const outDir = options.outDir || (format ? `dist/${format}` : undefined);
 
   const viteBuildConfig: Readonly<InlineConfig> = {
@@ -44,15 +42,19 @@ export const ViteConfigFactory = (options: {
         preserveEntrySignatures: "strict",
         external:
           format === "iife"
-            ? undefined
+            ? (source) => {
+                if (source.startsWith("node:")) {
+                  return true;
+                }
+                if (source === "@bfchain/pkgm" || source.startsWith("@bfchain/pkgm/")) {
+                  return true;
+                }
+              }
             : (source, importer, isResolved) => {
                 if (source.startsWith("node:")) {
                   return true;
                 }
-                if (source.startsWith("@bfchain/") || source.includes("node_modules/@bfchain/")) {
-                  return false;
-                }
-                if (source.includes("node_modules")) {
+                if (source === "@bfchain/pkgm" || source.startsWith("@bfchain/pkgm/")) {
                   return true;
                 }
                 if (

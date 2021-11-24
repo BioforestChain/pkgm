@@ -11,8 +11,9 @@ declare namespace Bfsp {
       version: string;
     };
   }
-
-  type Format = "cjs" | "esm" | "iife";
+  type JsFormat = "cjs" | "esm" | "iife";
+  type JsExtension = ".cjs" | ".mjs" | ".js";
+  type Format = JsFormat | { format: JsFormat; ext: JsExtension };
   interface ConfigEnvInfo {
     mode: import("../src/configs/bfspUserConfig").BUILD_MODE;
   }
