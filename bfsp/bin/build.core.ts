@@ -156,7 +156,7 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
               const userConfig1 = {
                 userConfig: userConfigBuild,
                 exportsDetail: parseExports(userConfigBuild.exports),
-                formats: parseFormats(userConfigBuild.formats),
+                formatExts: parseFormats(userConfigBuild.formats),
               };
               log(`generate TsConfig\n`);
               const tsConfig1 = await generateTsConfig(root, userConfig1);
@@ -166,6 +166,7 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
 
               const format = userConfigBuild.formats?.[0] ?? "esm";
               const c = ViteConfigFactory({
+                userConfig: userConfigBuild,
                 projectDirpath: root,
                 viteConfig: viteConfig1,
                 tsConfig: tsConfig1,
@@ -218,7 +219,7 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
               });
 
               /// 写入package.json
-              fileIO.setVal(path.join(buildOutDir, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
+              await writeJsonConfig(path.join(buildOutDir, "package.json"), packageJson);
 
               /// 执行代码压缩
               log(`minify ${chalk.cyan(userConfigBuild.name)}\n`);

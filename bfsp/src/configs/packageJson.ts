@@ -1,6 +1,7 @@
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
+import { writeJsonConfig } from "../../bin/util";
 import { Debug } from "../logger";
 import {
   fileIO,
@@ -98,7 +99,7 @@ export const generatePackageJson = async (
 
 export type $PackageJson = BFChainUtil.PromiseReturnType<typeof generatePackageJson>;
 export const writePackageJson = (projectDirpath: string, packageJson: $PackageJson) => {
-  return fileIO.set(path.resolve(projectDirpath, "package.json"), Buffer.from(JSON.stringify(packageJson, null, 2)));
+  return writeJsonConfig(path.resolve(projectDirpath, "package.json"), packageJson);
 };
 export const watchPackageJson = (
   projectDirpath: string,

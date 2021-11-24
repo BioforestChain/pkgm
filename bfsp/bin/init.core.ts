@@ -4,6 +4,7 @@ import { fileIO, folderIO } from "../src";
 import cp from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { destroyScreen } from "../src/logger";
+import { writeJsonConfig } from "./util";
 
 export const doInit = async (options: { root: string; name: string }) => {
   const { root, name } = options;
@@ -17,7 +18,7 @@ export const doInit = async (options: { root: string; name: string }) => {
     },
   };
   console.log(`creating files`);
-  await writeFile(path.join(root, "package.json"), JSON.stringify(packageJson, null, 2));
+  await writeJsonConfig(path.join(root, "package.json"), packageJson);
   const bfspTsFile = `
   import { defineConfig } from "@bfchain/pkgm";
   export default defineConfig((info) => {
