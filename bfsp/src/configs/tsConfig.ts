@@ -561,6 +561,7 @@ export const watchTsConfig = (
 
   //#region 监听依赖配置来触发更新
   bfspUserConfigStream.onNext(() => looper.loop("bfsp user config changed"));
+  tsPathInfoStream.onNext(() => looper.loop("ts pathinfo changed"));
   //#endregion
 
   /// 初始化，使用400ms时间来进行防抖

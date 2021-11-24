@@ -16,7 +16,7 @@ import { Tree } from "../bin/util";
 import { Debug, destroyScreen } from "./logger";
 const pathedConfigCbMap = new Map<string, { lastConfig?: Bfsp.UserConfig; cb: (cfg: $BfspUserConfig) => void }>();
 const unemitedCfg = new Map<string, $BfspUserConfig>();
-const log = Debug("bfsp:userConfigWatcher");
+const log = Debug("bfsp:multi");
 const configCbs = [] as ((p: string, cfg: $BfspUserConfig) => void)[];
 interface NodeData {
   path: string;
