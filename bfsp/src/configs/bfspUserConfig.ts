@@ -17,7 +17,7 @@ import {
   toPosixPath,
 } from "../toolkit";
 import { Debug } from "../logger";
-import { registerMulti } from "../multi";
+import { multiUserConfig } from "../multi";
 const log = Debug("bfsp:config/#bfsp");
 
 // export const enum BUILD_MODE {
@@ -239,8 +239,9 @@ export const watchBfspUserConfig = (
   const follower = new SharedFollower<$BfspUserConfig>();
 
   /// 监听配置用户的配置文件
-  registerMulti(projectDirpath, (cfg) => {
-    follower.push(cfg);
+  multiUserConfig.register(projectDirpath, async (e) => {
+    const cfg = await multiUserConfig.getUserConfig(e.path);
+    cfg && follower.push(cfg);
   });
 
   return new SharedAsyncIterable<$BfspUserConfig>(follower);

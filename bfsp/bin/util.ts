@@ -22,7 +22,7 @@ export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) 
 export async function writeJsonConfig(path: string, config: any) {
   await fileIO.set(path, Buffer.from(JSON.stringify(config, null, 2)));
 }
-interface TreeNode<T> {
+export interface TreeNode<T> {
   data: T;
   parent?: TreeNode<T>;
   children?: TreeNode<T>[];
@@ -59,25 +59,22 @@ export class Tree<T> {
     this._root = r;
     return r;
   }
-  forEach(cb: (n: TreeNode<T>) => void) {
+  async forEach(r: TreeNode<T>, cb: (n: TreeNode<T>) => Promise<void>) {
     const queue = [] as TreeNode<T>[];
     const visited = [] as TreeNode<T>[];
-    const r = this.getRoot();
-    const visit = (n: TreeNode<T>) => {
+    const visit = async (n: TreeNode<T>) => {
       if (visited.some((x) => this._eqFn(x.data, n.data))) {
         return;
       }
-      cb(n);
+      await cb(n);
       visited.push(n);
       if (n.children) {
         queue.push(...n.children);
       }
       const x = queue.shift();
-      x && visit(x);
+      x && (await visit(x));
     };
-    if (r) {
-      visit(r);
-    }
+    await visit(r);
   }
   addOrUpdate(d: T) {
     if (!this._root) {

@@ -4,7 +4,7 @@ import { $NpmIgnore, generateNpmIgnore, watchNpmIgnore, writeNpmIgnore } from ".
 import { $PackageJson, generatePackageJson, watchPackageJson, writePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig, watchTsConfig, writeTsConfig } from "./configs/tsConfig";
 import { $ViteConfig, generateViteConfig, watchViteConfig } from "./configs/viteConfig";
-import { watchTsPathInfo } from "./multi";
+import { watchMulti } from "./multi";
 
 export const getBfspProjectConfig = async (dirname = process.cwd()) => {
   const bfspUserConfig = await getBfspUserConfig(dirname);
@@ -51,8 +51,8 @@ export const watchBfspProjectConfig = (
   const userConfigStream = watchBfspUserConfig(projectDirpath, {
     bfspUserConfigInitPo: bfspUserConfig,
   });
-  const tsPathInfoStream = watchTsPathInfo();
-  const tsConfigStream = watchTsConfig(projectDirpath, userConfigStream, tsPathInfoStream, {
+  const multiStream = watchMulti();
+  const tsConfigStream = watchTsConfig(projectDirpath, userConfigStream, multiStream, {
     tsConfigInitPo: initConfigs.tsConfig,
     write: true,
   });
