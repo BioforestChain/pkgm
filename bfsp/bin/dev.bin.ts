@@ -1,6 +1,6 @@
-import { initMulti, watchTsPathInfo } from "../src/multi";
+import { initMultiRoot, multiUserConfig } from "../src/multi";
 import { defineCommand } from "../bin";
-import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
+import { $BfspUserConfig, ALLOW_FORMATS, parseExports, parseFormats } from "../src/configs/bfspUserConfig";
 import { Warn } from "../src/logger";
 import { doDev } from "./dev.core";
 import path from "node:path";
@@ -33,12 +33,23 @@ defineCommand(
       root = path.resolve(root, maybeRoot);
     }
     const tasks = new Map<string, ReturnType<typeof doDev>>();
-    initMulti(root, (p, cfg) => {
-      const dir = path.dirname(p);
-      if (tasks.has(dir)) {
-        return;
+    multiUserConfig.registerAll(async (e) => {
+      const dir = path.dirname(e.path!);
+      if (e.type === "unlink") {
+        const t = tasks.get(dir);
+        (await t)?.close("project removed");
+      } else {
+        const cfg = await multiUserConfig.getUserConfig(e.path);
+        if (!cfg) {
+          return;
+        }
+
+        if (tasks.has(dir)) {
+          return;
+        }
+        tasks.set(dir, doDev({ format: format as Bfsp.Format, root: path.resolve(dir), profiles, cfg }));
       }
-      tasks.set(dir, doDev({ format: format as Bfsp.Format, root: path.resolve(dir), profiles, cfg }));
     });
+    initMultiRoot(root);
   }
 );

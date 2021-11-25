@@ -21,7 +21,7 @@ import {
   toPosixPath,
   walkFiles,
 } from "../toolkit";
-import { $TsPathInfo } from "../multi";
+import { $TsPathInfo, multiTsConfig } from "../multi";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { writeJsonConfig } from "../../bin/util";
 const log = Debug("bfsp:config/tsconfig");
@@ -455,7 +455,7 @@ export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserC
 export const watchTsConfig = (
   projectDirpath: string,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
-  tsPathInfoStream: SharedAsyncIterable<$TsPathInfo>,
+  multiStream: SharedAsyncIterable<number>,
   options: {
     tsConfigInitPo?: BFChainUtil.PromiseMaybe<$TsConfig>;
     write?: boolean;
@@ -470,7 +470,7 @@ export const watchTsConfig = (
   const looper = Loopable("watch tsconfigs", async (reasons) => {
     log("reasons:", reasons);
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
-    const tsPathInfo = await tsPathInfoStream.getCurrent();
+    const tsPathInfo = await multiTsConfig.getPaths(projectDirpath);
     if (tsConfig === undefined) {
       follower.push((tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig))));
     }
@@ -558,7 +558,7 @@ export const watchTsConfig = (
 
   //#region 监听依赖配置来触发更新
   bfspUserConfigStream.onNext(() => looper.loop("bfsp user config changed"));
-  tsPathInfoStream.onNext(() => looper.loop("ts pathinfo changed"));
+  multiStream.onNext(() => looper.loop("multi project changed"));
   //#endregion
 
   /// 初始化，使用400ms时间来进行防抖

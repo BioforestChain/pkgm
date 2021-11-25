@@ -118,4 +118,5 @@ export const doDev = async (options: {
   if (subStreams.viteConfigStream.hasCurrent()) {
     abortable.start();
   }
+  return abortable
 };
