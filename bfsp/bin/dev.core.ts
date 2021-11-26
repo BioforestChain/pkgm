@@ -9,7 +9,8 @@ import type { RollupWatcher } from "rollup";
 import { build as buildBfsp } from "vite";
 import { $BfspUserConfig } from "../src";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { createDevTui, Debug } from "../src/logger";
+import { Debug } from "../src/logger";
+import { multiDevTui } from "../src/multi";
 import { Closeable } from "../src/toolkit";
 import { runTsc } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
@@ -21,7 +22,6 @@ export const doDev = async (options: {
   cfg: $BfspUserConfig;
 }) => {
   const log = Debug("bfsp:bin/dev");
-  const { createTscLogger, createViteLogger } = createDevTui();
 
   // const cwd = process.cwd();
   // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
@@ -69,7 +69,7 @@ export const doDev = async (options: {
 
       log("running bfsp build!");
       //#region vite
-      const viteLogger = createViteLogger("info", {});
+      const viteLogger = multiDevTui.createViteLogger("info", {});
       const dev = (await buildBfsp({
         ...viteBuildConfig,
         build: {
@@ -86,23 +86,10 @@ export const doDev = async (options: {
       })) as RollupWatcher;
       //#endregion
 
-      //#region tsc
-
-      const tscLogger = createTscLogger();
-      const tscWatcher = runTsc({
-        watch: true,
-        onClear: () => tscLogger.clear(),
-        onMessage: (s) => tscLogger.write(s),
-        tsconfigPath: path.join(root, "tsconfig.json"),
-      });
-
-      //#endregion
-
       closeSign.onSuccess((reason) => {
         log("close bfsp build, reason: ", reason);
         preViteConfigBuildOptions = undefined;
         dev.close();
-        tscWatcher.stop();
       });
     })();
 
@@ -118,5 +105,5 @@ export const doDev = async (options: {
   if (subStreams.viteConfigStream.hasCurrent()) {
     abortable.start();
   }
-  return abortable
+  return abortable;
 };

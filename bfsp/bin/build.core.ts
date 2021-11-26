@@ -9,20 +9,13 @@ import { parseExports, parseFormats } from "../src";
 import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { $TsConfig, generateTsConfig, isTestFile, TSC_OUT_ROOT } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
-import { createDevTui, Debug } from "../src/logger";
+import { Debug } from "../src/logger";
+import { multiDevTui } from "../src/multi";
 import { Closeable, fileIO, folderIO, toPosixPath, walkFiles } from "../src/toolkit";
 import { runTerser } from "./terser/runner";
 import { runTsc, RunTscOption } from "./tsc/runner";
 import { writeJsonConfig } from "./util";
 import { ViteConfigFactory } from "./vite/configFactory";
-
-let devTui: ReturnType<typeof createDevTui> | undefined;
-const getDevTui = () => {
-  if (devTui === undefined) {
-    devTui = createDevTui();
-  }
-  return devTui;
-};
 
 const CACHE_BUILD_OUT_ROOT = `./.bfsp/build`;
 const BUILD_OUT_ROOT = `./build`;
@@ -64,7 +57,7 @@ const taskRenameJsToTs = async (root: string) => {
   return renameFileMap;
 };
 const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactory>) => {
-  const viteLogger = getDevTui().createViteLogger("info", {});
+  const viteLogger = multiDevTui.createViteLogger("info", {});
   await buildBfsp({
     ...viteBuildConfig,
     build: {
@@ -96,7 +89,7 @@ export const doBuild = async (options: { root?: string; profiles?: string[] }) =
 
   /// 监听项目变动
   const subStreams = watchBfspProjectConfig(config!, subConfigs);
-  const tscLogger = getDevTui().createTscLogger();
+  const tscLogger = multiDevTui.createTscLogger();
 
   const abortable = Closeable<string, string>("bin:build", async (reasons) => {
     /**防抖，避免不必要的多次调用 */

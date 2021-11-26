@@ -1,6 +1,7 @@
 import chokidar from "chokidar";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { LogLevel, LoggerOptions } from "vite";
 import {
   $BfspUserConfig,
   fileIO,
@@ -11,9 +12,11 @@ import {
   readUserConfig,
   SharedAsyncIterable,
   SharedFollower,
+  toPosixPath,
 } from ".";
+import { runTsc } from "../bin/tsc/runner";
 import { Tree, TreeNode } from "../bin/util";
-import { Debug, destroyScreen } from "./logger";
+import { createDevTui, Debug, destroyScreen } from "./logger";
 
 let root: string = process.cwd();
 
@@ -37,12 +40,12 @@ const nodeMap = new Map<string, TreeNode<string>>();
 type UserConfigAction = "add" | "change" | "unlink";
 interface UserConfigEventArgs {
   type: UserConfigAction;
+  /**root的相对路径 */
   path: string;
 }
 
 type UserConfigEvent = (e: UserConfigEventArgs) => void;
 class MultiUserConfig {
-  private _configMap: Map<string, $BfspUserConfig> = new Map();
   private _cbs: UserConfigEvent[] = [];
   private _pathedCbMap: Map<string, UserConfigEvent> = new Map();
   private _pendingEvents = new Map<string, UserConfigEventArgs>();
@@ -89,11 +92,6 @@ class MultiUserConfig {
     if (relativePath === "") {
       relativePath = ".";
     }
-    // 不做缓存，因为没有意义
-    // let cfg = this._configMap.get(relativePath);
-    // if (cfg) {
-    //   return cfg;
-    // }
     const dir = path.resolve(relativePath);
     const c = await readUserConfig(dir, { refresh: true });
     if (!c) {
@@ -104,7 +102,6 @@ class MultiUserConfig {
       exportsDetail: parseExports(c.exports),
       formatExts: parseFormats(c.formats),
     } as $BfspUserConfig;
-    // this._configMap.set(relativePath, cfg);
     return cfg;
   }
 
@@ -118,9 +115,10 @@ class MultiUserConfig {
   }
 }
 
-export type $TsPathInfo = {
+type $TsPathInfo = {
   [name: string]: string[];
 };
+type $TsReference = { path: string };
 
 class MultiTsConfig {
   private async _forEach(p: string, cb: (n: TreeNode<string>) => Promise<void>) {
@@ -147,23 +145,22 @@ class MultiTsConfig {
         return;
       }
       if (!path.startsWith(".")) {
-        path = `.${sep}${path}`;
+        path = toPosixPath(`.${sep}${path}`);
       }
       paths[cfg.userConfig.name] = [path];
     });
     return paths;
   }
   async getReferences(p: string) {
-    const refs: { path: string }[] = [];
+    const refs: $TsReference[] = [];
     const sep = path.sep;
     await this._forEach(p, async (x) => {
       let path = x.data;
-      const cfg = await multiUserConfig.getUserConfig(path);
-      if (!cfg) {
-        return;
+      if (path === ".") {
+        return; // 自己不需要包含
       }
       if (!path.startsWith(".")) {
-        path = `.${sep}${path}`;
+        path = toPosixPath(`.${sep}${path}`);
       }
       refs.push({ path });
     });
@@ -172,8 +169,32 @@ class MultiTsConfig {
   }
 }
 
+class MultiTsc {
+  async dev(opts: { tsConfigPath: string }) {
+    const tscLogger = multiDevTui.createTscLogger();
+    const closable = runTsc({
+      tsconfigPath: opts.tsConfigPath,
+      watch: true,
+      onMessage: (x) => tscLogger.write(x),
+      onClear: () => tscLogger.clear(),
+    });
+  }
+}
+class MultiDevTui {
+  private _devTui = createDevTui();
+
+  createTscLogger() {
+    return this._devTui.createTscLogger();
+  }
+  createViteLogger(level: LogLevel = "info", options: LoggerOptions = {}) {
+    return this._devTui.createViteLogger(level, options);
+  }
+}
+
 export const multiUserConfig = new MultiUserConfig();
 export const multiTsConfig = new MultiTsConfig();
+export const multiTsc = new MultiTsc();
+export const multiDevTui = new MultiDevTui();
 export function initMultiRoot(p: string) {
   root = p;
   // setInterval(() => destroyScreen(), 1000);
