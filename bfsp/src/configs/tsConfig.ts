@@ -21,7 +21,7 @@ import {
   toPosixPath,
   walkFiles,
 } from "../toolkit";
-import { $TsPathInfo, multiTsConfig } from "../multi";
+import {multiTsConfig } from "../multi";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { writeJsonConfig } from "../../bin/util";
 const log = Debug("bfsp:config/tsconfig");
@@ -365,7 +365,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
       {
         path: "./tsconfig.typings.json",
       },
-    ] as const,
+    ],
     // files: tsFilesLists.notestFiles.toArray(),
     files: [] as string[],
   };
@@ -508,6 +508,16 @@ export const watchTsConfig = (
     const paths = Object.assign(tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles), tsPathInfo);
     tsConfig.json.compilerOptions.paths = paths;
 
+    const refs = [
+      {
+        path: "./tsconfig.isolated.json",
+      },
+      {
+        path: "./tsconfig.typings.json",
+      },
+      ...(await multiTsConfig.getReferences(projectDirpath)),
+    ];
+    tsConfig.json.references = refs;
     const newTsConfigJson = JSON.stringify({
       json: tsConfig.json,
       isolated: tsConfig.isolatedJson,
