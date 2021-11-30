@@ -36,7 +36,7 @@ defineCommand(
     const pendingTasks = [] as { dir: string; cfg: $BfspUserConfig }[];
     let isTscStarted = false;
     multiUserConfig.registerAll(async (e) => {
-      const dir = path.dirname(e.path!);
+      const dir = e.path;
       if (e.type === "unlink") {
         const t = tasks.get(dir);
         (await t)?.close("project removed");
@@ -64,6 +64,7 @@ defineCommand(
           if (tasks.has(dir)) {
             return;
           }
+          console.log(`running task for ${dir}`);
           tasks.set(dir, doDev({ format: format as Bfsp.Format, root: path.resolve(dir), profiles, cfg }));
         }
       }

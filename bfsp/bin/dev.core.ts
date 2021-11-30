@@ -8,7 +8,7 @@ import { Worker } from "node:worker_threads";
 import type { RollupWatcher } from "rollup";
 import { build as buildBfsp } from "vite";
 import { $BfspUserConfig } from "../src";
-import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
+import { watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { Debug } from "../src/logger";
 import { multiDevTui } from "../src/multi";
 import { Closeable } from "../src/toolkit";
