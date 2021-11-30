@@ -14,7 +14,7 @@ import {
   SharedFollower,
   toPosixPath,
 } from ".";
-import { runTsc } from "../bin/tsc/runner";
+import { runTsc, RunTscOption } from "../bin/tsc/runner";
 import { Tree, TreeNode } from "../bin/util";
 import { createDevTui, Debug, destroyScreen } from "./logger";
 
@@ -134,50 +134,38 @@ class MultiTsConfig {
       await tree.forEach(n, async (x) => await cb(x));
     }
   }
-  async getPaths(p: string) {
+  async getPaths(baseDir: string) {
     const paths: $TsPathInfo = {};
-    const sep = path.sep;
-    await this._forEach(p, async (x) => {
-      let path = x.data;
-      const cfg = await multiUserConfig.getUserConfig(path);
+    await this._forEach(baseDir, async (x) => {
+      const p1 = path.join(root, x.data);
+      let p = path.relative(baseDir, p1);
+      const cfg = await multiUserConfig.getUserConfig(x.data);
 
       if (!cfg) {
         return;
       }
-      if (!path.startsWith(".")) {
-        path = toPosixPath(`.${sep}${path}`);
+      if (!p.startsWith(".")) {
+        p = toPosixPath(p);
       }
-      paths[cfg.userConfig.name] = [path];
+      paths[cfg.userConfig.name] = [p];
     });
     return paths;
   }
-  async getReferences(p: string) {
+  async getReferences(baseDir: string) {
     const refs: $TsReference[] = [];
-    const sep = path.sep;
-    await this._forEach(p, async (x) => {
-      let path = x.data;
-      if (path === ".") {
+    await this._forEach(baseDir, async (x) => {
+      const p1 = path.join(root, x.data);
+      let p = path.relative(baseDir, p1);
+      if (p === "") {
         return; // 自己不需要包含
       }
-      if (!path.startsWith(".")) {
-        path = toPosixPath(`.${sep}${path}`);
+      if (!p.startsWith(".")) {
+        p = toPosixPath(path.join(p, "tsconfig.json"));
       }
-      refs.push({ path });
+      refs.push({ path: p });
     });
 
     return refs;
-  }
-}
-
-class MultiTsc {
-  async dev(opts: { tsConfigPath: string }) {
-    const tscLogger = multiDevTui.createTscLogger();
-    const closable = runTsc({
-      tsconfigPath: opts.tsConfigPath,
-      watch: true,
-      onMessage: (x) => tscLogger.write(x),
-      onClear: () => tscLogger.clear(),
-    });
   }
 }
 class MultiDevTui {
@@ -190,11 +178,42 @@ class MultiDevTui {
     return this._devTui.createViteLogger(level, options);
   }
 }
+export const multiDevTui = new MultiDevTui();
+class MultiTsc {
+  private _logger = multiDevTui.createTscLogger();
+  private _baseRunTscOpts = {
+    onMessage: (x: string) => this._logger.write(x),
+    onClear: () => this._logger.clear(),
+  };
+  dev(opts: { tsConfigPath: string }) {
+    return runTsc({
+      ...this._baseRunTscOpts,
+      tsconfigPath: opts.tsConfigPath,
+      watch: true,
+    });
+  }
+  build(opts: { tsConfigPath: string; onSuccess: () => void }) {
+    return runTsc({
+      ...this._baseRunTscOpts,
+      tsconfigPath: opts.tsConfigPath,
+      watch: true,
+      onSuccess: opts.onSuccess,
+    });
+  }
+  async buildStage2(opts: { tsConfigPath: string }) {
+    await runTsc({
+      tsconfigPath: opts.tsConfigPath,
+      projectMode: true,
+      onMessage: (x) => {},
+      onClear: () => this._logger.clear(),
+    });
+  }
+}
 
 export const multiUserConfig = new MultiUserConfig();
 export const multiTsConfig = new MultiTsConfig();
 export const multiTsc = new MultiTsc();
-export const multiDevTui = new MultiDevTui();
+
 export function initMultiRoot(p: string) {
   root = p;
   // setInterval(() => destroyScreen(), 1000);

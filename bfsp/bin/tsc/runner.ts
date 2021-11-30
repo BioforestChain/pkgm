@@ -14,6 +14,7 @@ export interface RunTscOption {
 export const runTsc = (opts: RunTscOption) => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
+  console.log(`running tsc for ${opts.tsconfigPath}`)
   const workerMjsPath = path.join(__dirname, "../tsc_worker.mjs");
   const tscWorker = new Worker(workerMjsPath, {
     argv: [opts.projectMode ? "-p" : "--build", opts.tsconfigPath, opts.watch ? "-w" : ""].filter(
@@ -37,6 +38,7 @@ export const runTsc = (opts: RunTscOption) => {
     } else if (cmd === "write") {
       const foundErrors = data[1].match(/Found (\d+) error/);
       if (foundErrors !== null) {
+        console.log(data[1])
         const errorCount = parseInt(foundErrors[1]);
         if (errorCount === 0) {
           opts.onSuccess && opts.onSuccess();
