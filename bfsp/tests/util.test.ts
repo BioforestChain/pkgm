@@ -1,5 +1,7 @@
+import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import test from "ava";
 import { Tree } from "../bin/util";
+import { Closeable } from "../src";
 
 const compareFn = (a: string, b: string) => {
   if (a === b) {
@@ -36,4 +38,30 @@ test("sort tree hole", async (t) => {
   t.true(n.children && n.children[0].data === "/1/3/5");
   const d = tree.del("/1/3/5");
   t.true(d && d.data === "/1/3/5");
+});
+
+test("closable", async (t) => {
+  let c = 0;
+  const closable = Closeable("x", () => {
+    const closeSign = new PromiseOut<boolean>();
+    (() => {
+      setInterval(() => {
+        c++;
+      }, 1000);
+    })();
+    return () => {
+      closeSign.resolve(true);
+    };
+  });
+  closable.start();
+  const p = new Promise((resolve) => {
+    setTimeout(() => {
+      closable.close();
+      setTimeout(() => {
+        resolve(null);
+      }, 2000);
+    }, 2000);
+  });
+  await p;
+  t.true(c === 2);
 });

@@ -429,7 +429,6 @@ export function Debug(label: string) {
 
       args = [util.format(...args)];
       D.formatArgs.call(d, args);
-      console.log(...args)
       getScreen().debug(...(args as any));
     },
     { enabled: d.enabled }

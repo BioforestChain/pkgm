@@ -1,10 +1,7 @@
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
-import { copyFile } from "node:fs/promises";
 import path from "node:path";
 import { defineCommand } from "../bin";
-import { $BfspUserConfig, Closeable } from "../src";
 import { Warn } from "../src/logger";
-import { initMultiRoot, multiTsc, multiUserConfig } from "../src/multi";
+import { initMultiRoot, runConfigSys } from "../src/multi";
 import { doBuild } from "./build.core";
 
 defineCommand(
@@ -29,58 +26,8 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
+    runConfigSys(root, doBuild);
 
-    const pathMap = new Map<string, $BfspUserConfig>();
-    const buildClosable = Closeable("bfsp:bin/build", async (reasons) => {
-      console.log(reasons);
-      const closeSign = new PromiseOut<unknown>();
-      (async () => {
-        if (closeSign.is_finished) {
-          return;
-        }
-        for await (const [p, cfg] of pathMap) {
-          if (closeSign.is_finished) {
-            break;
-          }
-          await doBuild({ root: p, cfg });
-        }
-      })();
-
-      return (reason: unknown) => {
-        closeSign.resolve(reason);
-      };
-    });
-    let isTscStarted = false;
-    multiUserConfig.registerAll(async (e) => {
-      const dir = path.dirname(e.path!);
-
-      if (e.type === "unlink") {
-        pathMap.delete(dir);
-      } else {
-        const cfg = await multiUserConfig.getUserConfig(e.path);
-        if (!cfg) {
-          return;
-        }
-        pathMap.set(dir, cfg);
-        if (!isTscStarted) {
-          if (e.path === ".") {
-            console.log(`running tsc on root: ${dir}`);
-            // await copyFile(
-            //   path.resolve(path.join(e.path, "tsconfig.json")),
-            //   path.resolve(path.join(e.path, "tsconfig.build.json"))
-            // );
-            await multiTsc.build({
-              tsConfigPath: path.resolve(path.join(e.path, "tsconfig.json")),
-              onSuccess: () => {
-                buildClosable.restart("multi structure change");
-              },
-            });
-            buildClosable.start("init");
-            isTscStarted = true;
-          }
-        }
-      }
-    });
     initMultiRoot(root);
   }
 );
