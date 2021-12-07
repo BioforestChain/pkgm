@@ -1,11 +1,9 @@
 import chokidar from "chokidar";
 import path from "node:path";
-import { isDeepStrictEqual } from "node:util";
 import { LogLevel, LoggerOptions } from "vite";
 import {
   $BfspUserConfig,
-  fileIO,
-  getBfspUserConfig,
+  Closeable,
   Loopable,
   parseExports,
   parseFormats,
@@ -13,161 +11,61 @@ import {
   SharedAsyncIterable,
   SharedFollower,
   toPosixPath,
+  watchBfspProjectConfig,
+  writeBfspProjectConfig,
 } from ".";
-import { runTsc, RunTscOption } from "../bin/tsc/runner";
+import { runTsc } from "../bin/tsc/runner";
 import { Tree, TreeNode } from "../bin/util";
+import { $PackageJson, generatePackageJson } from "./configs/packageJson";
+import { $TsConfig, generateTsConfig } from "./configs/tsConfig";
 import { createDevTui, Debug, destroyScreen } from "./logger";
 
 let root: string = process.cwd();
 
 // 用户配置树
-const tree = new Tree<string /** path */>({
-  compareFn: (a, b) => {
-    if (a === b) {
-      return 0;
-    }
-    if (a.startsWith(b)) {
-      return 1;
-    } else {
-      return -1;
-    }
+const tree = new Tree<string /** path */>(
+  {
+    compareFn: (a, b) => {
+      if (a === b) {
+        return 0;
+      }
+      if (a.startsWith(b)) {
+        return 1;
+      } else {
+        return -1;
+      }
+    },
+    childFn: (a, b) => a.startsWith(b),
+    eqFn: (a, b) => a === b,
   },
-  childFn: (a, b) => a.startsWith(b),
-  eqFn: (a, b) => a === b,
-});
+  "."
+);
 const nodeMap = new Map<string, TreeNode<string>>();
 
-type UserConfigAction = "add" | "change" | "unlink";
-interface UserConfigEventArgs {
-  type: UserConfigAction;
-  /**root的相对路径 */
-  path: string;
-}
-
-type UserConfigEvent = (e: UserConfigEventArgs) => void;
-class MultiUserConfig {
-  private _cbs: UserConfigEvent[] = [];
-  private _pathedCbMap: Map<string, UserConfigEvent> = new Map();
-  private _pendingEvents = new Map<string, UserConfigEventArgs>();
-
-  async handleWatcherEvent(p: string, type: UserConfigAction) {
-    const dirname = path.dirname(p);
-    const resolvedDir = path.resolve(dirname);
-    const evtArgs = { path: dirname, type };
-    if (type === "unlink") {
-      const target = nodeMap.get(dirname);
-      if (!target) {
-        return;
-      }
-      const n = tree.del(target.data);
-
-      this._cbs.forEach((cb) => cb(evtArgs));
-      const cb = this._pathedCbMap.get(resolvedDir);
-      cb && cb(evtArgs);
-
-      this._pathedCbMap.delete(resolvedDir);
-    } else {
-      const cfg = await this.getUserConfig(dirname);
-      if (!cfg) {
-        return;
-      }
-      const n = tree.addOrUpdate(dirname);
-      nodeMap.set(n.data, n);
-
-      this._cbs.forEach((cb) => cb(evtArgs));
-      const cb = this._pathedCbMap.get(resolvedDir);
-      if (cb) {
-        cb(evtArgs);
-      } else {
-        this._pendingEvents.set(resolvedDir, evtArgs);
-      }
-    }
+export const treeForEach = async (p: string, cb: (n: TreeNode<string>) => Promise<void>) => {
+  let relativePath = p;
+  if (path.isAbsolute(p)) {
+    relativePath = path.relative(root, p);
   }
-
-  async getUserConfig(p: string) {
-    let relativePath = p;
-    if (path.isAbsolute(p)) {
-      relativePath = path.relative(root, p);
-    }
-    if (relativePath === "") {
-      relativePath = ".";
-    }
-    const dir = path.resolve(relativePath);
-    const c = await readUserConfig(dir, { refresh: true });
-    if (!c) {
-      return;
-    }
-    const cfg = {
-      userConfig: c,
-      exportsDetail: parseExports(c.exports),
-      formatExts: parseFormats(c.formats),
-    } as $BfspUserConfig;
-    return cfg;
+  if (relativePath === "") {
+    relativePath = ".";
   }
-
-  registerAll(cb: UserConfigEvent) {
-    this._cbs.push(cb);
+  const n = nodeMap.get(relativePath);
+  if (n) {
+    await tree.forEach(n, async (x) => await cb(x));
   }
-  register(path: string, cb: UserConfigEvent) {
-    this._pathedCbMap.set(path, cb);
-    const args = this._pendingEvents.get(path);
-    args && cb(args);
-  }
-}
-
-type $TsPathInfo = {
-  [name: string]: string[];
 };
-type $TsReference = { path: string };
 
-class MultiTsConfig {
-  private async _forEach(p: string, cb: (n: TreeNode<string>) => Promise<void>) {
-    let relativePath = p;
-    if (path.isAbsolute(p)) {
-      relativePath = path.relative(root, p);
-    }
-    if (relativePath === "") {
-      relativePath = ".";
-    }
-    const n = nodeMap.get(relativePath);
-    if (n) {
-      await tree.forEach(n, async (x) => await cb(x));
-    }
-  }
-  async getPaths(baseDir: string) {
-    const paths: $TsPathInfo = {};
-    await this._forEach(baseDir, async (x) => {
-      const p1 = path.join(root, x.data);
-      let p = path.relative(baseDir, p1);
-      const cfg = await multiUserConfig.getUserConfig(x.data);
-
-      if (!cfg) {
-        return;
-      }
-      if (!p.startsWith(".")) {
-        p = toPosixPath(p);
-      }
-      paths[cfg.userConfig.name] = [p];
-    });
-    return paths;
-  }
-  async getReferences(baseDir: string) {
-    const refs: $TsReference[] = [];
-    await this._forEach(baseDir, async (x) => {
-      const p1 = path.join(root, x.data);
-      let p = path.relative(baseDir, p1);
-      if (p === "") {
-        return; // 自己不需要包含
-      }
-      if (!p.startsWith(".")) {
-        p = toPosixPath(path.join(p, "tsconfig.json"));
-      }
-      refs.push({ path: p });
-    });
-
-    return refs;
-  }
+type WatcherAction = "add" | "change" | "unlink";
+interface WatcherEventArgs {
+  type: WatcherAction;
+  path: string;
+  cfg: $BfspUserConfig;
+  readonly isRoot: boolean;
 }
+
+type WatcherEvent = (e: WatcherEventArgs) => void;
+
 class MultiDevTui {
   private _devTui = createDevTui();
 
@@ -182,9 +80,14 @@ export const multiDevTui = new MultiDevTui();
 class MultiTsc {
   private _logger = multiDevTui.createTscLogger();
   private _baseRunTscOpts = {
-    onMessage: (x: string) => this._logger.write(x),
+    onMessage: (x: string) => {
+      // console.log(x);
+      this._logger.write(x);
+    },
     onClear: () => this._logger.clear(),
   };
+  tscSucecssCbMap: Map<string, () => void> = new Map();
+
   dev(opts: { tsConfigPath: string }) {
     return runTsc({
       ...this._baseRunTscOpts,
@@ -192,55 +95,281 @@ class MultiTsc {
       watch: true,
     });
   }
-  build(opts: { tsConfigPath: string; onSuccess: () => void }) {
+  registerTscSuccess(p: string, cb: () => void) {
+    this.tscSucecssCbMap.set(p, cb);
+  }
+  build(opts: { tsConfigPath: string }) {
     return runTsc({
       ...this._baseRunTscOpts,
       tsconfigPath: opts.tsConfigPath,
       watch: true,
-      onSuccess: opts.onSuccess,
+      onSuccess: () => {
+        this.tscSucecssCbMap.forEach((x) => x());
+      },
     });
   }
   async buildStage2(opts: { tsConfigPath: string }) {
-    await runTsc({
-      tsconfigPath: opts.tsConfigPath,
-      projectMode: true,
-      onMessage: (x) => {},
-      onClear: () => this._logger.clear(),
+    return new Promise((resolve) => {
+      runTsc({
+        tsconfigPath: opts.tsConfigPath,
+        projectMode: true,
+        onMessage: (x) => {},
+        onClear: () => this._logger.clear(),
+        onExit: () => resolve(null),
+      });
     });
   }
 }
 
-export const multiUserConfig = new MultiUserConfig();
-export const multiTsConfig = new MultiTsConfig();
 export const multiTsc = new MultiTsc();
 
 export function initMultiRoot(p: string) {
   root = p;
-  // setInterval(() => destroyScreen(), 1000);
+  // setInterval(() => destroyScreen(), 100);
   // console.log(`看不到面板，请删除这句`);
-  const watcher = chokidar.watch(
+  const userConfigWatcher = chokidar.watch(
     ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"].map((x) => `./**/${x}`),
     { cwd: root, ignoreInitial: false }
   );
-  watcher.on("add", async (p) => {
-    await multiUserConfig.handleWatcherEvent(p, "add");
+  userConfigWatcher.on("add", async (p) => {
+    await multi.handleBfspWatcherEvent(p, "add");
   });
-  watcher.on("change", async (p) => {
-    await multiUserConfig.handleWatcherEvent(p, "change");
+  userConfigWatcher.on("change", async (p) => {
+    await multi.handleBfspWatcherEvent(p, "change");
   });
-  watcher.on("unlink", async (p) => {
-    await multiUserConfig.handleWatcherEvent(p, "unlink");
+  userConfigWatcher.on("unlink", async (p) => {
+    await multi.handleBfspWatcherEvent(p, "unlink");
+  });
+
+  const tsWatcher = chokidar.watch(
+    ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
+    {
+      cwd: root,
+      ignoreInitial: false,
+      followSymlinks: true,
+      ignored: ["*.d.ts", ".*.bfsp", "#bfsp.ts", "node_modules"],
+    }
+  );
+
+  tsWatcher.on("add", async (p) => {
+    await multi.handleTsWatcherEvent(p, "add");
+  });
+  // tsWatcher.on("change", async (p) => {
+  //   await multi.handleTsWatcherEvent(p, "change");
+  // });
+  tsWatcher.on("unlink", async (p) => {
+    await multi.handleTsWatcherEvent(p, "unlink");
   });
 }
 
-export function watchMulti() {
-  const follower = new SharedFollower<number>();
-  let acc = 0;
+type $TsPathInfo = {
+  [name: string]: string[];
+};
+type $TsReference = { path: string };
+export class Multi {
+  private _stateMap: Map<string, { user: $BfspUserConfig; tsConfig: $TsConfig; packageJson: $PackageJson }> = new Map();
+  private _tsWatcherCbMap: Map<string, (p: string, type: WatcherAction) => Promise<void>> = new Map();
+  private _userConfigCbMap: Map<string, WatcherEvent> = new Map();
+  private _userConfigAllCb = [] as WatcherEvent[];
+  private _pendingUserConfigEvents = new Map<string, WatcherEventArgs>();
 
-  /// 监听配置用户的配置文件
-  multiUserConfig.registerAll((e) => {
-    follower.push(acc++);
+  constructor() {}
+  getState(p: string) {
+    const rp = this._pathToKey(p);
+    return this._stateMap.get(rp);
+  }
+
+  async getPaths(baseDir: string) {
+    const paths: $TsPathInfo = {};
+    await treeForEach(baseDir, async (x) => {
+      const p1 = path.join(root, x.data);
+      let p = path.relative(baseDir, p1);
+      const cfg = this._stateMap.get(x.data)?.user;
+      if (!cfg) {
+        return;
+      }
+
+      if (!p.startsWith(".")) {
+        p = toPosixPath(p);
+      }
+      paths[cfg.userConfig.name] = [p];
+    });
+    return paths;
+  }
+  async getReferences(baseDir: string) {
+    const refs: $TsReference[] = [];
+    await treeForEach(baseDir, async (x) => {
+      const p1 = path.join(root, x.data);
+      let p = path.relative(baseDir, p1);
+      if (p === "") {
+        return; // 自己不需要包含
+      }
+      if (!p.startsWith(".")) {
+        p = toPosixPath(path.join(p, "tsconfig.json"));
+      }
+      refs.push({ path: p });
+    });
+
+    return refs;
+  }
+  private _pathToKey(p: string) {
+    let relativePath = p;
+    if (path.isAbsolute(p)) {
+      relativePath = path.relative(root, p);
+    }
+    if (relativePath === "") {
+      relativePath = ".";
+    }
+    return relativePath;
+  }
+  async handleBfspWatcherEvent(p: string, type: WatcherAction) {
+    const dirname = path.dirname(p);
+    const resolvedDir = path.resolve(dirname);
+    if (type === "unlink") {
+      const target = nodeMap.get(dirname);
+      if (!target) {
+        return;
+      }
+      const n = tree.del(target.data);
+      const cfg = this._stateMap.get(target.data)!.user;
+      const userConfigCb = this._userConfigCbMap.get(target.data);
+      const evtArgs = { cfg, isRoot: target.data === ".", type, path: dirname };
+      userConfigCb && userConfigCb(evtArgs);
+      this._userConfigAllCb.forEach((x) => x(evtArgs));
+      this._stateMap.delete(target.data);
+    } else {
+      const c = await readUserConfig(resolvedDir, { refresh: true });
+      if (!c) {
+        return;
+      }
+      const userConfig = {
+        userConfig: c,
+        exportsDetail: parseExports(c.exports),
+        formatExts: parseFormats(c.formats),
+      } as $BfspUserConfig;
+      const tsConfig = await generateTsConfig(resolvedDir, userConfig);
+      const packageJson = await generatePackageJson(resolvedDir, userConfig, tsConfig);
+      this._stateMap.set(dirname, { user: userConfig, packageJson, tsConfig });
+      const userConfigCb = this._userConfigCbMap.get(dirname);
+      const evtArgs = { cfg: userConfig, isRoot: dirname === ".", type, path: dirname };
+      userConfigCb && userConfigCb(evtArgs);
+      this._userConfigAllCb.forEach((x) => x(evtArgs));
+
+      const n = tree.addOrUpdate(dirname);
+      nodeMap.set(n.data, n);
+    }
+  }
+  private _getClosestRoot(p: string) {
+    const roots = [] as [number /*count of path.sep*/, string /* path */][];
+    for (const x of this._stateMap.keys()) {
+      const n = path.relative(x, p).split(path.sep).length;
+      roots.push([n, x]);
+    }
+    if (roots.length === 0) {
+      return ".";
+    }
+    roots.sort((a, b) => a[0] - b[0]);
+    const closestRoot = roots[0][1];
+    return closestRoot;
+  }
+  async handleTsWatcherEvent(p: string, type: WatcherAction) {
+    if ([".d.ts", ".bfsp", "#bfsp.ts", "node_modules"].some((x) => p.indexOf(x) >= 0)) {
+      // ignored
+      return;
+    }
+    const closestRoot = this._getClosestRoot(p);
+    const tsCb = this._tsWatcherCbMap.get(closestRoot);
+    tsCb && (await tsCb(path.relative(closestRoot, p), type));
+  }
+  isFileBelongs(p: string, file: string) {
+    const k = this._pathToKey(p);
+    const r = this._getClosestRoot(file);
+    return k === r;
+  }
+  registerTsWatcherEvent(p: string, cb: (p: string, type: WatcherAction) => Promise<void>) {
+    this._tsWatcherCbMap.set(this._pathToKey(p), cb);
+  }
+  registerUserConfigEvent(p: string, cb: WatcherEvent) {
+    const rp = this._pathToKey(p);
+    this._userConfigCbMap.set(rp, cb);
+    const args = this._pendingUserConfigEvents.get(rp);
+    args && cb(args);
+  }
+  registerAllUserConfigEvent(cb: WatcherEvent) {
+    this._userConfigAllCb.push(cb);
+  }
+}
+export const multi = new Multi();
+
+// 配置子系统
+export function runConfigSys(
+  root: string,
+  runClosable: (options: {
+    root: string;
+    streams: ReturnType<typeof watchBfspProjectConfig>;
+    multiStream: SharedAsyncIterable<boolean>;
+    format?: Bfsp.Format;
+  }) => Promise<ReturnType<typeof Closeable>>,
+  format?: Bfsp.Format
+) {
+  const configMap = new Map<
+    string,
+    { closable: Promise<ReturnType<typeof Closeable>>; streams: ReturnType<typeof watchBfspProjectConfig> }
+  >();
+  let isTscStarted = false;
+  multi.registerAllUserConfigEvent(async (e) => {
+    if (e.type === "unlink") {
+      const s = configMap.get(e.path)?.streams;
+      if (s) {
+        s.userConfigStream.stop();
+        s.tsConfigStream.stop();
+        s.viteConfigStream.stop();
+        s.packageJsonStream.stop();
+        s.gitIgnoreStream.stop();
+        s.npmIgnoreStream.stop();
+        configMap.delete(e.path);
+      }
+      return;
+    }
+    if (configMap.has(e.path)) {
+      return;
+    }
+
+    const resolvedDir = path.resolve(e.path);
+    const projectConfig = { projectDirpath: resolvedDir, bfspUserConfig: e.cfg };
+    const subConfigs = await writeBfspProjectConfig(projectConfig);
+    const subStreams = await watchBfspProjectConfig(projectConfig, subConfigs);
+    const watchMultiStream = (p: string) => {
+      const follower = new SharedFollower<boolean>();
+      const looper = Loopable("watch tsc compilation", () => {
+        follower.push(true);
+      });
+
+      multiTsc.registerTscSuccess(p, () => looper.loop("tsc success"));
+      return new SharedAsyncIterable<boolean>(follower);
+    };
+    const multiStream = watchMultiStream(e.path);
+
+    const closable = runClosable({ root: resolvedDir, streams: subStreams, multiStream, format });
+    configMap.set(e.path, { closable, streams: subStreams });
+    if (e.isRoot) {
+      if (!isTscStarted) {
+        multiTsc.build({ tsConfigPath: path.join(resolvedDir, "tsconfig.json") });
+        isTscStarted = true;
+      }
+    }
+  });
+}
+export function watchMulti() {
+  const follower = new SharedFollower<boolean>();
+  const looper = Loopable("watch multi", () => {
+    follower.push(true);
   });
 
-  return new SharedAsyncIterable<number>(follower);
+  multi.registerAllUserConfigEvent((e) => {
+    if (e.type !== "change") {
+      looper.loop("multi changed");
+    }
+  });
+  return new SharedAsyncIterable<boolean>(follower);
 }

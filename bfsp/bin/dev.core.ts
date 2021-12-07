@@ -11,15 +11,15 @@ import { $BfspUserConfig } from "../src";
 import { watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { Debug } from "../src/logger";
 import { multiDevTui } from "../src/multi";
-import { Closeable } from "../src/toolkit";
+import { Closeable, SharedAsyncIterable } from "../src/toolkit";
 import { runTsc } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
 
 export const doDev = async (options: {
-  format?: Bfsp.Format;
   root?: string;
-  profiles?: string[];
-  cfg: $BfspUserConfig;
+  format?: Bfsp.Format;
+  streams: ReturnType<typeof watchBfspProjectConfig>;
+  multiStream: SharedAsyncIterable<boolean>;
 }) => {
   const log = Debug("bfsp:bin/dev");
 
@@ -29,13 +29,9 @@ export const doDev = async (options: {
 
   log("root", root);
 
-  const config = { projectDirpath: root, bfspUserConfig: options.cfg };
-
-  /// 初始化写入配置
-  const subConfigs = await writeBfspProjectConfig(config);
-
   /// 监听项目变动
-  const subStreams = watchBfspProjectConfig(config!, subConfigs);
+  const subStreams = options.streams;
+  const multiStream = options.multiStream;
 
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
 
@@ -102,6 +98,7 @@ export const doDev = async (options: {
   subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
   subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
   subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
+  // multiStream.onNext(() => abortable.restart("multi changed"));
   if (subStreams.viteConfigStream.hasCurrent()) {
     abortable.start();
   }
