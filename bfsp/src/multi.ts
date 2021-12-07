@@ -1,4 +1,5 @@
 import chokidar from "chokidar";
+import { existsSync, rmSync } from "node:fs";
 import path from "node:path";
 import { LogLevel, LoggerOptions } from "vite";
 import {
@@ -18,6 +19,7 @@ import { runTsc } from "../bin/tsc/runner";
 import { Tree, TreeNode } from "../bin/util";
 import { $PackageJson, generatePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig } from "./configs/tsConfig";
+import { consts } from "./consts";
 import { createDevTui, Debug, destroyScreen } from "./logger";
 
 let root: string = process.cwd();
@@ -336,6 +338,13 @@ export function runConfigSys(
     }
 
     const resolvedDir = path.resolve(e.path);
+
+    // clean (build only)
+    const BUILD_OUT_ROOT = path.resolve(path.join(resolvedDir, consts.BuildOutRootPath));
+    const TSC_OUT_ROOT = path.resolve(path.join(resolvedDir, consts.TscOutRootPath));
+    existsSync(TSC_OUT_ROOT) && rmSync(TSC_OUT_ROOT, { recursive: true, force: true });
+    existsSync(BUILD_OUT_ROOT) && rmSync(BUILD_OUT_ROOT, { recursive: true, force: true });
+
     const projectConfig = { projectDirpath: resolvedDir, bfspUserConfig: e.cfg };
     const subConfigs = await writeBfspProjectConfig(projectConfig);
     const subStreams = await watchBfspProjectConfig(projectConfig, subConfigs);

@@ -60,6 +60,7 @@
     "src/configs/tsConfig.ts",
     "src/configs/viteConfig.ts",
     "src/multi.ts",
+    "src/consts.ts",
     "src/index.ts",
     "tests/config.test.ts",
     "tests/build.test.ts",
