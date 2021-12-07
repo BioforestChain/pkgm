@@ -21,6 +21,7 @@ import { $PackageJson, generatePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig } from "./configs/tsConfig";
 import { consts } from "./consts";
 import { createDevTui, Debug, destroyScreen } from "./logger";
+const debug = Debug("bfsp/multi");
 
 let root: string = process.cwd();
 
@@ -44,7 +45,7 @@ const tree = new Tree<string /** path */>(
 );
 const nodeMap = new Map<string, TreeNode<string>>();
 
-export const treeForEach = async (p: string, cb: (n: TreeNode<string>) => Promise<void>) => {
+export const treeForEach = async (p: string, cb: (n: TreeNode<string>) => BFChainUtil.PromiseMaybe<void>) => {
   let relativePath = p;
   if (path.isAbsolute(p)) {
     relativePath = path.relative(root, p);
@@ -54,7 +55,7 @@ export const treeForEach = async (p: string, cb: (n: TreeNode<string>) => Promis
   }
   const n = nodeMap.get(relativePath);
   if (n) {
-    await tree.forEach(n, async (x) => await cb(x));
+    await tree.forEach(n, (x) => cb(x));
   }
 };
 
@@ -183,7 +184,7 @@ export class Multi {
 
   async getPaths(baseDir: string) {
     const paths: $TsPathInfo = {};
-    await treeForEach(baseDir, async (x) => {
+    await treeForEach(baseDir, (x) => {
       const p1 = path.join(root, x.data);
       let p = path.relative(baseDir, p1);
       const cfg = this._stateMap.get(x.data)?.user;
@@ -200,7 +201,7 @@ export class Multi {
   }
   async getReferences(baseDir: string) {
     const refs: $TsReference[] = [];
-    await treeForEach(baseDir, async (x) => {
+    await treeForEach(baseDir, (x) => {
       const p1 = path.join(root, x.data);
       let p = path.relative(baseDir, p1);
       if (p === "") {
@@ -225,6 +226,7 @@ export class Multi {
     return relativePath;
   }
   async handleBfspWatcherEvent(p: string, type: WatcherAction) {
+    debug(type, p);
     const dirname = path.dirname(p);
     const resolvedDir = path.resolve(dirname);
     if (type === "unlink") {

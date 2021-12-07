@@ -59,7 +59,7 @@ export class Tree<T> {
     this._root = r;
     return r;
   }
-  async forEach(r: TreeNode<T>, cb: (n: TreeNode<T>) => Promise<void>) {
+  async forEach(r: TreeNode<T>, cb: (n: TreeNode<T>) => BFChainUtil.PromiseMaybe<void>) {
     const queue = [] as TreeNode<T>[];
     const visited = [] as TreeNode<T>[];
     const visit = async (n: TreeNode<T>) => {
