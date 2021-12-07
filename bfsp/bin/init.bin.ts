@@ -5,23 +5,22 @@ import path from "node:path";
 defineCommand(
   "init",
   {
-    params: [{ type: "string", name: "path", description: "project path, default is cwd()" }],
-    args: [[{ type: "string", name: "name", description: "project name" }], []],
+    params: [
+      { type: "string", name: "path", description: "project path, default is cwd()" },
+      { type: "string", name: "license", description: "project license, default is MIT", require: false },
+    ],
+    args: [[{ type: "string", name: "path", description: "project path" }], []],
   } as const,
   (params, args) => {
-    let { path: projectPath } = params;
-    let name = args[0];
-    if (!name) {
-      console.log("name missing");
-      return;
-    }
+    const { path: projectPath = args[0] || "." } = params;
+
     let root = process.cwd();
-    if (!projectPath) {
-      projectPath = name;
-    }
+
     if (projectPath !== undefined) {
       root = path.resolve(root, projectPath);
     }
-    return doInit({ root, name });
+    const projectName = args[0] || path.basename(root);
+
+    return doInit({ root, name: projectName, license: params.license });
   }
 );
