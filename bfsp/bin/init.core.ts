@@ -6,13 +6,15 @@ import { writeFile } from "node:fs/promises";
 import { destroyScreen } from "../src/logger";
 import { writeJsonConfig } from "./util";
 
-export const doInit = async (options: { root: string; name: string }) => {
-  const { root, name } = options;
+export const doInit = async (options: { root: string; name: string; license?: string }) => {
+  const { root, name, license = "MIT" } = options;
+  console.log(options);
   destroyScreen();
   folderIO.tryInit(root);
   const packageJson = {
     name,
     version: "1.0.0",
+    license,
     scripts: {
       dev: "bfsp dev",
     },
@@ -35,10 +37,15 @@ export const doInit = async (options: { root: string; name: string }) => {
   await writeFile(path.join(root, "#bfsp.ts"), bfspTsFile);
   console.log("linking dependencies");
   const proc = cp.exec("yarn add -D @bfchain/pkgm", { cwd: root });
+  proc.stdout?.on("data", (data) => process.stdout.write(data));
+  proc.stderr?.on("data", (data) => process.stderr.write(data));
 
   proc.on("exit", (e) => {
     console.log(`project inited, run the following commands to start dev\n`);
-    console.log(chalk.blue(`cd ${name}`));
+    const relative_path = path.relative(process.cwd(), root);
+    if (relative_path) {
+      console.log(chalk.blue(`cd ${relative_path}`));
+    }
     console.log(chalk.blue(`bfsp dev`));
     process.exit(0);
   });
