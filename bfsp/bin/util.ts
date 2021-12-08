@@ -32,6 +32,7 @@ export class Tree<T> {
   private _compareFn: (a: T, b: T) => number;
   private _childFn: (a: T, b: T) => boolean;
   private _eqFn: (a: T, b: T) => boolean;
+  // private _containsFn: (set:Set<T>, b: T) => boolean;
   constructor(
     opts: {
       /**节点比较器，>0父亲，<0孩子，0兄弟 */
@@ -75,6 +76,25 @@ export class Tree<T> {
       x && (await visit(x));
     };
     await visit(r);
+  }
+  walk(r: TreeNode<T>) {
+    const queue = [] as TreeNode<T>[];
+    const visited = [] as TreeNode<T>[];
+    const tree = this;
+    function* walk(n: TreeNode<T>): Generator<TreeNode<T>> {
+      if (visited.some((x) => tree._eqFn(x.data, n.data))) {
+        return;
+      }
+      yield n;
+      visited.push(n);
+      if (n.children) {
+        queue.push(...n.children);
+      }
+      const x = queue.shift();
+      x && (yield* walk(x));
+    }
+
+    walk(r);
   }
   addOrUpdate(d: T) {
     if (!this._root) {
