@@ -12,6 +12,10 @@ export const LogLevels: Record<LogLevel, number> = {
   info: 3,
 };
 let screen: Widgets.Screen | undefined;
+let useScreen = false;
+if (!useScreen) {
+  console.log(`面板已被禁用，若要使用面板，请将 useScreen 设为true`);
+}
 const getScreen = () => {
   if (screen === undefined) {
     screen = blessed.screen({
@@ -139,6 +143,49 @@ class ScrollableLog {
 }
 
 export function createDevTui() {
+  if (!useScreen) {
+    return {
+      createTscLogger: () => {
+        return {
+          write(s: string) {
+            console.log(s);
+          },
+          stop() {},
+          clear() {},
+          updateLabel(opts: { errorCount: number }) {},
+        };
+      },
+      createViteLogger: () => {
+        const warnedMessages = new Set<string>();
+        const loggedErrors = new WeakSet<Error | RollupError>();
+        const logger: Logger = {
+          hasWarned: false,
+          info(msg, opts) {
+            console.log(msg);
+          },
+          warn(msg, opts) {
+            logger.hasWarned = true;
+            console.log(msg);
+          },
+          warnOnce(msg, opts) {
+            if (warnedMessages.has(msg)) return;
+            logger.hasWarned = true;
+            console.log(msg);
+            warnedMessages.add(msg);
+          },
+          error(msg, opts) {
+            logger.hasWarned = true;
+            console.log(msg);
+          },
+          clearScreen(type) {},
+          hasErrorLogged(error) {
+            return loggedErrors.has(error);
+          },
+        };
+        return logger;
+      },
+    };
+  }
   const screen = getScreen();
   const viteLog = new ScrollableLog({
     top: "60%",
@@ -429,7 +476,11 @@ export function Debug(label: string) {
 
       args = [util.format(...args)];
       D.formatArgs.call(d, args);
-      getScreen().debug(...(args as any));
+      if (!useScreen) {
+        console.log(...args);
+      } else {
+        getScreen().debug(...(args as any));
+      }
     },
     { enabled: d.enabled }
   );
@@ -449,7 +500,11 @@ export function Warn(label: string) {
 
       args = [chalk.yellow(util.format(...args))];
       D.formatArgs.call(d, args);
-      getScreen().debug(...(args as any));
+      if (!useScreen) {
+        console.log(...args);
+      } else {
+        getScreen().debug(...(args as any));
+      }
     },
     { enabled: true }
   );

@@ -52,8 +52,13 @@ export const ViteConfigFactory = (options: {
                 }
               }
             : (source, importer, isResolved) => {
-                if (source.startsWith(options.userConfig.name)) {
-                  return true;
+                const internal = options.userConfig.internal;
+                if (internal) {
+                  if (typeof internal === "function") {
+                    return !internal(source);
+                  } else {
+                    return ![...internal].some((x) => x === source);
+                  }
                 }
                 if (source.startsWith("node:")) {
                   return true;
@@ -68,6 +73,7 @@ export const ViteConfigFactory = (options: {
                 ) {
                   return true;
                 }
+                return true
               },
         input: viteConfig.viteInput,
         output: {

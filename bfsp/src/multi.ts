@@ -128,8 +128,6 @@ export const multiTsc = new MultiTsc();
 
 export function initMultiRoot(p: string) {
   root = p;
-  // setInterval(() => destroyScreen(), 100);
-  // console.log(`看不到面板，请删除这句`);
   const userConfigWatcher = chokidar.watch(
     ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"].map((x) => `./**/${x}`),
     { cwd: root, ignoreInitial: false }

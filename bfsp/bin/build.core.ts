@@ -197,6 +197,7 @@ export const doBuild = async (options: {
         log("skip vite build by debounce");
         return;
       }
+      log("reasons", reasons);
 
       const userConfig = await subStreams.userConfigStream.getCurrent();
       const thePackageJson = await subStreams.packageJsonStream.getCurrent();
@@ -227,15 +228,16 @@ export const doBuild = async (options: {
         }
 
         const buildOutDirs = new Set<string>();
-        buildUserConfigs.forEach(async (x, i) => {
-          log(`start build task: ${i + 1}/${buildUserConfigs.length}\n`);
+        let i = 0;
+        for (const x of buildUserConfigs) {
+          log(`start build task: ${++i}/${buildUserConfigs.length}\n`);
           log(`removing bundleOutRoot: ${CACHE_BUILD_OUT_ROOT}\n`);
           const userConfigBuild = x;
           const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfigBuild.name);
           const cacheBuildOutDir = path.resolve(CACHE_BUILD_OUT_ROOT, userConfigBuild.name);
           await buildSingle({ userConfigBuild, thePackageJson, buildOutDir, cacheBuildOutDir });
           buildOutDirs.add(buildOutDir);
-        });
+        }
 
         /// 复制 .d.ts 文件到 source 文件夹中
         for (const buildOutDir of buildOutDirs) {

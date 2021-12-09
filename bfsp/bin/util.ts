@@ -94,7 +94,7 @@ export class Tree<T> {
       x && (yield* walk(x));
     }
 
-    walk(r);
+    return walk(r);
   }
   addOrUpdate(d: T) {
     if (!this._root) {

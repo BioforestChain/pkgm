@@ -390,6 +390,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
       {
         path: "./tsconfig.typings.json",
       },
+      ...tsRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
     ],
   };
 
@@ -514,6 +515,7 @@ export const watchTsConfig = (
 
     const paths = Object.assign(tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles), tsPathInfo);
     tsConfig.json.compilerOptions.paths = paths;
+    const multiRefs = await multi.getReferences(projectDirpath);
 
     const refs = [
       {
@@ -522,9 +524,15 @@ export const watchTsConfig = (
       {
         path: "./tsconfig.typings.json",
       },
-      ...(await multi.getReferences(projectDirpath)),
+      ...multiRefs,
     ];
     tsConfig.json.references = refs;
+    tsConfig.isolatedJson.references = [
+      {
+        path: "./tsconfig.typings.json",
+      },
+      ...multiRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
+    ];
     const newTsConfigJson = JSON.stringify({
       json: tsConfig.json,
       isolated: tsConfig.isolatedJson,
