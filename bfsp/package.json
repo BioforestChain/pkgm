@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",
@@ -26,6 +26,11 @@
     "dev": "vite build --watch --minify=false --sourcemap=true",
     "test": "ava"
   },
+  "files": [
+    "dist",
+    "typings",
+    "*.ts"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
