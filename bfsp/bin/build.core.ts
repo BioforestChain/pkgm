@@ -74,7 +74,8 @@ const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactor
 export const doBuild = async (options: {
   root?: string;
   streams: ReturnType<typeof watchBfspProjectConfig>;
-  multiStream: SharedAsyncIterable<boolean>;
+  tscStream: SharedAsyncIterable<boolean>;
+  depStream: SharedAsyncIterable<boolean>;
 }) => {
   const log = Debug("bfsp:bin/build");
 
@@ -84,7 +85,7 @@ export const doBuild = async (options: {
 
   /// 初始化写入配置
   const subStreams = options.streams;
-  const multiStream = options.multiStream;
+  const { tscStream, depStream } = options;
 
   const tscLogger = multiDevTui.createTscLogger();
   const CACHE_BUILD_OUT_ROOT = path.resolve(path.join(root, consts.CacheBuildOutRootPath));
@@ -251,7 +252,6 @@ export const doBuild = async (options: {
           }
         }
       } catch (e) {
-        console.log(e);
         tscLogger.write(chalk.red(e));
       }
     })();
@@ -261,10 +261,11 @@ export const doBuild = async (options: {
   });
   subStreams.userConfigStream.onNext((x) => abortable.restart("user config changed"));
   subStreams.viteConfigStream.onNext((x) => abortable.restart("vite config changed"));
-  multiStream.onNext((x) => abortable.restart("multi changed"));
+  tscStream.onNext((x) => abortable.restart("tsc compilation succeed"));
+  depStream.onNext((x) => abortable.restart("dep installation succeed"));
 
-  if (multiStream.hasCurrent()) {
-    abortable.start("init");
+  if (tscStream.hasCurrent()) {
+    abortable.start();
   }
   return abortable;
 };

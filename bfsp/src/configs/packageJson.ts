@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
@@ -94,6 +95,19 @@ export const generatePackageJson = async (
   }
   //#endregion
 
+  // 版本
+  const version = bfspUserConfig.userConfig.packageJson?.version;
+  if (version) {
+    packageJson.version = version;
+  }
+
+  // 依赖
+  const deps = bfspUserConfig.userConfig.packageJson?.deps;
+  if (deps) {
+    // @fixme: 不知道为啥yarn不会自动安装DevDependencies里的内容
+    packageJson.dependencies = Object.assign({}, packageJson.dependencies, deps);
+  }
+
   return packageJson as typeof import("../../assets/package.template.json");
 };
 
@@ -127,6 +141,10 @@ export const watchPackageJson = (
       return;
     }
     if (write) {
+      if (!existsSync(projectDirpath)) {
+        log("unable to write package.json: project maybe removed");
+        return;
+      }
       await writePackageJson(projectDirpath, newPackageJson);
     }
     log("packageJson changed");

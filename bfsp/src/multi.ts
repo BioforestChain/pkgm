@@ -130,7 +130,7 @@ export function initMultiRoot(p: string) {
   root = p;
   const userConfigWatcher = chokidar.watch(
     ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"].map((x) => `./**/${x}`),
-    { cwd: root, ignoreInitial: false }
+    { cwd: root, ignoreInitial: false, ignored: [/node_modules*/, /\.bfsp*/] }
   );
   userConfigWatcher.on("add", async (p) => {
     await multi.handleBfspWatcherEvent(p, "add");
@@ -148,7 +148,7 @@ export function initMultiRoot(p: string) {
       cwd: root,
       ignoreInitial: false,
       followSymlinks: true,
-      ignored: ["*.d.ts", ".*.bfsp", "#bfsp.ts", "node_modules"],
+      ignored: [/.*\.d\.ts$/, /\.bfsp*/, /#bfsp\.ts$/, /node_modules*/],
     }
   );
 
@@ -303,72 +303,6 @@ export class Multi {
 }
 export const multi = new Multi();
 
-// 配置子系统
-export function runConfigSys(
-  root: string,
-  runClosable: (options: {
-    root: string;
-    streams: ReturnType<typeof watchBfspProjectConfig>;
-    multiStream: SharedAsyncIterable<boolean>;
-    format?: Bfsp.Format;
-  }) => Promise<ReturnType<typeof Closeable>>,
-  format?: Bfsp.Format
-) {
-  const configMap = new Map<
-    string,
-    { closable: Promise<ReturnType<typeof Closeable>>; streams: ReturnType<typeof watchBfspProjectConfig> }
-  >();
-  let isTscStarted = false;
-  multi.registerAllUserConfigEvent(async (e) => {
-    if (e.type === "unlink") {
-      const s = configMap.get(e.path)?.streams;
-      if (s) {
-        s.userConfigStream.stop();
-        s.tsConfigStream.stop();
-        s.viteConfigStream.stop();
-        s.packageJsonStream.stop();
-        s.gitIgnoreStream.stop();
-        s.npmIgnoreStream.stop();
-        configMap.delete(e.path);
-      }
-      return;
-    }
-    if (configMap.has(e.path)) {
-      return;
-    }
-
-    const resolvedDir = path.resolve(e.path);
-
-    // clean (build only)
-    const BUILD_OUT_ROOT = path.resolve(path.join(resolvedDir, consts.BuildOutRootPath));
-    const TSC_OUT_ROOT = path.resolve(path.join(resolvedDir, consts.TscOutRootPath));
-    existsSync(TSC_OUT_ROOT) && rmSync(TSC_OUT_ROOT, { recursive: true, force: true });
-    existsSync(BUILD_OUT_ROOT) && rmSync(BUILD_OUT_ROOT, { recursive: true, force: true });
-
-    const projectConfig = { projectDirpath: resolvedDir, bfspUserConfig: e.cfg };
-    const subConfigs = await writeBfspProjectConfig(projectConfig);
-    const subStreams = await watchBfspProjectConfig(projectConfig, subConfigs);
-    const watchMultiStream = (p: string) => {
-      const follower = new SharedFollower<boolean>();
-      const looper = Loopable("watch tsc compilation", () => {
-        follower.push(true);
-      });
-
-      multiTsc.registerTscSuccess(p, () => looper.loop("tsc success"));
-      return new SharedAsyncIterable<boolean>(follower);
-    };
-    const multiStream = watchMultiStream(e.path);
-
-    const closable = runClosable({ root: resolvedDir, streams: subStreams, multiStream, format });
-    configMap.set(e.path, { closable, streams: subStreams });
-    if (e.isRoot) {
-      if (!isTscStarted) {
-        multiTsc.build({ tsConfigPath: path.join(resolvedDir, "tsconfig.json") });
-        isTscStarted = true;
-      }
-    }
-  });
-}
 export function watchMulti() {
   const follower = new SharedFollower<boolean>();
   const looper = Loopable("watch multi", () => {
@@ -376,9 +310,32 @@ export function watchMulti() {
   });
 
   multi.registerAllUserConfigEvent((e) => {
-    if (e.type !== "change") {
-      looper.loop("multi changed");
-    }
+    // if (e.type !== "change") {
+    looper.loop("multi changed");
+    // }
   });
   return new SharedAsyncIterable<boolean>(follower);
+}
+export const watchTsc = (p: string) => {
+  const follower = new SharedFollower<boolean>();
+  const looper = Loopable("watch tsc compilation", () => {
+    follower.push(true);
+  });
+
+  multiTsc.registerTscSuccess(p, () => looper.loop("tsc success"));
+  return new SharedAsyncIterable<boolean>(follower);
+};
+
+let rootTsConfigPath: string;
+let tscClosable: { stop: () => void };
+
+export function initTsc() {
+  multi.registerAllUserConfigEvent(async (e) => {
+    const resolvedDir = path.resolve(e.path);
+    if (e.isRoot && !tscClosable) {
+      // 跑一次就行了，tsc会监听ts以及tsconfig的变化
+      rootTsConfigPath = path.join(resolvedDir, "tsconfig.json");
+      tscClosable = multiTsc.build({ tsConfigPath: rootTsConfigPath });
+    }
+  });
 }

@@ -78,5 +78,13 @@ export const watchBfspProjectConfig = (
     packageJsonStream,
     gitIgnoreStream,
     npmIgnoreStream,
+    stopAll() {
+      userConfigStream.stop();
+      viteConfigStream.stop();
+      tsConfigStream.stop();
+      packageJsonStream.stop();
+      gitIgnoreStream.stop();
+      npmIgnoreStream.stop();
+    },
   };
 };

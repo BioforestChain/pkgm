@@ -23,7 +23,7 @@ import {
 } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { writeJsonConfig } from "../../bin/util";
-import { multi, treeForEach } from "../multi";
+import { multi, treeForEach, watchMulti } from "../multi";
 import { existsSync } from "node:fs";
 const log = Debug("bfsp:config/tsconfig");
 const warn = Warn("bfsp:config/tsconfig");
@@ -472,6 +472,7 @@ export const watchTsConfig = (
   const { write = false } = options;
   const follower = new SharedFollower<$TsConfig>();
 
+  const multiStream = watchMulti();
   let tsConfig: $TsConfig | undefined;
   let preTsConfigJson = "";
   /// 循环处理监听到的事件
@@ -597,6 +598,7 @@ export const watchTsConfig = (
 
   //#region 监听依赖配置来触发更新
   bfspUserConfigStream.onNext(() => looper.loop("bfsp user config changed"));
+  multiStream.onNext(() => looper.loop("multi changed"));
   //#endregion
 
   /// 初始化，使用400ms时间来进行防抖

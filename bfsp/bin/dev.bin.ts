@@ -1,9 +1,20 @@
-import { initMultiRoot, runConfigSys } from "../src/multi";
+import { PromiseOut, sleep } from "@bfchain/util-extends-promise";
+import { initMultiRoot, initTsc, multi, multiTsc, watchTsc } from "../src/multi";
+import { watchDeps } from "../src/deps";
 import { defineCommand } from "../bin";
 import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
 import { Warn } from "../src/logger";
 import { doDev } from "./dev.core";
 import path from "node:path";
+import {
+  watchBfspProjectConfig,
+  writeBfspProjectConfig,
+  SharedFollower,
+  Loopable,
+  SharedAsyncIterable,
+  Closeable,
+} from "../src";
+import { runYarn } from "./yarn/runner";
 
 defineCommand(
   "dev",
@@ -32,8 +43,35 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
-    runConfigSys(root, doDev);
+    const map = new Map<
+      string,
+      { closable: ReturnType<typeof doDev>; streams: ReturnType<typeof watchBfspProjectConfig> }
+    >();
+
+    multi.registerAllUserConfigEvent(async (e) => {
+      if (e.type === "unlink") {
+        const s = map.get(e.path)?.streams;
+        if (s) {
+          s.stopAll();
+          map.delete(e.path);
+        }
+        return;
+      }
+      if (map.has(e.path)) {
+        return;
+      }
+
+      const resolvedDir = path.resolve(e.path);
+
+      const projectConfig = { projectDirpath: resolvedDir, bfspUserConfig: e.cfg };
+      const subConfigs = await writeBfspProjectConfig(projectConfig);
+      const subStreams = watchBfspProjectConfig(projectConfig, subConfigs);
+      const depStream = watchDeps(resolvedDir, subStreams.packageJsonStream);
+      const closable = doDev({ root: resolvedDir, streams: subStreams, depStream, format: format as Bfsp.Format });
+      map.set(e.path, { closable, streams: subStreams });
+    });
 
     initMultiRoot(root);
+    initTsc();
   }
 );

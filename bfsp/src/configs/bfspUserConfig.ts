@@ -248,6 +248,10 @@ export const watchBfspUserConfig = (
       follower.push((curBfspUserConfig = await (options.bfspUserConfigInitPo ?? getBfspUserConfig(projectDirpath))));
     }
 
+    if (!existsSync(projectDirpath)) {
+      log("unable to read bfsp user config: project maybe removed");
+      return;
+    }
     const userConfig = await readUserConfig(projectDirpath, {
       refresh: true,
     });

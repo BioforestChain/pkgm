@@ -5,6 +5,7 @@ import cp from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { destroyScreen } from "../src/logger";
 import { writeJsonConfig } from "./util";
+import { fileURLToPath } from "node:url";
 
 export const doInit = async (options: { root: string; name: string; license?: string }) => {
   const { root, name, license = "MIT" } = options;
@@ -36,7 +37,8 @@ export const doInit = async (options: { root: string; name: string; license?: st
   await writeFile(path.join(root, "index.ts"), `export {}`);
   await writeFile(path.join(root, "#bfsp.ts"), bfspTsFile);
   console.log("linking dependencies");
-  const proc = cp.exec("yarn add -D @bfchain/pkgm", { cwd: root });
+  const yarnPath = path.join(fileURLToPath(import.meta.url),'../../node_modules/yarn/bin/yarn.js')
+  const proc = cp.exec(`node ${yarnPath} add -D @bfchain/pkgm`, { cwd: root });
   proc.stdout?.on("data", (data) => process.stdout.write(data));
   proc.stderr?.on("data", (data) => process.stderr.write(data));
 

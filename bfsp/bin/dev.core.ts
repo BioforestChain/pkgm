@@ -19,7 +19,7 @@ export const doDev = async (options: {
   root?: string;
   format?: Bfsp.Format;
   streams: ReturnType<typeof watchBfspProjectConfig>;
-  multiStream: SharedAsyncIterable<boolean>;
+  depStream: SharedAsyncIterable<boolean>;
 }) => {
   const log = Debug("bfsp:bin/dev");
 
@@ -31,8 +31,7 @@ export const doDev = async (options: {
 
   /// 监听项目变动
   const subStreams = options.streams;
-  const multiStream = options.multiStream;
-
+  const { depStream } = options;
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
 
   const abortable = Closeable<string, string>("bin:dev", async (reasons) => {
@@ -98,7 +97,7 @@ export const doDev = async (options: {
   subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
   subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
   subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
-  // multiStream.onNext(() => abortable.restart("multi changed"));
+  depStream.onNext(() => abortable.restart("deps installed "));
   if (subStreams.viteConfigStream.hasCurrent()) {
     abortable.start();
   }

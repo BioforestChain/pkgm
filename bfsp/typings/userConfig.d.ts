@@ -9,7 +9,10 @@ declare namespace Bfsp {
     profiles?: string[];
     build?: Partial<Omit<UserConfig, "build">>[];
     packageJson?: {
-      version: string;
+      version?: string;
+      deps?: {
+        [name: string]: string;
+      };
     };
     internal?: Iterable<string> | InternalPredict;
   }

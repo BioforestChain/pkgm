@@ -12,7 +12,7 @@ export const LogLevels: Record<LogLevel, number> = {
   info: 3,
 };
 let screen: Widgets.Screen | undefined;
-let useScreen = false;
+let useScreen = true;
 if (!useScreen) {
   console.log(`面板已被禁用，若要使用面板，请将 useScreen 设为true`);
 }
