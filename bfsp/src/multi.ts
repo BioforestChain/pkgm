@@ -70,30 +70,46 @@ interface WatcherEventArgs {
 type WatcherEvent = (e: WatcherEventArgs) => void;
 
 class MultiDevTui {
-  private _devTui = createDevTui();
+  private _devTui?: ReturnType<typeof createDevTui>;
 
+  private _getDevTui() {
+    if (!this._devTui) {
+      this._devTui = createDevTui();
+    }
+    return this._devTui;
+  }
   createTscLogger() {
-    return this._devTui.createTscLogger();
+    return this._getDevTui().createTscLogger();
   }
   createViteLogger(level: LogLevel = "info", options: LoggerOptions = {}) {
-    return this._devTui.createViteLogger(level, options);
+    return this._getDevTui().createViteLogger(level, options);
   }
 }
 export const multiDevTui = new MultiDevTui();
 class MultiTsc {
-  private _logger = multiDevTui.createTscLogger();
-  private _baseRunTscOpts = {
-    onMessage: (x: string) => {
-      // console.log(x);
-      this._logger.write(x);
-    },
-    onClear: () => this._logger.clear(),
+  private _logger?: ReturnType<typeof multiDevTui.createTscLogger>;
+
+  private _getLogger() {
+    if (!this._logger) {
+      this._logger = multiDevTui.createTscLogger();
+    }
+    return this._logger;
+  }
+  private _baseRunTscOpts = () => {
+    const logger = this._getLogger();
+    return {
+      onMessage: (x: string) => {
+        // console.log(x);
+        logger.write(x);
+      },
+      onClear: () => logger.clear(),
+    };
   };
   tscSucecssCbMap: Map<string, () => void> = new Map();
 
   dev(opts: { tsConfigPath: string }) {
     return runTsc({
-      ...this._baseRunTscOpts,
+      ...this._baseRunTscOpts(),
       tsconfigPath: opts.tsConfigPath,
       watch: true,
     });
@@ -103,7 +119,7 @@ class MultiTsc {
   }
   build(opts: { tsConfigPath: string }) {
     return runTsc({
-      ...this._baseRunTscOpts,
+      ...this._baseRunTscOpts(),
       tsconfigPath: opts.tsConfigPath,
       watch: true,
       onSuccess: () => {
@@ -113,11 +129,12 @@ class MultiTsc {
   }
   async buildStage2(opts: { tsConfigPath: string }) {
     return new Promise((resolve) => {
+      const logger = this._getLogger();
       runTsc({
         tsconfigPath: opts.tsConfigPath,
         projectMode: true,
         onMessage: (x) => {},
-        onClear: () => this._logger.clear(),
+        onClear: () => logger.clear(),
         onExit: () => resolve(null),
       });
     });
@@ -275,10 +292,6 @@ export class Multi {
     return closestRoot;
   }
   async handleTsWatcherEvent(p: string, type: WatcherAction) {
-    if ([".d.ts", ".bfsp", "#bfsp.ts", "node_modules"].some((x) => p.indexOf(x) >= 0)) {
-      // ignored
-      return;
-    }
     const closestRoot = this._getClosestRoot(p);
     const tsCb = this._tsWatcherCbMap.get(closestRoot);
     tsCb && (await tsCb(path.relative(closestRoot, p), type));

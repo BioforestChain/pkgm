@@ -33,15 +33,15 @@
     - [ ] fmt 提供格式化模式:diff/all;文件类型的提示:.ts/.json/.html 等
 - [ ] 为 dev 模式提供 test 面板
   - [x] 在新的线程中运行 test 指令,并将其 stdout/err 输出转储到 logger 面板
-- [ ] 提供 build 指令
+- [x] 提供 build 指令
   > bfsp 的 build 指令，本质是输出 bfchain-system 所需的可执行文件
   > 但开发者可以提供自定义`profiles`，来做个性化编译，从而输出到 nodejs、browser 平台。
 - [ ] 提供 npm 指令
   > 有三种子指令：`publish`/`pack`
   - [ ] 默认是`publish`，其行为与`learn publish`一致，需要 git 完全提交完毕，而后会根据变动信息，自动变更版本号。
   - [ ] `pack`指令是在`.npm`文件夹下打包出`.tgz`文件。如果有子项目，也会一并导出多个`.tgz`
-- [ ] 多项目模式
-  > 使用 yarn 支持 workspace 依赖
+- [x] 多项目模式
+  > ~~使用 yarn 支持 workspace 依赖~~
   > 那么将子项目的 tsconfig.json 文件一并合并进项目中做 tsc
   > 子项目同时启动 bundle，同步编译
   > 子项目会被排除出当前项目之外，只使用项目名称来进行引用

@@ -5,6 +5,7 @@ import { Worker } from "node:worker_threads";
 export interface RunYarnOption {
   root: string;
   onExit?: () => void;
+  onMessage?: (s: string) => void;
 }
 export const runYarn = (opts: RunYarnOption) => {
   const __filename = fileURLToPath(import.meta.url);
@@ -23,6 +24,9 @@ export const runYarn = (opts: RunYarnOption) => {
       resolve();
       ret.stop();
       opts.onExit?.();
+    }
+    if (data.msg !== undefined) {
+      opts.onMessage?.(data.msg);
     }
   });
   yarnWorker.postMessage({ path: opts.root });

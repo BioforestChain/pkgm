@@ -1,5 +1,6 @@
-import { readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { fileIO } from "../src";
 
 export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) => void) {
@@ -176,3 +177,15 @@ export class Tree<T> {
     }
   }
 }
+
+export const getYarnPath = () => {
+  const importer = import.meta.url;
+  const idx = importer.indexOf("@bfchain/pkgm");
+  const baseNodeModulesDir = fileURLToPath(importer.substring(0, idx));
+  let yarnPath = path.join(baseNodeModulesDir, "yarn/bin/yarn.js"); // yarn global
+  if (!existsSync(yarnPath)) {
+    // npm i -g
+    yarnPath = path.join(baseNodeModulesDir, "@bfchain/pkgm/node_modules/yarn/bin/yarn.js");
+  }
+  return yarnPath;
+};
