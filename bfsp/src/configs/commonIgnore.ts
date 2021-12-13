@@ -21,6 +21,8 @@ export const defaultIgnores = new Set([
   "tsconfig.isolated.json",
   "tsconfig.typings.json",
   "tsconfig.json",
+  "package.json",
+  "yarn.lock",
 ]);
 
 export const effectConfigIgnores = (ignoreRules: IgnoreRules, ignoreConfig?: IgnoreUserConfig) => {

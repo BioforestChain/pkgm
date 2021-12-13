@@ -2,6 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fileIO } from "../src";
+import { require } from "../src/toolkit";
 
 export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) => void) {
   if (items.length < numContainer) {
@@ -194,7 +195,29 @@ export const getYarnPath = () => {
     // 本地调试
     const lidx = importer.indexOf("pkgm/bfsp");
     const baseDir = fileURLToPath(importer.substring(0, lidx));
-    let yarnPath = path.join(baseDir, "pkgm/node_modules/yarn/bin/yarn.js");
+    let yarnPath = path.join(baseDir, "pkgm/bfsp/node_modules/yarn/bin/yarn.js");
     return yarnPath;
   }
+};
+
+export const getPkgmVersion = () => {
+  const importer = import.meta.url;
+  const idx = importer.indexOf("@bfchain/pkgm");
+  let p = "";
+  if (idx >= 0) {
+    // 全局安装
+    const baseNodeModulesDir = fileURLToPath(importer.substring(0, idx));
+    p = path.join(baseNodeModulesDir, "@bfchain/pkgm/package.json"); // yarn global
+    if (!existsSync(p)) {
+      // npm i -g
+      p = path.join(baseNodeModulesDir, "package.json");
+    }
+  } else {
+    // 本地调试
+    const lidx = importer.indexOf("pkgm/bfsp");
+    const baseDir = fileURLToPath(importer.substring(0, lidx));
+    p = path.join(baseDir, "pkgm/bfsp/package.json");
+  }
+  const packageJson = require(p);
+  return packageJson.version;
 };

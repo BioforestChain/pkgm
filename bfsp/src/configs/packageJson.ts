@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
-import { writeJsonConfig } from "../../bin/util";
+import { getPkgmVersion, writeJsonConfig } from "../../bin/util";
 import { Debug } from "../logger";
 import {
   fileIO,
@@ -18,6 +18,7 @@ import { $TsConfig } from "./tsConfig";
 const log = Debug("bfsp:config/package.json");
 // const format
 
+const PKGM_VERSION = getPkgmVersion();
 export const generatePackageJson = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
@@ -102,6 +103,8 @@ export const generatePackageJson = async (
   }
 
   // 依赖
+
+  packageJson.dependencies["@bfchain/pkgm"] = PKGM_VERSION;
   const deps = bfspUserConfig.userConfig.packageJson?.deps;
   if (deps) {
     // @fixme: 不知道为啥yarn不会自动安装DevDependencies里的内容

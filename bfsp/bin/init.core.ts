@@ -7,6 +7,7 @@ import { destroyScreen } from "../src/logger";
 import { getYarnPath, writeJsonConfig } from "./util";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
+import { defaultIgnores } from "../src/configs/commonIgnore";
 
 export const doInit = async (options: { root: string; name: string; license?: string }) => {
   const { root, name, license = "MIT" } = options;
@@ -36,14 +37,18 @@ export const doInit = async (options: { root: string; name: string; license?: st
 });
   `;
   await writeFile(path.join(root, "index.ts"), `export {}`);
+  await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));
   await writeFile(path.join(root, "#bfsp.ts"), bfspTsFile);
   console.log("linking dependencies");
-  
+
   let yarnPath = getYarnPath();
   if (!existsSync(yarnPath)) {
     console.log(`missing package ${chalk.blue("yarn")}`);
     process.exit();
   }
+  const g = cp.exec(`git init`, { cwd: root });
+  g.stdout?.on("data", (data) => process.stdout.write(data));
+  g.stderr?.on("data", (data) => process.stderr.write(data));
   const proc = cp.exec(`node ${yarnPath} add -D @bfchain/pkgm`, { cwd: root });
   proc.stdout?.on("data", (data) => process.stdout.write(data));
   proc.stderr?.on("data", (data) => process.stderr.write(data));
