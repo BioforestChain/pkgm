@@ -52,6 +52,10 @@ export const ViteConfigFactory = (options: {
                 }
               }
             : (source, importer, isResolved) => {
+                if (source.startsWith("#")) {
+                  // profile
+                  return false;
+                }
                 const internal = options.userConfig.internal;
                 if (internal) {
                   if (typeof internal === "function") {
@@ -73,7 +77,7 @@ export const ViteConfigFactory = (options: {
                 ) {
                   return true;
                 }
-                return true
+                return true;
               },
         input: viteConfig.viteInput,
         output: {

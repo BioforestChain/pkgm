@@ -104,8 +104,14 @@ export const generatePackageJson = async (
 
   // 依赖
 
-  packageJson.dependencies["@bfchain/pkgm"] = PKGM_VERSION;
-  const deps = bfspUserConfig.userConfig.packageJson?.deps;
+  packageJson.dependencies["@bfchain/pkgm"] = `^${PKGM_VERSION}`;
+
+  // 提取自己以及build子项的依赖
+  let deps = Object.assign({}, bfspUserConfig.userConfig.packageJson?.deps);
+  bfspUserConfig.userConfig.build?.forEach((x) => {
+    deps = Object.assign(deps, x.packageJson?.deps);
+  });
+
   if (deps) {
     // @fixme: 不知道为啥yarn不会自动安装DevDependencies里的内容
     packageJson.dependencies = Object.assign({}, packageJson.dependencies, deps);
