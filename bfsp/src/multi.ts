@@ -45,7 +45,7 @@ const tree = new Tree<string /** path */>(
 );
 const nodeMap = new Map<string, TreeNode<string>>();
 
-export const treeForEach = async (p: string, cb: (n: TreeNode<string>) => BFChainUtil.PromiseMaybe<void>) => {
+function _pathToKey(p: string) {
   let relativePath = p;
   if (path.isAbsolute(p)) {
     relativePath = path.relative(root, p);
@@ -53,7 +53,10 @@ export const treeForEach = async (p: string, cb: (n: TreeNode<string>) => BFChai
   if (relativePath === "") {
     relativePath = ".";
   }
-  const n = nodeMap.get(relativePath);
+  return relativePath;
+}
+export const treeForEach = async (p: string, cb: (n: TreeNode<string>) => BFChainUtil.PromiseMaybe<void>) => {
+  const n = nodeMap.get(_pathToKey(p));
   if (n) {
     await tree.forEach(n, async (x) => cb(x));
   }
@@ -184,25 +187,61 @@ type $TsPathInfo = {
   [name: string]: string[];
 };
 type $TsReference = { path: string };
+
+type State = { user: $BfspUserConfig; tsConfig: $TsConfig; packageJson: $PackageJson; path: string };
+class States {
+  private _pathMap: Map<string, State> = new Map();
+  private _nameMap: Map<string, State> = new Map();
+  paths() {
+    return this._pathMap.keys();
+  }
+  add(p: string, s: State) {
+    this._pathMap.set(p, s);
+    this._nameMap.set(s.user.userConfig.name, s);
+  }
+
+  findByPath(p: string) {
+    return this._pathMap.get(p);
+  }
+  findByName(n: string) {
+    return this._nameMap.get(n);
+  }
+
+  delByPath(p: string) {
+    const s = this.findByPath(p);
+    if (s) {
+      this._pathMap.delete(p);
+      this._nameMap.delete(s.user.userConfig.name);
+    }
+  }
+  delByName(n: string) {
+    const s = this.findByName(n);
+    if (s) {
+      this._nameMap.delete(n);
+      this._pathMap.delete(s.path);
+    }
+  }
+}
 export class Multi {
-  private _stateMap: Map<string, { user: $BfspUserConfig; tsConfig: $TsConfig; packageJson: $PackageJson }> = new Map();
+  private _states = new States();
   private _tsWatcherCbMap: Map<string, (p: string, type: WatcherAction) => Promise<void>> = new Map();
   private _userConfigCbMap: Map<string, WatcherEvent> = new Map();
   private _userConfigAllCb = [] as WatcherEvent[];
   private _pendingUserConfigEvents = new Map<string, WatcherEventArgs>();
 
   constructor() {}
-  getState(p: string) {
-    const rp = this._pathToKey(p);
-    return this._stateMap.get(rp);
+  getStateByPath(p: string) {
+    const rp = _pathToKey(p);
+    return this._states.findByPath(rp);
   }
 
   async getPaths(baseDir: string) {
     const paths: $TsPathInfo = {};
-    await treeForEach(baseDir, (x) => {
+    const r = tree.getRoot()!;
+    await tree.forEach(r, (x) => {
       const p1 = path.join(root, x.data);
       let p = path.relative(baseDir, p1);
-      const cfg = this._stateMap.get(x.data)?.user;
+      const cfg = this._states.findByPath(x.data)?.user;
       if (!cfg) {
         return;
       }
@@ -215,31 +254,41 @@ export class Multi {
     return paths;
   }
   async getReferences(baseDir: string) {
-    const refs: $TsReference[] = [];
-    await treeForEach(baseDir, (x) => {
-      const p1 = path.join(root, x.data);
-      let p = path.relative(baseDir, p1);
+    const refSet = new Set<string>();
+    // 计算ref
+    // 假设当前查询路径是 ./abc/core , 被计算的路径与计算结果对应如下：
+    // ./abc/core/module => ./module
+    // ./abc/util => ../util
+    const addToSet = (x: string | undefined) => {
+      if (!x) {
+        return;
+      }
+      const p1 = path.join(root, x);
+      const p = path.relative(baseDir, p1);
       if (p === "") {
         return; // 自己不需要包含
       }
-      if (!p.startsWith(".")) {
-        p = toPosixPath(path.join(p, "tsconfig.json"));
-      }
-      refs.push({ path: p });
+      refSet.add(p);
+    };
+    // 1. 为了tsc编译不漏掉，所有子项目都要加入
+    await treeForEach(baseDir, (x) => {
+      addToSet(x.data);
     });
+    // 2. deps字段里的需要加入
+    const k = _pathToKey(baseDir);
+    const deps = this._states.findByPath(k)?.user.userConfig.deps;
+    if (deps) {
+      const pathList = deps.map((x) => this._states.findByName(x)).map((x) => x?.path);
+      pathList?.forEach((x) => {
+        addToSet(x);
+      });
+    }
+    const refs: $TsReference[] = [...refSet.values()].map((x) => ({ path: path.join(x, "tsconfig.json") }));
 
+    // console.log(`refs for ${baseDir}`, refs);
     return refs;
   }
-  private _pathToKey(p: string) {
-    let relativePath = p;
-    if (path.isAbsolute(p)) {
-      relativePath = path.relative(root, p);
-    }
-    if (relativePath === "") {
-      relativePath = ".";
-    }
-    return relativePath;
-  }
+
   async handleBfspWatcherEvent(p: string, type: WatcherAction) {
     debug(type, p);
     const dirname = path.dirname(p);
@@ -250,12 +299,12 @@ export class Multi {
         return;
       }
       const n = tree.del(target.data);
-      const cfg = this._stateMap.get(target.data)!.user;
+      const cfg = this._states.findByPath(target.data)!.user;
       const userConfigCb = this._userConfigCbMap.get(target.data);
       const evtArgs = { cfg, isRoot: target.data === ".", type, path: dirname };
       userConfigCb && userConfigCb(evtArgs);
       this._userConfigAllCb.forEach((x) => x(evtArgs));
-      this._stateMap.delete(target.data);
+      this._states.delByPath(target.data);
     } else {
       const c = await readUserConfig(resolvedDir, { refresh: true });
       if (!c) {
@@ -268,7 +317,7 @@ export class Multi {
       } as $BfspUserConfig;
       const tsConfig = await generateTsConfig(resolvedDir, userConfig);
       const packageJson = await generatePackageJson(resolvedDir, userConfig, tsConfig);
-      this._stateMap.set(dirname, { user: userConfig, packageJson, tsConfig });
+      this._states.add(dirname, { user: userConfig, packageJson, tsConfig, path: dirname });
       const userConfigCb = this._userConfigCbMap.get(dirname);
       const evtArgs = { cfg: userConfig, isRoot: dirname === ".", type, path: dirname };
       userConfigCb && userConfigCb(evtArgs);
@@ -280,7 +329,7 @@ export class Multi {
   }
   private _getClosestRoot(p: string) {
     const roots = [] as [number /*count of path.sep*/, string /* path */][];
-    for (const x of this._stateMap.keys()) {
+    for (const x of this._states.paths()) {
       const n = path.relative(x, p).split(path.sep).length;
       roots.push([n, x]);
     }
@@ -297,15 +346,15 @@ export class Multi {
     tsCb && (await tsCb(path.relative(closestRoot, p), type));
   }
   isFileBelongs(p: string, file: string) {
-    const k = this._pathToKey(p);
+    const k = _pathToKey(p);
     const r = this._getClosestRoot(file);
     return k === r;
   }
   registerTsWatcherEvent(p: string, cb: (p: string, type: WatcherAction) => Promise<void>) {
-    this._tsWatcherCbMap.set(this._pathToKey(p), cb);
+    this._tsWatcherCbMap.set(_pathToKey(p), cb);
   }
   registerUserConfigEvent(p: string, cb: WatcherEvent) {
-    const rp = this._pathToKey(p);
+    const rp = _pathToKey(p);
     this._userConfigCbMap.set(rp, cb);
     const args = this._pendingUserConfigEvents.get(rp);
     args && cb(args);

@@ -8,6 +8,7 @@ declare namespace Bfsp {
     formats?: Format[];
     profiles?: string[];
     build?: Partial<Omit<UserConfig, "build">>[];
+    deps?: string[];
     packageJson?: {
       version?: string;
       deps?: {
