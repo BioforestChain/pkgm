@@ -181,7 +181,7 @@ export class Tree<T> {
 
 export const getYarnPath = () => {
   const importer = import.meta.url;
-  const idx = importer.indexOf("@bfchain/pkgm");
+  const idx = importer.lastIndexOf("@bfchain/pkgm");
   if (idx >= 0) {
     // 全局安装
     const baseNodeModulesDir = fileURLToPath(importer.substring(0, idx));
@@ -193,16 +193,16 @@ export const getYarnPath = () => {
     return yarnPath;
   } else {
     // 本地调试
-    const lidx = importer.indexOf("pkgm/bfsp");
+    const lidx = importer.lastIndexOf("/dist/");
     const baseDir = fileURLToPath(importer.substring(0, lidx));
-    let yarnPath = path.join(baseDir, "pkgm/bfsp/node_modules/yarn/bin/yarn.js");
+    let yarnPath = path.join(baseDir, "node_modules/yarn/bin/yarn.js");
     return yarnPath;
   }
 };
 
 export const getPkgmVersion = () => {
   const importer = import.meta.url;
-  const idx = importer.indexOf("@bfchain/pkgm");
+  const idx = importer.lastIndexOf("@bfchain/pkgm");
   let p = "";
   if (idx >= 0) {
     // 全局安装
@@ -214,9 +214,9 @@ export const getPkgmVersion = () => {
     }
   } else {
     // 本地调试
-    const lidx = importer.indexOf("pkgm/bfsp");
-    const baseDir = fileURLToPath(importer.substring(0, lidx));
-    p = path.join(baseDir, "pkgm/bfsp/package.json");
+    const lidx = importer.lastIndexOf("/dist/");
+    const bfspDir = fileURLToPath(importer.substring(0, lidx));
+    p = path.join(bfspDir, "package.json");
   }
   const packageJson = require(p);
   return packageJson.version;
