@@ -52,6 +52,7 @@ export const ViteConfigFactory = (options: {
                 }
               }
             : (source, importer, isResolved) => {
+                log("external", source);
                 if (source.startsWith("#")) {
                   // profile
                   return false;
@@ -77,7 +78,7 @@ export const ViteConfigFactory = (options: {
                 ) {
                   return true;
                 }
-                return true;
+                return false;
               },
         input: viteConfig.viteInput,
         output: {
@@ -146,8 +147,8 @@ export const ViteConfigFactory = (options: {
         return {
           name: "Profile imports",
           resolveId(source: string) {
-            log("Profile imports", source);
             if (source.startsWith("#")) {
+              log("Profile import", source);
               const imports = profileImports[source as Bfsp.Profile];
               if (Array.isArray(imports)) {
                 return profileExternalId + path.resolve(projectDirpath, imports[0]);

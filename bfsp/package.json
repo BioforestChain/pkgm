@@ -21,6 +21,7 @@
     "bfsp": "./dist/bfsp.bin.mjs"
   },
   "scripts": {
+    "up": "yarn upgrade-interactive",
     "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",
     "dev": "vite build --watch --minify=false --sourcemap=true",
