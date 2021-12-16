@@ -192,6 +192,9 @@ type State = { user: $BfspUserConfig; tsConfig: $TsConfig; packageJson: $Package
 class States {
   private _pathMap: Map<string, State> = new Map();
   private _nameMap: Map<string, State> = new Map();
+  userConfigs() {
+    return [...this._pathMap.values()].map((x) => x.user);
+  }
   paths() {
     return this._pathMap.keys();
   }
@@ -233,6 +236,9 @@ export class Multi {
   getStateByPath(p: string) {
     const rp = _pathToKey(p);
     return this._states.findByPath(rp);
+  }
+  userConfigs() {
+    return this._states.userConfigs();
   }
 
   async getPaths(baseDir: string) {
