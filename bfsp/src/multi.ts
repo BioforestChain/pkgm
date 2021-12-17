@@ -16,7 +16,8 @@ import {
   writeBfspProjectConfig,
 } from ".";
 import { runTsc } from "../bin/tsc/runner";
-import { Tree, TreeNode } from "../bin/util";
+import { getPkgmVersion, Tree, TreeNode, writeJsonConfig } from "../bin/util";
+import { runYarn } from "../bin/yarn/runner";
 import { $PackageJson, generatePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig } from "./configs/tsConfig";
 import { consts } from "./consts";
@@ -240,8 +241,11 @@ export class Multi {
   userConfigs() {
     return this._states.userConfigs();
   }
+  paths() {
+    return this._states.paths();
+  }
 
-  async getPaths(baseDir: string) {
+  async getTsConfigPaths(baseDir: string) {
     const paths: $TsPathInfo = {};
     const r = tree.getRoot()!;
     await tree.forEach(r, (x) => {
@@ -379,7 +383,7 @@ export function watchMulti() {
 
   multi.registerAllUserConfigEvent((e) => {
     // if (e.type !== "change") {
-    looper.loop("multi changed");
+    looper.loop("multi changed", 200);
     // }
   });
   return new SharedAsyncIterable<boolean>(follower);
@@ -398,12 +402,65 @@ let rootTsConfigPath: string;
 let tscClosable: { stop: () => void };
 
 export function initTsc() {
+  // 跑一次就行了，tsc会监听ts以及tsconfig的变化
+  rootTsConfigPath = path.join(root, "tsconfig.json");
+  tscClosable = multiTsc.build({ tsConfigPath: rootTsConfigPath });
+}
+export function initWorkspace() {
   multi.registerAllUserConfigEvent(async (e) => {
-    const resolvedDir = path.resolve(e.path);
-    if (e.isRoot && !tscClosable) {
-      // 跑一次就行了，tsc会监听ts以及tsconfig的变化
-      rootTsConfigPath = path.join(resolvedDir, "tsconfig.json");
-      tscClosable = multiTsc.build({ tsConfigPath: rootTsConfigPath });
+    if (e.type === "change") {
+      return;
     }
+    const pkgmVersion = getPkgmVersion();
+    const packageJson = {
+      name: "bfsp-workspace",
+      private: true,
+      workspaces: [...multi.paths()],
+      devDependencies: {
+        "@bfchain/pkgm": `^${pkgmVersion}`,
+      },
+    };
+    await writeJsonConfig(path.join(root, `package.json`), packageJson);
+    await runYarn({ root });
+  });
+}
+
+export function initTsconfig() {
+  multi.registerAllUserConfigEvent(async (e) => {
+    if (e.type === "change") {
+      return;
+    }
+    const tsConfig = {
+      compilerOptions: {
+        composite: true,
+        noEmit: true,
+        declaration: true,
+        sourceMap: false,
+        target: "es2020",
+        module: "es2020",
+        lib: ["ES2020"],
+        importHelpers: true,
+        isolatedModules: false,
+        strict: true,
+        noImplicitAny: true,
+        strictNullChecks: true,
+        strictFunctionTypes: true,
+        strictBindCallApply: true,
+        strictPropertyInitialization: true,
+        noImplicitThis: true,
+        alwaysStrict: true,
+        moduleResolution: "node",
+        resolveJsonModule: true,
+        // baseUrl: "./",
+        // types: ["node"],
+        esModuleInterop: true,
+        skipLibCheck: true,
+        forceConsistentCasingInFileNames: true,
+      },
+      references: [...multi.paths()].map((x) => ({ path: path.join(x, `tsconfig.json`) })),
+      // files: tsFilesLists.notestFiles.toArray(),
+      files: [] as string[],
+    };
+    await writeJsonConfig(path.join(root, "tsconfig.json"), tsConfig);
   });
 }

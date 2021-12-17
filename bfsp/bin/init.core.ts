@@ -14,6 +14,12 @@ export const doInit = async (options: { root: string; name: string; license?: st
   console.log(options);
   destroyScreen();
   folderIO.tryInit(root);
+
+  await writeJsonConfig(path.join(root, "package.json"), { name: "bfsp-workspace", private: true, workspaces: [] });
+  await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));
+
+  folderIO.tryInit(path.join(root, name));
+
   const packageJson = {
     name,
     version: "1.0.0",
@@ -23,7 +29,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
     },
   };
   console.log(`creating files`);
-  await writeJsonConfig(path.join(root, "package.json"), packageJson);
+  await writeJsonConfig(path.join(root, name, "package.json"), packageJson);
   const bfspTsFile = `
   import { defineConfig } from "@bfchain/pkgm";
   export default defineConfig((info) => {
@@ -36,9 +42,9 @@ export const doInit = async (options: { root: string; name: string; license?: st
   return config;
 });
   `;
-  await writeFile(path.join(root, "index.ts"), `export {}`);
-  await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));
-  await writeFile(path.join(root, "#bfsp.ts"), bfspTsFile);
+  await writeFile(path.join(root, name, "index.ts"), `export {}`);
+  await writeFile(path.join(root, name, ".gitignore"), [...defaultIgnores.values()].join("\n"));
+  await writeFile(path.join(root, name, "#bfsp.ts"), bfspTsFile);
   console.log("linking dependencies");
 
   let yarnPath = getYarnPath();
@@ -46,10 +52,11 @@ export const doInit = async (options: { root: string; name: string; license?: st
     console.log(`missing package ${chalk.blue("yarn")}`);
     process.exit();
   }
+
   const g = cp.exec(`git init`, { cwd: root });
   g.stdout?.on("data", (data) => process.stdout.write(data));
   g.stderr?.on("data", (data) => process.stderr.write(data));
-  const proc = cp.exec(`node ${yarnPath} add -D @bfchain/pkgm`, { cwd: root });
+  const proc = cp.exec(`node ${yarnPath} add -D -W @bfchain/pkgm`, { cwd: root });
   proc.stdout?.on("data", (data) => process.stdout.write(data));
   proc.stderr?.on("data", (data) => process.stderr.write(data));
 

@@ -1,5 +1,5 @@
 import { PromiseOut, sleep } from "@bfchain/util-extends-promise";
-import { initMultiRoot, initTsc, multi, multiTsc, watchTsc } from "../src/multi";
+import { initMultiRoot, initTsc, initTsconfig, initWorkspace, multi, multiTsc, watchTsc } from "../src/multi";
 import { watchDeps } from "../src/deps";
 import { defineCommand } from "../bin";
 import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
@@ -15,6 +15,7 @@ import {
   Closeable,
 } from "../src";
 import { runYarn } from "./yarn/runner";
+import { writeJsonConfig } from "./util";
 
 defineCommand(
   "dev",
@@ -72,6 +73,8 @@ defineCommand(
     });
 
     initMultiRoot(root);
+    initWorkspace();
+    initTsconfig();
     initTsc();
   }
 );

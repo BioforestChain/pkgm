@@ -67,7 +67,7 @@ export const generatePackageJson = async (
     packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
       import: getDistFilepath("esm", output),
-      types: input,
+      types: `./${toPosixPath(path.join(".bfsp/tsc/isolated", input).replace(/\.ts$/, ".d.ts"))}`,
     };
   }
   const defaultExportConfig = packageJson.exports["."];

@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
@@ -10,7 +11,10 @@ export interface RunYarnOption {
 export const runYarn = (opts: RunYarnOption) => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
-  const workerMjsPath = path.join(__dirname, "./yarn_worker.mjs");
+  let workerMjsPath = path.join(__dirname, "./yarn_worker.mjs");
+  if (!existsSync(workerMjsPath)) {
+    workerMjsPath = path.join(__dirname, "../yarn_worker.mjs");
+  }
   const yarnWorker = new Worker(workerMjsPath);
   let resolve: Function;
   const ret = Object.assign(new Promise<void>((cb) => (resolve = cb)), {

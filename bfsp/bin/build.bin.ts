@@ -12,7 +12,7 @@ import {
 } from "../src";
 import { consts } from "../src/consts";
 import { Warn } from "../src/logger";
-import { initMultiRoot, initTsc, multi, multiTsc, watchTsc } from "../src/multi";
+import { initMultiRoot, initTsc, initTsconfig, initWorkspace, multi, multiTsc, watchTsc } from "../src/multi";
 import { watchDeps } from "../src/deps";
 import { doBuild } from "./build.core";
 import { runYarn } from "./yarn/runner";
@@ -77,6 +77,8 @@ defineCommand(
     });
 
     initMultiRoot(root);
+    initWorkspace();
+    initTsconfig();
     initTsc();
   }
 );
