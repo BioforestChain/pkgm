@@ -188,18 +188,8 @@ export const doBuild = async (options: {
     tscLogger.stop();
   };
 
-  const abortable = Closeable<string, string>("bin:dev", async (reasons) => {
-    /**防抖，避免不必要的多次调用 */
-    const closeSign = new PromiseOut<unknown>();
-    (async () => {
-      /// debounce
-      await sleep(500);
-      if (closeSign.is_finished) {
-        log("skip vite build by debounce");
-        return;
-      }
-      log("reasons", reasons);
-
+  return {
+    async start() {
       const userConfig = await subStreams.userConfigStream.getCurrent();
       const thePackageJson = await subStreams.packageJsonStream.getCurrent();
       log("running bfsp build!");
@@ -254,18 +244,6 @@ export const doBuild = async (options: {
       } catch (e) {
         tscLogger.write(chalk.red(e));
       }
-    })();
-    return (reason: unknown) => {
-      closeSign.resolve(reason);
-    };
-  });
-  subStreams.userConfigStream.onNext((x) => abortable.restart("user config changed"));
-  subStreams.viteConfigStream.onNext((x) => abortable.restart("vite config changed"));
-  tscStream.onNext((x) => abortable.restart("tsc compilation succeed"));
-  depStream.onNext((x) => abortable.restart("dep installation succeed"));
-
-  if (tscStream.hasCurrent()) {
-    abortable.start();
-  }
-  return abortable;
+    },
+  };
 };

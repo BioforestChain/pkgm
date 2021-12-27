@@ -34,17 +34,9 @@ export const doDev = async (options: {
   const { depStream } = options;
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
 
-  const abortable = Closeable<string, string>("bin:dev", async (reasons) => {
-    /**防抖，避免不必要的多次调用 */
-    const closeSign = new PromiseOut<unknown>();
-    (async () => {
-      /// debounce
-      await sleep(500);
-      if (closeSign.is_finished) {
-        log("skip vite build by debounce");
-        return;
-      }
-
+  let dev: RollupWatcher;
+  return {
+    async start() {
       const userConfig = await subStreams.userConfigStream.getCurrent();
       const viteConfig = await subStreams.viteConfigStream.getCurrent();
       const tsConfig = await subStreams.tsConfigStream.getCurrent();
@@ -65,7 +57,7 @@ export const doDev = async (options: {
       log("running bfsp build!");
       //#region vite
       const viteLogger = multiDevTui.createViteLogger("info", {});
-      const dev = (await buildBfsp({
+      dev = (await buildBfsp({
         ...viteBuildConfig,
         build: {
           ...viteBuildConfig.build,
@@ -75,31 +67,15 @@ export const doDev = async (options: {
             ...viteBuildConfig.build?.rollupOptions,
             onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
           },
+          watch: null, // 不watch， 任务一次结束
         },
         mode: "development",
         customLogger: viteLogger,
       })) as RollupWatcher;
-      //#endregion
-
-      closeSign.onSuccess((reason) => {
-        log("close bfsp build, reason: ", reason);
-        preViteConfigBuildOptions = undefined;
-        dev.close();
-      });
-    })();
-
-    return (reason: unknown) => {
-      closeSign.resolve(reason);
-    };
-  });
-
-  /// 开始监听并触发编译
-  subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
-  subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
-  subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
-  depStream.onNext(() => abortable.restart("deps installed "));
-  if (subStreams.viteConfigStream.hasCurrent()) {
-    abortable.start();
-  }
-  return abortable;
+    },
+    async stop() {
+      dev.close();
+      preViteConfigBuildOptions = undefined;
+    },
+  };
 };

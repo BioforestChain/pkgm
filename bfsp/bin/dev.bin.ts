@@ -3,7 +3,7 @@ import { initMultiRoot, initTsc, initTsconfig, initWorkspace, multi, multiTsc, w
 import { watchDeps } from "../src/deps";
 import { defineCommand } from "../bin";
 import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
-import { Warn } from "../src/logger";
+import { Debug, Warn } from "../src/logger";
 import { doDev } from "./dev.core";
 import path from "node:path";
 import {
@@ -15,7 +15,7 @@ import {
   Closeable,
 } from "../src";
 import { runYarn } from "./yarn/runner";
-import { writeJsonConfig } from "./util";
+import { Tasks, writeJsonConfig } from "./util";
 
 defineCommand(
   "dev",
@@ -28,6 +28,7 @@ defineCommand(
   } as const,
   (params, args) => {
     const warn = Warn("bfsp:bin/dev");
+    const log = Debug("bfsp:bin/dev");
     let { format } = params;
     if (format !== undefined && ALLOW_FORMATS.has(format as any) === false) {
       warn(`invalid format: '${format}'`);
@@ -49,6 +50,26 @@ defineCommand(
       { closable: ReturnType<typeof doDev>; streams: ReturnType<typeof watchBfspProjectConfig> }
     >();
 
+    let installingDep = false;
+    let pendingDepInstallation = false;
+    const depLoopable = Loopable("install dep", () => {
+      if (installingDep) {
+        return;
+      }
+      installingDep = true;
+      pendingDepInstallation = false;
+      log("installing dep");
+      runYarn({
+        root,
+        onExit: () => {
+          installingDep = false;
+          if (pendingDepInstallation) {
+            depLoopable.loop();
+          }
+        },
+      });
+    });
+
     multi.registerAllUserConfigEvent(async (e) => {
       if (e.type === "unlink") {
         const s = map.get(e.path)?.streams;
@@ -68,13 +89,37 @@ defineCommand(
       const subConfigs = await writeBfspProjectConfig(projectConfig);
       const subStreams = watchBfspProjectConfig(projectConfig, subConfigs);
       const depStream = watchDeps(resolvedDir, subStreams.packageJsonStream);
+      depStream.onNext(() => depLoopable.loop());
       const closable = doDev({ root: resolvedDir, streams: subStreams, depStream, format: format as Bfsp.Format });
       map.set(e.path, { closable, streams: subStreams });
+      subStreams.userConfigStream.onNext((x) => pendingTasks.add(e.path));
+      subStreams.tsConfigStream.onNext((x) => pendingTasks.add(e.path));
+      subStreams.viteConfigStream.onNext((x) => pendingTasks.add(e.path));
     });
 
     initMultiRoot(root);
     initWorkspace();
+    depLoopable.loop();
     initTsconfig();
     initTsc();
+
+    const pendingTasks = new Tasks<string>();
+    const queueTask = async () => {
+      const name = pendingTasks.next();
+      if (name) {
+        const s = map.get(name);
+        if (s) {
+          // console.log(`building ${name}`);
+          await (await s.closable).start();
+
+          await queueTask();
+        }
+      } else {
+        setTimeout(async () => {
+          await queueTask();
+        }, 1000);
+      }
+    };
+    queueTask();
   }
 );

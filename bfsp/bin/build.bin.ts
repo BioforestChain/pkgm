@@ -11,11 +11,12 @@ import {
   Closeable,
 } from "../src";
 import { consts } from "../src/consts";
-import { Warn } from "../src/logger";
+import { Debug, Warn } from "../src/logger";
 import { initMultiRoot, initTsc, initTsconfig, initWorkspace, multi, multiTsc, watchTsc } from "../src/multi";
 import { watchDeps } from "../src/deps";
 import { doBuild } from "./build.core";
 import { runYarn } from "./yarn/runner";
+import { Tasks } from "./util";
 
 defineCommand(
   "build",
@@ -28,6 +29,7 @@ defineCommand(
   } as const,
   (params, args) => {
     const warn = Warn("bfsp:bin/build");
+    const log = Debug("bfsp:bin/build");
 
     const profiles = params?.profiles?.split(",") || [];
     if (profiles.length === 0) {
@@ -44,6 +46,26 @@ defineCommand(
       string,
       { closable: ReturnType<typeof doBuild>; streams: ReturnType<typeof watchBfspProjectConfig> }
     >();
+
+    let installingDep = false;
+    let pendingDepInstallation = false;
+    const depLoopable = Loopable("install dep", () => {
+      if (installingDep) {
+        return;
+      }
+      installingDep = true;
+      pendingDepInstallation = false;
+      log("installing dep");
+      runYarn({
+        root,
+        onExit: () => {
+          installingDep = false;
+          if (pendingDepInstallation) {
+            depLoopable.loop();
+          }
+        },
+      });
+    });
 
     multi.registerAllUserConfigEvent(async (e) => {
       const resolvedDir = path.resolve(e.path);
@@ -71,14 +93,38 @@ defineCommand(
       const subStreams = watchBfspProjectConfig(projectConfig, subConfigs);
       const tscStream = watchTsc(e.path);
       const depStream = watchDeps(resolvedDir, subStreams.packageJsonStream);
-
+      depStream.onNext(() => depLoopable.loop());
       const closable = doBuild({ root: resolvedDir, streams: subStreams, depStream, tscStream });
       map.set(e.path, { closable, streams: subStreams });
+      subStreams.userConfigStream.onNext((x) => pendingTasks.add(e.path));
+      subStreams.viteConfigStream.onNext((x) => pendingTasks.add(e.path));
+      tscStream.onNext((x) => pendingTasks.add(e.path));
+      depStream.onNext((x) => pendingTasks.add(e.path));
     });
 
     initMultiRoot(root);
     initWorkspace();
+    depLoopable.loop();
     initTsconfig();
     initTsc();
+
+    const pendingTasks = new Tasks<string>();
+    const queueTask = async () => {
+      const name = pendingTasks.next();
+      if (name) {
+        const s = map.get(name);
+        if (s) {
+          // console.log(`building ${name}`);
+          await (await s.closable).start();
+
+          await queueTask();
+        }
+      } else {
+        setTimeout(async () => {
+          await queueTask();
+        }, 1000);
+      }
+    };
+    queueTask();
   }
 );

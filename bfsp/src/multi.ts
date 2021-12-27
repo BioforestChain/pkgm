@@ -406,6 +406,7 @@ export function initTsc() {
   rootTsConfigPath = path.join(root, "tsconfig.json");
   tscClosable = multiTsc.build({ tsConfigPath: rootTsConfigPath });
 }
+
 export function initWorkspace() {
   multi.registerAllUserConfigEvent(async (e) => {
     if (e.type === "change") {
@@ -415,13 +416,13 @@ export function initWorkspace() {
     const packageJson = {
       name: "bfsp-workspace",
       private: true,
-      workspaces: [...multi.paths()],
+      workspaces: ["./**"],
       devDependencies: {
         "@bfchain/pkgm": `^${pkgmVersion}`,
       },
     };
     await writeJsonConfig(path.join(root, `package.json`), packageJson);
-    await runYarn({ root });
+    // await installDeps();
   });
 }
 

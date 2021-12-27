@@ -221,3 +221,20 @@ export const getPkgmVersion = () => {
   const packageJson = require(p);
   return packageJson.version;
 };
+
+export class Tasks<T> {
+  private _set = new Set<T>();
+  private _queue = [] as T[];
+  add(item: T) {
+    this._set.add(item);
+  }
+  next() {
+    let item = this._queue.shift();
+    if (!item) {
+      this._queue = [...this._set.values()];
+      item = this._queue.shift();
+    }
+    item && this._set.delete(item);
+    return item;
+  }
+}

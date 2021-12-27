@@ -16,12 +16,13 @@ export const watchDeps = (projectDirpath: string, packageJsonStream: SharedAsync
     }
     curDeps = packageJson.dependencies;
     log("deps changed");
-    stoppable = runYarn({
-      root: projectDirpath,
-      onExit: () => {
-        follower.push(true);
-      },
-    });
+    follower.push(true);
+    // stoppable = runYarn({
+    //   root: projectDirpath,
+    //   onExit: () => {
+    //     follower.push(true);
+    //   },
+    // });
   });
 
   //#region 监听变更
