@@ -65,6 +65,7 @@
     "src/consts.ts",
     "src/deps.ts",
     "src/index.ts",
+    "src/tui.ts",
     "tests/config.test.ts",
     "tests/build.test.ts",
     "tests/util.test.ts",

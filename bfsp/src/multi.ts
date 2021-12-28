@@ -21,7 +21,7 @@ import { runYarn } from "../bin/yarn/runner";
 import { $PackageJson, generatePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig } from "./configs/tsConfig";
 import { consts } from "./consts";
-import { createDevTui, Debug, destroyScreen } from "./logger";
+import { createDevTui, Debug } from "./logger";
 const debug = Debug("bfsp/multi");
 
 let root: string = process.cwd();

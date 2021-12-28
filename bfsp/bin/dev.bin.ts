@@ -1,19 +1,11 @@
-import { PromiseOut, sleep } from "@bfchain/util-extends-promise";
-import { initMultiRoot, initTsc, initTsconfig, initWorkspace, multi, multiTsc, watchTsc } from "../src/multi";
+import { initMultiRoot, initTsc, initTsconfig, initWorkspace, multi } from "../src/multi";
 import { watchDeps } from "../src/deps";
 import { defineCommand } from "../bin";
 import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
 import { Debug, Warn } from "../src/logger";
 import { doDev } from "./dev.core";
 import path from "node:path";
-import {
-  watchBfspProjectConfig,
-  writeBfspProjectConfig,
-  SharedFollower,
-  Loopable,
-  SharedAsyncIterable,
-  Closeable,
-} from "../src";
+import { watchBfspProjectConfig, writeBfspProjectConfig, Loopable } from "../src";
 import { runYarn } from "./yarn/runner";
 import { Tasks, writeJsonConfig } from "./util";
 

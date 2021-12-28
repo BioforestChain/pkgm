@@ -175,7 +175,7 @@ export const doBuild = async (options: {
     /// 执行代码压缩
     log(`minify ${chalk.cyan(userConfigBuild.name)}\n`);
     await runTerser({ sourceDir: distDir, logError: (s) => tscLogger.write(s) }); // 压缩
-    tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} [${format}] at ${chalk.blue(buildOutDir)}\n`);
+    // tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} [${format}] at ${chalk.blue(buildOutDir)}\n`);
 
     /// 最后再将js文件的后缀换回去
     for (const [jsFilename, tsFilename] of renameFileMap) {
@@ -184,8 +184,7 @@ export const doBuild = async (options: {
     log("rename done\n");
 
     /// 修改样式
-    tscLogger.updateLabel({ errorCount: 0 });
-    tscLogger.stop();
+    tscLogger.updateStatus("success");
   };
 
   return {

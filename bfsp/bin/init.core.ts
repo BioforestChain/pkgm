@@ -3,16 +3,16 @@ import path from "node:path";
 import { fileIO, folderIO } from "../src";
 import cp from "node:child_process";
 import { writeFile } from "node:fs/promises";
-import { destroyScreen } from "../src/logger";
 import { getYarnPath, writeJsonConfig } from "./util";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import { defaultIgnores } from "../src/configs/commonIgnore";
+import { tui } from "../src/tui";
 
 export const doInit = async (options: { root: string; name: string; license?: string }) => {
   const { root, name, license = "MIT" } = options;
   console.log(options);
-  destroyScreen();
+  tui.destory();
   folderIO.tryInit(root);
 
   await writeJsonConfig(path.join(root, "package.json"), { name: "bfsp-workspace", private: true, workspaces: [] });
