@@ -354,3 +354,31 @@ class Tui {
   }
 }
 export const tui = new Tui();
+
+// 以下代码用于测试面板是否能正常输出
+// 实际运行中，面板经常性闪烁/显示不完整。
+// 但只跑这段代码输出时是正常的，因此怀疑可能是vite输出了清屏的ansi指令
+import crypto from "node:crypto";
+export const testTui = () => {
+  const tsc = tui.getPanel("Tsc") as TscPanel;
+  const vite = tui.getPanel("Bundle") as BundlePanel;
+  vite.write("info", "vite v2.7.1 start building");
+  const randMsg = () => {
+    const errCount = Math.round(Math.random() * 10) % 2;
+    const tsmsg = `Found ${errCount} errors`;
+    if (Math.random() > 0.5) {
+      if (Math.random() > 0.5) {
+        tsc.write(tsmsg);
+      } else {
+        tsc.write(crypto.randomBytes(6).toString("base64"));
+      }
+    } else {
+      vite.write("info", crypto.randomBytes(6).toString("base64"));
+    }
+    setTimeout(() => {
+      randMsg();
+    }, 800);
+  };
+  randMsg();
+  return;
+};
