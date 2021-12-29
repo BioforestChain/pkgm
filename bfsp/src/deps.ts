@@ -1,7 +1,6 @@
 import { Debug } from "./logger";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "./toolkit";
 import { $PackageJson } from "./configs/packageJson";
-import { runYarn } from "../bin/yarn/runner";
 import { isDeepStrictEqual } from "node:util";
 
 const log = Debug("bfsp:deps");
@@ -17,12 +16,6 @@ export const watchDeps = (projectDirpath: string, packageJsonStream: SharedAsync
     curDeps = packageJson.dependencies;
     log("deps changed");
     follower.push(true);
-    // stoppable = runYarn({
-    //   root: projectDirpath,
-    //   onExit: () => {
-    //     follower.push(true);
-    //   },
-    // });
   });
 
   //#region 监听变更

@@ -4,7 +4,6 @@ import path from "node:path";
 import { LogLevel, LoggerOptions } from "vite";
 import {
   $BfspUserConfig,
-  Closeable,
   Loopable,
   parseExports,
   parseFormats,
@@ -12,15 +11,11 @@ import {
   SharedAsyncIterable,
   SharedFollower,
   toPosixPath,
-  watchBfspProjectConfig,
-  writeBfspProjectConfig,
 } from ".";
 import { runTsc } from "../bin/tsc/runner";
 import { getPkgmVersion, Tree, TreeNode, writeJsonConfig } from "../bin/util";
-import { runYarn } from "../bin/yarn/runner";
 import { $PackageJson, generatePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig } from "./configs/tsConfig";
-import { consts } from "./consts";
 import { createDevTui, Debug } from "./logger";
 const debug = Debug("bfsp/multi");
 
@@ -413,10 +408,11 @@ export function initWorkspace() {
       return;
     }
     const pkgmVersion = getPkgmVersion();
+
     const packageJson = {
       name: "bfsp-workspace",
       private: true,
-      workspaces: ["./**"],
+      workspaces: [...multi.paths()],
       devDependencies: {
         "@bfchain/pkgm": `^${pkgmVersion}`,
       },

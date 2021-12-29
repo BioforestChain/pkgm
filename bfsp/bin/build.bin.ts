@@ -17,6 +17,8 @@ import { watchDeps } from "../src/deps";
 import { doBuild } from "./build.core";
 import { runYarn } from "./yarn/runner";
 import { Tasks } from "./util";
+import { tui } from "../src/tui";
+import type { DepsPanel } from "../src/tui";
 
 defineCommand(
   "build",
@@ -30,6 +32,7 @@ defineCommand(
   (params, args) => {
     const warn = Warn("bfsp:bin/build");
     const log = Debug("bfsp:bin/build");
+    const depsLogger = tui.getPanel("Deps")! as DepsPanel;
 
     const profiles = params?.profiles?.split(",") || [];
     if (profiles.length === 0) {
@@ -56,6 +59,7 @@ defineCommand(
       installingDep = true;
       pendingDepInstallation = false;
       log("installing dep");
+      depsLogger.updateStatus("loading");
       runYarn({
         root,
         onExit: () => {
@@ -63,6 +67,9 @@ defineCommand(
           if (pendingDepInstallation) {
             depLoopable.loop();
           }
+        },
+        onMessage: (s) => {
+          depsLogger.write(s);
         },
       });
     });
@@ -109,13 +116,20 @@ defineCommand(
     initTsc();
 
     const pendingTasks = new Tasks<string>();
+    tui.status.postMsg("Ready");
+    const reporter = (s: string) => {
+      tui.status.postMsg(`[ tasks remaining ... ${pendingTasks.remaining()} ] ${s}`);
+    };
     const queueTask = async () => {
       const name = pendingTasks.next();
       if (name) {
         const s = map.get(name);
         if (s) {
           // console.log(`building ${name}`);
-          await (await s.closable).start();
+          await (await s.closable).start({ stateReporter: reporter });
+          if (pendingTasks.remaining() === 0) {
+            tui.status.postMsg("all build tasks completed");
+          }
 
           await queueTask();
         }

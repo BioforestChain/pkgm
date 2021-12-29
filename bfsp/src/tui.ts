@@ -3,15 +3,79 @@ import blessed, { Widgets } from "blessed";
 import type { RollupError } from "rollup";
 import type { LogErrorOptions, Logger, LoggerOptions, LogLevel, LogType } from "vite";
 
+const H_NAV = 1;
+const H_STATUSBAR = 3;
+const H_LOG = `100%-${H_NAV + H_STATUSBAR}`;
+const W_MAIN_N = 70;
+const W_INFO_N = 30;
+const W_MAIN = `${W_MAIN_N}%`;
+const W_INFO = `${W_INFO_N}%`;
+
+const getBaseWidgetOptions = () =>
+  ({
+    tags: true,
+    border: {
+      type: "line",
+    },
+    style: {
+      border: {
+        fg: "gray",
+      },
+      focus: {
+        border: {
+          fg: "cyan",
+        },
+      },
+    },
+  } as Widgets.BoxOptions);
+const navWidgetOptions: Widgets.BoxOptions = {
+  height: H_NAV,
+  width: W_MAIN,
+};
+const logWidgetOptions: Widgets.BoxOptions = {
+  ...getBaseWidgetOptions(),
+  top: H_NAV,
+  width: W_MAIN,
+  height: H_LOG,
+  keys: true,
+  vi: true,
+  mouse: true,
+  scrollable: true,
+  draggable: true,
+  alwaysScroll: true,
+  scrollbar: {
+    ch: " ",
+    track: {
+      inverse: true,
+    },
+    style: {
+      inverse: true,
+      fg: "cyan",
+    },
+  },
+};
+const statusBarWidgetOptions: Widgets.BoxOptions = {
+  ...getBaseWidgetOptions(),
+  top: `100%-${H_STATUSBAR}`,
+  height: H_STATUSBAR,
+  width: W_MAIN,
+};
+
 const FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 export type PanelStatus = "success" | "error" | "warn" | "loading" | "info";
+
+export interface PanelName {
+  Tsc: 0;
+  Bundle: 1;
+  Deps: 2;
+}
 abstract class Panel {
   private _status: PanelStatus = "loading";
   private _statusChangeCb?: (s: PanelStatus) => void;
   private _loadingFrameId = 0;
   private _isActive = true;
-  abstract name: string;
-  readonly elLog = blessed.log(getLogOptions());
+  name!: keyof PanelName;
+  readonly elLog = blessed.log(logWidgetOptions);
   readonly elMenu = blessed.box({});
   readonly key!: number;
   onStatusChange(cb: (newStatus: PanelStatus) => void) {
@@ -61,54 +125,12 @@ abstract class Panel {
     this.elMenu.content = this._buildMenuContent();
     this.elLog.hide();
   }
-  constructor(key: number) {
+  constructor(key: number, name: keyof PanelName) {
     this.key = key;
+    this.name = name;
     this.deactivate();
   }
 }
-
-const getLogOptions = (options: Widgets.BoxOptions = {}) => {
-  return {
-    ...options,
-    top: "10%",
-    left: "left",
-    width: "70%",
-    height: "80%",
-    keys: true,
-    vi: true,
-    mouse: true,
-
-    tags: true,
-    border: {
-      type: "line",
-    },
-    // label: `${chalk.cyan.underline(`[0]`)} ${chalk.bold("Bundle")} `, // " {bold}Bundle{/bold} ",
-    style: {
-      border: {
-        fg: "gray",
-      },
-      focus: {
-        border: {
-          fg: "cyan",
-        },
-      },
-    },
-
-    scrollable: true,
-    draggable: true,
-    alwaysScroll: true,
-    scrollbar: {
-      ch: " ",
-      track: {
-        inverse: true,
-      },
-      style: {
-        inverse: true,
-        fg: options.style?.focus?.border?.fg ?? options.style?.border?.fg ?? "cyan",
-      },
-    },
-  } as Widgets.BoxOptions;
-};
 
 const LogLevels: Record<LogLevel, number> = {
   silent: 0,
@@ -118,7 +140,6 @@ const LogLevels: Record<LogLevel, number> = {
 };
 
 export class TscPanel extends Panel {
-  name: string = "Tsc";
   write(text: string) {
     this.elLog.log(text);
     const foundErrors = text.match(/Found (\d+) error/);
@@ -134,6 +155,17 @@ export class TscPanel extends Panel {
     }
   }
 }
+export class DepsPanel extends Panel {
+  write(text: string) {
+    this.elLog.log(text);
+    if (/Visit https/.test(text)) {
+      this.updateStatus("error");
+    }
+    if (/Done in (\d+\.\d+)/.test(text)) {
+      this.updateStatus("success");
+    }
+  }
+}
 export class BundlePanel extends Panel {
   private _loggedErrors = new WeakSet<Error | RollupError>();
   private _lastType: LogType | undefined;
@@ -144,7 +176,6 @@ export class BundlePanel extends Panel {
   private _isInited = false;
   private _buildStartMsg = chalk.cyanBright(`\nbuild started...`);
   private _thresh = LogLevels.info;
-  name: string = "Bundle";
 
   setLevel(l: LogLevel) {
     this._thresh = LogLevels[l];
@@ -207,11 +238,59 @@ export class BundlePanel extends Panel {
   }
 }
 
+class StatusBar {
+  private _el!: Widgets.BoxElement;
+  private _currentMsg = "";
+  private _nextMsgTi?: NodeJS.Timeout;
+  private _loadingFrameId = 0;
+  private _loadingEnabled = false;
+  private _msgQ = [] as string[];
+  constructor(el: Widgets.BoxElement) {
+    this._el = el;
+    this._nextMsgTi = setInterval(() => {
+      this._nextMsg();
+    }, 1000);
+  }
+  private _buildContent() {
+    let c = "";
+    if (this._loadingEnabled) {
+      c += FRAMES[this._loadingFrameId % FRAMES.length];
+    }
+    c += " ".repeat(2);
+    c += this._currentMsg;
+    return c;
+  }
+  private _nextMsg() {
+    if (this._msgQ.length > 0) {
+      const msg = this._msgQ.shift();
+      if (msg) {
+        this._currentMsg = msg;
+      }
+    }
+  }
+  enableLoading() {
+    this._loadingEnabled = true;
+  }
+  disableLoading() {
+    this._loadingEnabled = false;
+  }
+  nextLoadingFrame() {
+    this._loadingFrameId++;
+    this._el.content = this._buildContent();
+  }
+  sendMsg(msg: string) {
+    this._msgQ.unshift(msg); // 或者直接显示？
+  }
+  postMsg(msg: string) {
+    this._msgQ.push(msg);
+  }
+}
 class Tui {
   private _currentKey: number = -1;
   private _loadingTi?: NodeJS.Timeout;
   private _panels: Map<string, Panel> = new Map();
   private _screen!: Widgets.Screen;
+  status!: StatusBar;
   constructor() {
     this._screen = blessed.screen({
       smartCSR: true,
@@ -272,7 +351,7 @@ class Tui {
     });
   }
 
-  getPanel(name: "Tsc" | "Bundle") {
+  getPanel(name: keyof PanelName) {
     return this._panels.get(name);
   }
   destory() {
@@ -282,26 +361,24 @@ class Tui {
     this._screen.debug(...(args as any));
   }
   private _initControls() {
-    const tsc = new TscPanel(0);
+    const tsc = new TscPanel(0, "Tsc");
     this._panels.set(tsc.name, tsc);
 
-    const bundle = new BundlePanel(1);
+    const bundle = new BundlePanel(1, "Bundle");
     this._panels.set(bundle.name, bundle);
+
+    const deps = new DepsPanel(2, "Deps");
+    this._panels.set(deps.name, deps);
 
     const sorted = [...this._panels.values()];
     sorted.sort((a, b) => a.key - b.key); // 这样导航项就是升序
 
-    const nav = blessed.box({
-      top: "0%",
-      height: "10%",
-      width: "70%",
-    });
+    const nav = blessed.box(navWidgetOptions);
 
     this._screen.append(nav);
-    const unitWidth = Math.round(70 / sorted.length);
+    const unitWidth = Math.round(W_MAIN_N / sorted.length);
     sorted.forEach((p, i) => {
       // 菜单项样式
-      p.elMenu.top = 0;
       p.elMenu.width = `${unitWidth}%`;
       p.elMenu.left = i * unitWidth;
       nav.append(p.elMenu);
@@ -330,6 +407,10 @@ class Tui {
       }
       this._updateSelected();
     });
+    const statusBar = blessed.box(statusBarWidgetOptions);
+    this._screen.append(statusBar);
+    this.status = new StatusBar(statusBar);
+
     this._currentKey = 0;
     this._updateSelected();
   }
@@ -338,7 +419,8 @@ class Tui {
     const panels = [...this._panels.values()];
     if (!this._loadingTi) {
       this._loadingTi = setInterval(() => {
-        panels.forEach((p) => p.nextLoadingFrame());
+        panels.forEach((p) => p.nextLoadingFrame()); // 面板loading
+        this.status.nextLoadingFrame(); // 状态栏loading
         this._screen.render();
       }, 80);
     }

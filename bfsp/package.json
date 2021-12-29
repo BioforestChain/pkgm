@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm",
-  "version": "2.2.0-alpha.12",
+  "version": "2.2.0-alpha.13",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",

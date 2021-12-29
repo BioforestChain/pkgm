@@ -225,6 +225,9 @@ export const getPkgmVersion = () => {
 export class Tasks<T> {
   private _set = new Set<T>();
   private _queue = [] as T[];
+  remaining() {
+    return this._set.size;
+  }
   add(item: T) {
     this._set.add(item);
   }

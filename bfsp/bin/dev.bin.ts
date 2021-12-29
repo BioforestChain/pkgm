@@ -8,6 +8,8 @@ import path from "node:path";
 import { watchBfspProjectConfig, writeBfspProjectConfig, Loopable } from "../src";
 import { runYarn } from "./yarn/runner";
 import { Tasks, writeJsonConfig } from "./util";
+import { tui } from "../src/tui";
+import type { DepsPanel } from "../src/tui";
 
 defineCommand(
   "dev",
@@ -21,6 +23,7 @@ defineCommand(
   (params, args) => {
     const warn = Warn("bfsp:bin/dev");
     const log = Debug("bfsp:bin/dev");
+    const depsLogger = tui.getPanel("Deps")! as DepsPanel;
     let { format } = params;
     if (format !== undefined && ALLOW_FORMATS.has(format as any) === false) {
       warn(`invalid format: '${format}'`);
@@ -51,6 +54,7 @@ defineCommand(
       installingDep = true;
       pendingDepInstallation = false;
       log("installing dep");
+      depsLogger.updateStatus("loading");
       runYarn({
         root,
         onExit: () => {
@@ -58,6 +62,9 @@ defineCommand(
           if (pendingDepInstallation) {
             depLoopable.loop();
           }
+        },
+        onMessage: (s) => {
+          depsLogger.write(s);
         },
       });
     });
