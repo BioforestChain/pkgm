@@ -19,6 +19,7 @@ import { runYarn } from "./yarn/runner";
 import { Tasks } from "./util";
 import { tui } from "../src/tui";
 import type { DepsPanel } from "../src/tui";
+import { boot } from "./boot";
 
 defineCommand(
   "build",
@@ -32,7 +33,6 @@ defineCommand(
   (params, args) => {
     const warn = Warn("bfsp:bin/build");
     const log = Debug("bfsp:bin/build");
-    const depsLogger = tui.getPanel("Deps")! as DepsPanel;
 
     const profiles = params?.profiles?.split(",") || [];
     if (profiles.length === 0) {
@@ -44,35 +44,7 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
-
-    const map = new Map<
-      string,
-      { closable: ReturnType<typeof doBuild>; streams: ReturnType<typeof watchBfspProjectConfig> }
-    >();
-
-    let installingDep = false;
-    let pendingDepInstallation = false;
-    const depLoopable = Loopable("install dep", () => {
-      if (installingDep) {
-        return;
-      }
-      installingDep = true;
-      pendingDepInstallation = false;
-      log("installing dep");
-      depsLogger.updateStatus("loading");
-      runYarn({
-        root,
-        onExit: () => {
-          installingDep = false;
-          if (pendingDepInstallation) {
-            depLoopable.loop();
-          }
-        },
-        onMessage: (s) => {
-          depsLogger.write(s);
-        },
-      });
-    });
+    const { map, depLoopable, pendingTasks } = boot(root);
 
     multi.registerAllUserConfigEvent(async (e) => {
       const resolvedDir = path.resolve(e.path);
@@ -114,31 +86,5 @@ defineCommand(
     depLoopable.loop();
     initTsconfig();
     initTsc();
-
-    const pendingTasks = new Tasks<string>();
-    tui.status.postMsg("Ready");
-    const reporter = (s: string) => {
-      tui.status.postMsg(`[ tasks remaining ... ${pendingTasks.remaining()} ] ${s}`);
-    };
-    const queueTask = async () => {
-      const name = pendingTasks.next();
-      if (name) {
-        const s = map.get(name);
-        if (s) {
-          // console.log(`building ${name}`);
-          await (await s.closable).start({ stateReporter: reporter });
-          if (pendingTasks.remaining() === 0) {
-            tui.status.postMsg("all build tasks completed");
-          }
-
-          await queueTask();
-        }
-      } else {
-        setTimeout(async () => {
-          await queueTask();
-        }, 1000);
-      }
-    };
-    queueTask();
   }
 );

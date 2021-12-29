@@ -104,7 +104,7 @@ export const generatePackageJson = async (
 
   // 依赖
 
-  // packageJson.dependencies["@bfchain/pkgm"] = `^${PKGM_VERSION}`;
+  packageJson.dependencies["@bfchain/pkgm"] = `^${PKGM_VERSION}`;
 
   // 提取自己以及build子项的依赖
   let deps = Object.assign({}, bfspUserConfig.userConfig.packageJson?.deps);

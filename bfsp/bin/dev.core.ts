@@ -15,7 +15,7 @@ import { Closeable, SharedAsyncIterable } from "../src/toolkit";
 import { runTsc } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
 
-export const doDev = async (options: {
+export const doDev = (options: {
   root?: string;
   format?: Bfsp.Format;
   streams: ReturnType<typeof watchBfspProjectConfig>;
@@ -31,12 +31,12 @@ export const doDev = async (options: {
 
   /// 监听项目变动
   const subStreams = options.streams;
-  const { depStream } = options;
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
 
   let dev: RollupWatcher;
   return {
-    async start() {
+    async start(options: { stateReporter: (s: string) => void }) {
+      const report = options.stateReporter;
       const userConfig = await subStreams.userConfigStream.getCurrent();
       const viteConfig = await subStreams.viteConfigStream.getCurrent();
       const tsConfig = await subStreams.tsConfigStream.getCurrent();
@@ -55,6 +55,7 @@ export const doDev = async (options: {
       const viteBuildConfig = ViteConfigFactory(viteConfigBuildOptions);
 
       log("running bfsp build!");
+      report(`${userConfig.userConfig.name} > vite build`);
       //#region vite
       const viteLogger = multiDevTui.createViteLogger("info", {});
       dev = (await buildBfsp({
@@ -72,6 +73,7 @@ export const doDev = async (options: {
         mode: "development",
         customLogger: viteLogger,
       })) as RollupWatcher;
+      report(`${userConfig.userConfig.name} > done`);
     },
     async stop() {
       dev.close();

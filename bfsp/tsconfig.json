@@ -6,9 +6,7 @@
     "sourceMap": false,
     "target": "es2020",
     "module": "es2020",
-    "lib": [
-      "ES2020"
-    ],
+    "lib": ["ES2020"],
     "outDir": "./node_modules/.bfsp/",
     "importHelpers": true,
     "isolatedModules": false,
@@ -23,9 +21,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     // "baseUrl": "./",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
@@ -51,6 +47,7 @@
     "bin/init.bin.ts",
     "bin/init.core.ts",
     "bin/test.bin.ts",
+    "bin/boot.ts",
     "src/logger.ts",
     "src/bfspConfig.ts",
     "src/toolkit.ts",
@@ -69,7 +66,7 @@
     "tests/config.test.ts",
     "tests/build.test.ts",
     "tests/util.test.ts",
-    "bin.ts",
+    "bin.ts"
   ],
   "references": [
     // {

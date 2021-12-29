@@ -72,7 +72,7 @@ const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactor
     customLogger: viteLogger,
   });
 };
-export const doBuild = async (options: {
+export const doBuild = (options: {
   root?: string;
   streams: ReturnType<typeof watchBfspProjectConfig>;
   tscStream: SharedAsyncIterable<boolean>;
@@ -89,6 +89,7 @@ export const doBuild = async (options: {
   const { tscStream, depStream } = options;
 
   const tscLogger = multiDevTui.createTscLogger();
+  const viteLogger = multiDevTui.createViteLogger();
   const CACHE_BUILD_OUT_ROOT = path.resolve(path.join(root, consts.CacheBuildOutRootPath));
   const BUILD_OUT_ROOT = path.resolve(path.join(root, consts.BuildOutRootPath));
   const TSC_OUT_ROOT = path.resolve(path.join(root, consts.TscOutRootPath));
@@ -239,6 +240,7 @@ export const doBuild = async (options: {
 
           const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfigBuild.name);
           const cacheBuildOutDir = path.resolve(CACHE_BUILD_OUT_ROOT, userConfigBuild.name);
+          // 状态报告给外层，由外层组装后写入状态栏
           const singleReporter = (s: string) => {
             reporter(`${x.name} > ${s}`);
           };
@@ -264,7 +266,7 @@ export const doBuild = async (options: {
           }
         }
       } catch (e) {
-        tscLogger.write(chalk.red(e));
+        viteLogger.error(e as any);
       }
     },
   };

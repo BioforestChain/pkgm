@@ -10,6 +10,7 @@ import { runYarn } from "./yarn/runner";
 import { Tasks, writeJsonConfig } from "./util";
 import { tui } from "../src/tui";
 import type { DepsPanel } from "../src/tui";
+import { boot } from "./boot";
 
 defineCommand(
   "dev",
@@ -23,7 +24,6 @@ defineCommand(
   (params, args) => {
     const warn = Warn("bfsp:bin/dev");
     const log = Debug("bfsp:bin/dev");
-    const depsLogger = tui.getPanel("Deps")! as DepsPanel;
     let { format } = params;
     if (format !== undefined && ALLOW_FORMATS.has(format as any) === false) {
       warn(`invalid format: '${format}'`);
@@ -40,34 +40,7 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
-    const map = new Map<
-      string,
-      { closable: ReturnType<typeof doDev>; streams: ReturnType<typeof watchBfspProjectConfig> }
-    >();
-
-    let installingDep = false;
-    let pendingDepInstallation = false;
-    const depLoopable = Loopable("install dep", () => {
-      if (installingDep) {
-        return;
-      }
-      installingDep = true;
-      pendingDepInstallation = false;
-      log("installing dep");
-      depsLogger.updateStatus("loading");
-      runYarn({
-        root,
-        onExit: () => {
-          installingDep = false;
-          if (pendingDepInstallation) {
-            depLoopable.loop();
-          }
-        },
-        onMessage: (s) => {
-          depsLogger.write(s);
-        },
-      });
-    });
+    const { map, depLoopable, pendingTasks } = boot(root);
 
     multi.registerAllUserConfigEvent(async (e) => {
       if (e.type === "unlink") {
@@ -101,24 +74,5 @@ defineCommand(
     depLoopable.loop();
     initTsconfig();
     initTsc();
-
-    const pendingTasks = new Tasks<string>();
-    const queueTask = async () => {
-      const name = pendingTasks.next();
-      if (name) {
-        const s = map.get(name);
-        if (s) {
-          // console.log(`building ${name}`);
-          await (await s.closable).start();
-
-          await queueTask();
-        }
-      } else {
-        setTimeout(async () => {
-          await queueTask();
-        }, 1000);
-      }
-    };
-    queueTask();
   }
 );
