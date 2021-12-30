@@ -1,3 +1,32 @@
+# BFSP
+
+## 快速开始
+
+使用 `bfsp init <pkgName>` 快速初始化一个项目，项目创建完成之后，会生成如下目录结构
+
+- pkgName // 工作空间目录，请勿在这个文件夹直接创建`#bfsp.ts`（若要创建，请新建目录）
+  - pkgName // 包目录
+  - ...
+
+然后根据提示，`cd pkgName`,执行 `bfsp dev` 就可以启动开发， 执行`bfsp build`执行多平台编译
+
+> 启动后的面板，可通过对应的数字按键切换面板显示，也可以通过左右导航键进行切换
+
+### 依赖管理
+
+bfsp 支持依赖管理，可以在 `#bfsp.ts`里的 `packageJson.deps`字段下添加依赖项，格式同 package.json
+
+```json
+...
+"packageJson":{
+  "deps":{
+    "@bfchain/util-encoding-utf8":"^0.0.1-alpha.4"
+  }
+}
+```
+
+保存会自动安装对应依赖
+
 ## Why BFSP
 
 1. 减少配置
@@ -41,7 +70,7 @@
   - [ ] 默认是`publish`，其行为与`learn publish`一致，需要 git 完全提交完毕，而后会根据变动信息，自动变更版本号。
   - [ ] `pack`指令是在`.npm`文件夹下打包出`.tgz`文件。如果有子项目，也会一并导出多个`.tgz`
 - [x] 多项目模式
-  > ~~使用 yarn 支持 workspace 依赖~~
+  > 使用 yarn 支持 workspace 依赖
   > 那么将子项目的 tsconfig.json 文件一并合并进项目中做 tsc
   > 子项目同时启动 bundle，同步编译
   > 子项目会被排除出当前项目之外，只使用项目名称来进行引用
