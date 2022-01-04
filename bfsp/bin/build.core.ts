@@ -1,5 +1,3 @@
-import { sleep } from "@bfchain/util-extends-promise";
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import chalk from "chalk";
 import { renameSync, existsSync, rmSync } from "node:fs";
 import { copyFile, rm } from "node:fs/promises";
@@ -10,15 +8,27 @@ import { watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfi
 import { $TsConfig, generateTsConfig, isTestFile } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import { Debug } from "../src/logger";
-import { multi, multiDevTui, multiTsc } from "../src/multi";
+import {
+  initMultiRoot,
+  initTsc,
+  initTsconfig,
+  initWorkspace,
+  multi,
+  multiDevTui,
+  multiTsc,
+  watchTsc,
+} from "../src/multi";
 import { Closeable, fileIO, folderIO, SharedAsyncIterable, toPosixPath, walkFiles } from "../src/toolkit";
 import { runTerser } from "./terser/runner";
 import { writeJsonConfig } from "./util";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { consts } from "../src/consts";
 import { $PackageJson } from "../src/configs/packageJson";
-import { tui } from "../src/tui";
-
+import { symlink, unlink, stat } from "node:fs/promises";
+import fs from "node:fs";
+import os from "node:os";
+import { watchDeps } from "../src/deps";
+import { boot } from "./boot";
 const jsonClone = <T>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;
 // 任务：生成阶段2的tsconfig，用于es2020到es2019
 const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsConfig: $TsConfig, files: string[]) => {
@@ -72,15 +82,17 @@ const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactor
     customLogger: viteLogger,
   });
 };
-export const doBuild = (options: {
+const doBuild = (options: {
   root?: string;
+  workspaceRoot: string;
   streams: ReturnType<typeof watchBfspProjectConfig>;
   tscStream: SharedAsyncIterable<boolean>;
   depStream: SharedAsyncIterable<boolean>;
+  mode: "dev" | "build";
 }) => {
   const log = Debug("bfsp:bin/build");
 
-  const { root = process.cwd() } = options;
+  const { root = process.cwd(), workspaceRoot, mode } = options;
 
   log("root", root);
 
@@ -143,10 +155,11 @@ export const doBuild = (options: {
       ...userConfigBuild.packageJson,
       name: userConfigBuild.name,
     });
+    delete packageJson.deps;
     {
       const repathTypePath = (typePath: string) => {
-        const typesPathInfo = path.parse(typePath);
-        return toPosixPath(path.join("source/isolated", path.join(typesPathInfo.dir, typesPathInfo.name + ".d.ts")));
+        // const typesPathInfo = path.parse(typePath);
+        return toPosixPath(path.join("source/isolated", typePath));
       };
       for (const exportConfig of Object.values(packageJson.exports)) {
         exportConfig.types = repathTypePath(exportConfig.types);
@@ -198,6 +211,72 @@ export const doBuild = (options: {
     tscLogger.updateStatus("success");
   };
 
+  const devSingle = async (options: {
+    userConfigBuild: Omit<Bfsp.UserConfig, "build">;
+    thePackageJson: $PackageJson;
+    buildOutDir: string;
+    cacheBuildOutDir: string;
+    stateReporter: (s: string) => void;
+  }) => {
+    const report = options.stateReporter;
+    const { userConfigBuild, thePackageJson, buildOutDir, cacheBuildOutDir } = options;
+    existsSync(buildOutDir) && (await rm(buildOutDir, { recursive: true, force: true }));
+
+    const userConfig1 = {
+      userConfig: userConfigBuild,
+      exportsDetail: parseExports(userConfigBuild.exports),
+      formatExts: parseFormats(userConfigBuild.formats),
+    };
+    log(`generate TsConfig\n`);
+    const tsConfig1 = await generateTsConfig(root, userConfig1);
+
+    log(`generate ViteConfig\n`);
+    const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
+
+    const format = userConfigBuild.formats?.[0] ?? "esm";
+    const c = ViteConfigFactory({
+      userConfig: userConfigBuild,
+      projectDirpath: root,
+      viteConfig: viteConfig1,
+      tsConfig: tsConfig1,
+      format,
+      outDir: buildOutDir,
+    });
+
+    report("vite build");
+    await taskViteBuild({ ...c, mode: "development" }); // vite 打包
+
+    /// 将package.json的types路径进行修改
+    const packageJson = jsonClone({
+      ...thePackageJson,
+      files: ["dist", "source"],
+      scripts: undefined,
+      devDependencies: undefined,
+      ...userConfigBuild.packageJson,
+      name: userConfigBuild.name,
+    });
+    delete packageJson.deps;
+    {
+      const repathTypePath = (typePath: string) => {
+        // const typesPathInfo = path.parse(typePath);
+        return toPosixPath(path.join("source/isolated", typePath));
+      };
+      for (const exportConfig of Object.values(packageJson.exports)) {
+        exportConfig.types = repathTypePath(exportConfig.types);
+      }
+      packageJson.types = repathTypePath(packageJson.types);
+    }
+
+    log(`writing package.json\n`);
+
+    /// 写入package.json
+    await writeJsonConfig(path.join(buildOutDir, "package.json"), packageJson);
+
+    report("done");
+    /// 修改样式
+    tscLogger.updateStatus("success");
+  };
+
   return {
     async start(options: { stateReporter: (s: string) => void }) {
       const reporter = options.stateReporter;
@@ -229,6 +308,7 @@ export const doBuild = (options: {
           }
         }
 
+        const buildFn = mode === "build" ? buildSingle : devSingle;
         const buildOutDirs = new Set<string>();
         let i = 0;
         for (const x of buildUserConfigs) {
@@ -244,13 +324,23 @@ export const doBuild = (options: {
           const singleReporter = (s: string) => {
             reporter(`${x.name} > ${s}`);
           };
-          await buildSingle({
+          await buildFn({
             userConfigBuild,
             thePackageJson,
             buildOutDir,
             cacheBuildOutDir,
             stateReporter: singleReporter,
           });
+          const symlinkType = os.platform() === "win32" ? "junction" : "dir";
+          const symlinkTarget = path.join(workspaceRoot, "node_modules", x.name);
+          if (fs.existsSync(symlinkTarget)) {
+            const s = await stat(symlinkTarget);
+            // log(`${symlinkTarget}: ${s.isSymbolicLink()}`);
+            // if (s.isSymbolicLink()) {
+            await unlink(symlinkTarget);
+            // }
+          }
+          await symlink(buildOutDir, symlinkTarget, symlinkType);
           buildOutDirs.add(buildOutDir);
         }
 
@@ -271,3 +361,56 @@ export const doBuild = (options: {
     },
   };
 };
+
+export function runBuild(opts: { root: string; mode: "build" | "dev" }) {
+  const { root, mode } = opts;
+  const { map, depLoopable, pendingTasks } = boot(root);
+
+  multi.registerAllUserConfigEvent(async (e) => {
+    const resolvedDir = path.resolve(e.path);
+
+    // 状态维护
+    if (e.type === "unlink") {
+      const s = map.get(e.path)?.streams;
+      if (s) {
+        s.stopAll();
+        map.delete(e.path);
+      }
+      return;
+    }
+    if (map.has(e.path)) {
+      return;
+    }
+
+    const BUILD_OUT_ROOT = path.resolve(path.join(resolvedDir, consts.BuildOutRootPath));
+    const TSC_OUT_ROOT = path.resolve(path.join(resolvedDir, consts.TscOutRootPath));
+    existsSync(TSC_OUT_ROOT) && rmSync(TSC_OUT_ROOT, { recursive: true, force: true });
+    existsSync(BUILD_OUT_ROOT) && rmSync(BUILD_OUT_ROOT, { recursive: true, force: true });
+
+    const projectConfig = { projectDirpath: resolvedDir, bfspUserConfig: e.cfg };
+    const subConfigs = await writeBfspProjectConfig(projectConfig);
+    const subStreams = watchBfspProjectConfig(projectConfig, subConfigs);
+    const tscStream = watchTsc(e.path);
+    const depStream = watchDeps(resolvedDir, subStreams.packageJsonStream);
+    depStream.onNext(() => depLoopable.loop());
+    const closable = doBuild({
+      root: resolvedDir,
+      workspaceRoot: root,
+      streams: subStreams,
+      depStream,
+      tscStream,
+      mode,
+    });
+    map.set(e.path, { closable, streams: subStreams });
+    subStreams.userConfigStream.onNext((x) => pendingTasks.add(e.path));
+    subStreams.viteConfigStream.onNext((x) => pendingTasks.add(e.path));
+    tscStream.onNext((x) => pendingTasks.add(e.path));
+    depStream.onNext((x) => pendingTasks.add(e.path));
+  });
+
+  initMultiRoot(root);
+  initWorkspace();
+  depLoopable.loop();
+  initTsconfig();
+  initTsc();
+}

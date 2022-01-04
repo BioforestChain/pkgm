@@ -40,7 +40,6 @@
     "bin/bfsp.cmd.ts",
     "bin/test.ts",
     "bin/dev.bin.ts",
-    "bin/dev.core.ts",
     "bin/build.bin.ts",
     "bin/build.core.ts",
     "bin/fmt.bin.ts",

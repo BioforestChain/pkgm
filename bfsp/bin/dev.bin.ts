@@ -11,6 +11,7 @@ import { Tasks, writeJsonConfig } from "./util";
 import { tui } from "../src/tui";
 import type { DepsPanel } from "../src/tui";
 import { boot } from "./boot";
+import { runBuild } from "./build.core";
 
 defineCommand(
   "dev",
@@ -40,39 +41,6 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
-    const { map, depLoopable, pendingTasks } = boot(root);
-
-    multi.registerAllUserConfigEvent(async (e) => {
-      if (e.type === "unlink") {
-        const s = map.get(e.path)?.streams;
-        if (s) {
-          s.stopAll();
-          map.delete(e.path);
-        }
-        return;
-      }
-      if (map.has(e.path)) {
-        return;
-      }
-
-      const resolvedDir = path.resolve(e.path);
-
-      const projectConfig = { projectDirpath: resolvedDir, bfspUserConfig: e.cfg };
-      const subConfigs = await writeBfspProjectConfig(projectConfig);
-      const subStreams = watchBfspProjectConfig(projectConfig, subConfigs);
-      const depStream = watchDeps(resolvedDir, subStreams.packageJsonStream);
-      depStream.onNext(() => depLoopable.loop());
-      const closable = doDev({ root: resolvedDir, streams: subStreams, depStream, format: format as Bfsp.Format });
-      map.set(e.path, { closable, streams: subStreams });
-      subStreams.userConfigStream.onNext((x) => pendingTasks.add(e.path));
-      subStreams.tsConfigStream.onNext((x) => pendingTasks.add(e.path));
-      subStreams.viteConfigStream.onNext((x) => pendingTasks.add(e.path));
-    });
-
-    initMultiRoot(root);
-    initWorkspace();
-    depLoopable.loop();
-    initTsconfig();
-    initTsc();
+    runBuild({ root, mode: "dev" });
   }
 );
