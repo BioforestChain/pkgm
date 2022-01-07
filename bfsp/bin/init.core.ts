@@ -1,17 +1,17 @@
 import chalk from "chalk";
 import path from "node:path";
 import { fileIO, folderIO } from "../src";
-import cp from "node:child_process";
+import { exec, spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { getYarnPath, writeJsonConfig } from "./util";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 import { defaultIgnores } from "../src/configs/commonIgnore";
 import { tui } from "../src/tui";
+import { ts } from "./fmt.core";
 
 export const doInit = async (options: { root: string; name: string; license?: string }) => {
   const { root, name, license = "MIT" } = options;
-  console.log(options);
   tui.destory();
   folderIO.tryInit(root);
 
@@ -30,7 +30,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
   };
   console.log(`creating files`);
   await writeJsonConfig(path.join(root, name, "package.json"), packageJson);
-  const bfspTsFile = `
+  const bfspTsFile = ts`
   import { defineConfig } from "@bfchain/pkgm";
   export default defineConfig((info) => {
   const config: Bfsp.UserConfig = {
@@ -53,12 +53,12 @@ export const doInit = async (options: { root: string; name: string; license?: st
     process.exit();
   }
 
-  const g = cp.exec(`git init`, { cwd: root });
-  g.stdout?.on("data", (data) => process.stdout.write(data));
-  g.stderr?.on("data", (data) => process.stderr.write(data));
-  const proc = cp.exec(`node ${yarnPath} add -D -W @bfchain/pkgm`, { cwd: root });
-  proc.stdout?.on("data", (data) => process.stdout.write(data));
-  proc.stderr?.on("data", (data) => process.stderr.write(data));
+  const g = spawn("git", ["init"], { cwd: root });
+  g.stdout?.pipe(process.stdout);
+  g.stderr?.pipe(process.stderr);
+  const proc = spawn("node", [yarnPath, "add", "-D", "-W", "@bfchain/pkgm"], { cwd: root });
+  proc.stdout?.pipe(process.stdout);
+  proc.stderr?.pipe(process.stderr);
 
   proc.on("exit", (e) => {
     console.log(`project inited, run the following commands to start dev\n`);

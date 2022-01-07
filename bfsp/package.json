@@ -23,7 +23,7 @@
   "files": [
     "dist",
     "typings",
-    "src"
+    "*.ts"
   ],
   "scripts": {
     "up": "yarn upgrade-interactive",
@@ -32,11 +32,6 @@
     "dev": "vite build --watch --minify=false --sourcemap=true",
     "test": "ava"
   },
-  "files": [
-    "dist",
-    "typings",
-    "*.ts"
-  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -49,6 +44,7 @@
     "debug": "^4.3.2",
     "dependency-graph": "^0.11.0",
     "ignore": "^5.1.8",
+    "prettier": "^2.5.1",
     "source-map-support": "^0.5.20",
     "terser": "^5.9.0",
     "tslib": "^2.3.1",
@@ -57,6 +53,7 @@
     "yarn": "^1.22.17"
   },
   "devDependencies": {
-    "@types/debug": "^4.1.7"
+    "@types/debug": "^4.1.7",
+    "@types/prettier": "^2.4.2"
   }
 }
