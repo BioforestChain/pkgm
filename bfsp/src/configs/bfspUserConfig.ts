@@ -18,6 +18,7 @@ import {
   toPosixPath,
 } from "../toolkit";
 import { Debug } from "../logger";
+import { watchMulti } from "../multi";
 const log = Debug("bfsp:config/#bfsp");
 
 // export const enum BUILD_MODE {
@@ -237,6 +238,7 @@ export const watchBfspUserConfig = (
   } = {}
 ) => {
   const follower = new SharedFollower<$BfspUserConfig>();
+  const multiStream = watchMulti();
 
   let curBfspUserConfig: $BfspUserConfig | undefined;
 
@@ -246,6 +248,10 @@ export const watchBfspUserConfig = (
       follower.push((curBfspUserConfig = await (options.bfspUserConfigInitPo ?? getBfspUserConfig(projectDirpath))));
     }
 
+    if (!existsSync(projectDirpath)) {
+      log("unable to read bfsp user config: project maybe removed");
+      return;
+    }
     const userConfig = await readUserConfig(projectDirpath, {
       refresh: true,
     });
@@ -265,7 +271,12 @@ export const watchBfspUserConfig = (
   });
   watcher.on("change", looper.loop);
   watcher.on("add", looper.loop);
+  watcher.on("unlink", async () => {
+    await watcher.close();
+  });
+  multiStream.onNext((x) => looper.loop("multi changed"));
 
   looper.loop();
+
   return new SharedAsyncIterable<$BfspUserConfig>(follower);
 };

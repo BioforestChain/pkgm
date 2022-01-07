@@ -22,6 +22,9 @@ import {
   walkFiles,
 } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
+import { writeJsonConfig } from "../../bin/util";
+import { multi, treeForEach, watchMulti } from "../multi";
+import { existsSync } from "node:fs";
 const log = Debug("bfsp:config/tsconfig");
 const warn = Warn("bfsp:config/tsconfig");
 
@@ -31,7 +34,7 @@ const warn = Warn("bfsp:config/tsconfig");
 
 export const TSC_OUT_ROOT = `./.bfsp/tsc`;
 
-const isTsFile = (filepathInfo: $PathInfo) => {
+export const isTsFile = (filepathInfo: $PathInfo) => {
   const { relative } = filepathInfo;
   if (relative.endsWith("#bfsp.ts")) {
     return false;
@@ -252,7 +255,7 @@ type TsFilesLists = {
   binFiles: List<string>;
   profileMap: ProfileMap;
 };
-const groupTsFilesByAdd = (
+export const groupTsFilesByAdd = (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
   tsFiles: Iterable<string>,
@@ -285,7 +288,7 @@ const groupTsFilesByAdd = (
     }
   }
 };
-const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
+export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
   for (const filepath of tsFiles) {
     lists.allFiles.remove(filepath);
 
@@ -310,7 +313,10 @@ const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<string>,
 };
 
 export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $BfspUserConfig) => {
-  const allTsFileList = await walkFiles(projectDirpath, { dirFilter: (fullDirpath) => notGitIgnored(fullDirpath) })
+  const allTsFileList = await walkFiles(projectDirpath, {
+    dirFilter: async (fullDirpath) =>
+      (await notGitIgnored(fullDirpath)) && multi.isFileBelongs(projectDirpath, fullDirpath),
+  })
     .map((fullFilepath) => PathInfoParser(projectDirpath, fullFilepath, true))
     .filter((pathInfo) => isTsFile(pathInfo))
     .map((pathInfo) => toPosixPath(pathInfo.relative))
@@ -327,6 +333,9 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
 
   groupTsFilesByAdd(projectDirpath, bfspUserConfig, allTsFileList, tsFilesLists);
 
+  // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
+  // const tsRefs = await multi.getReferences(projectDirpath);
+
   const tsConfig = {
     compilerOptions: {
       composite: true,
@@ -336,7 +345,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
       target: "es2020",
       module: "es2020",
       lib: ["ES2020"],
-      outDir: TSC_OUT_ROOT,
+      outDir: path.resolve(path.join(projectDirpath, TSC_OUT_ROOT)),
       importHelpers: true,
       isolatedModules: false,
       strict: true,
@@ -363,7 +372,7 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
       {
         path: "./tsconfig.typings.json",
       },
-    ] as const,
+    ],
     // files: tsFilesLists.notestFiles.toArray(),
     files: [] as string[],
   };
@@ -406,16 +415,12 @@ export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $
 export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
 export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserConfig, tsConfig: $TsConfig) => {
   return Promise.all([
-    fileIO.set(resolve(projectDirpath, "tsconfig.json"), Buffer.from(JSON.stringify(tsConfig.json, null, 2))),
-    fileIO.set(
-      resolve(projectDirpath, tsConfig.json.references[0].path),
-      Buffer.from(JSON.stringify(tsConfig.isolatedJson, null, 2))
-    ),
+    writeJsonConfig(resolve(projectDirpath, "tsconfig.json"), tsConfig.json),
+    writeJsonConfig(resolve(projectDirpath, tsConfig.json.references[0].path), tsConfig.isolatedJson),
+    ,
     (async () => {
-      await fileIO.set(
-        resolve(projectDirpath, tsConfig.json.references[1].path),
-        Buffer.from(JSON.stringify(tsConfig.typingsJson, null, 2))
-      );
+      await writeJsonConfig(resolve(projectDirpath, tsConfig.json.references[1].path), tsConfig.typingsJson);
+
       const { outDir } = tsConfig.typingsJson.compilerOptions;
       const outDirInfo = path.parse(outDir);
       /**index文件可以提交 */
@@ -465,12 +470,14 @@ export const watchTsConfig = (
   const { write = false } = options;
   const follower = new SharedFollower<$TsConfig>();
 
+  const multiStream = watchMulti();
   let tsConfig: $TsConfig | undefined;
   let preTsConfigJson = "";
   /// 循环处理监听到的事件
   const looper = Loopable("watch tsconfigs", async (reasons) => {
     log("reasons:", reasons);
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
+    // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
     if (tsConfig === undefined) {
       follower.push((tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig))));
     }
@@ -505,8 +512,26 @@ export const watchTsConfig = (
       tsConfig.typingsJson.files = tsFilesLists.typeFiles.toArray();
     }
 
-    tsConfig.json.compilerOptions.paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);
+    const paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);
+    tsConfig.json.compilerOptions.paths = paths;
+    // const multiRefs = await multi.getReferences(projectDirpath);
 
+    const refs = [
+      {
+        path: "./tsconfig.isolated.json",
+      },
+      {
+        path: "./tsconfig.typings.json",
+      },
+      // ...multiRefs,
+    ];
+    tsConfig.json.references = refs;
+    tsConfig.isolatedJson.references = [
+      {
+        path: "./tsconfig.typings.json",
+      },
+      // ...multiRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
+    ];
     const newTsConfigJson = JSON.stringify({
       json: tsConfig.json,
       isolated: tsConfig.isolatedJson,
@@ -518,45 +543,60 @@ export const watchTsConfig = (
     preTsConfigJson = newTsConfigJson;
 
     if (write) {
+      if (!existsSync(projectDirpath)) {
+        log("unable to write tsconfig: project maybe removed");
+        return;
+      }
       await writeTsConfig(projectDirpath, bfspUserConfig, tsConfig);
     }
 
     log("tsconfig changed!!");
     follower.push(tsConfig);
   });
+  multi.registerTsWatcherEvent(projectDirpath, async (p, type) => {
+    if (await isTsFile(PathInfoParser(projectDirpath, p))) {
+      if (type === "change") {
+        return;
+      }
+      log(`${type} file`, p);
+      cachedEventList.set(p, type);
+      looper.loop(`${type} file`, 200);
+    }
+  });
 
   //#region 监听文件变动来触发更新
-  const watcher = chokidar.watch(
-    ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
-    {
-      cwd: projectDirpath,
-      ignoreInitial: false,
-      followSymlinks: true,
-      ignored: ["*.d.ts", ".bfsp", "#bfsp.ts", "node_modules"],
-    }
-  );
+  // const watcher = chokidar.watch(
+  //   ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
+  //   {
+  //     cwd: projectDirpath,
+  //     ignoreInitial: false,
+  //     followSymlinks: true,
+  //     ignored: ["*.d.ts", ".bfsp", "#bfsp.ts", "node_modules"],
+  //   }
+  // );
 
   type EventType = "add" | "unlink";
   let cachedEventList = new Map<string, EventType>();
   /// 收集监听到事件
-  watcher.on("add", async (path) => {
-    if (await isTsFile(PathInfoParser(projectDirpath, path))) {
-      log("add file", path);
-      cachedEventList.set(path, "add");
-      looper.loop("add file", 200);
-    }
-  });
-  watcher.on("unlink", async (path) => {
-    if (await isTsFile(PathInfoParser(projectDirpath, path))) {
-      log("unlink file", path);
-      cachedEventList.set(path, "unlink");
-      looper.loop("unlink file", 200);
-    }
-  });
+  // watcher.on("add", async (path) => {
+  //   if (await isTsFile(PathInfoParser(projectDirpath, path))) {
+  //     log("add file", path);
+  //     cachedEventList.set(path, "add");
+  //     looper.loop("add file", 200);
+  //   }
+  // });
+  // watcher.on("unlink", async (path) => {
+  //   if (await isTsFile(PathInfoParser(projectDirpath, path))) {
+  //     log("unlink file", path);
+  //     cachedEventList.set(path, "unlink");
+  //     looper.loop("unlink file", 200);
+  //   }
+  // });
   //#endregion
 
   //#region 监听依赖配置来触发更新
   bfspUserConfigStream.onNext(() => looper.loop("bfsp user config changed"));
+  multiStream.onNext(() => looper.loop("multi changed"));
   //#endregion
 
   /// 初始化，使用400ms时间来进行防抖

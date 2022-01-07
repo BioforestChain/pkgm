@@ -1,4 +1,5 @@
 declare namespace Bfsp {
+  type InternalPredict = (src: string) => boolean;
   interface UserConfig {
     name: string;
     exports: {
@@ -6,10 +7,15 @@ declare namespace Bfsp {
     };
     formats?: Format[];
     profiles?: string[];
-    build?: Partial<UserConfig>[];
+    build?: Partial<Omit<UserConfig, "build">>[];
+    deps?: string[];
     packageJson?: {
-      version: string;
+      version?: string;
+      deps?: {
+        [name: string]: string;
+      };
     };
+    internal?: Iterable<string> | InternalPredict;
   }
   type JsFormat = "cjs" | "esm" | "iife";
   type JsExtension = ".cjs" | ".mjs" | ".js";

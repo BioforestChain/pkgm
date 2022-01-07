@@ -3,6 +3,7 @@
   "main": "*.cjs",
   "types": "*.ts",
   "type": "module",
+  "version": "1.0.0",
   "exports": {
     ".": {
       "import": "",
@@ -17,10 +18,10 @@
     "test": "bfsp test"
   },
   "files": ["!test"],
-  "devDependencies": {
-    "@bfchain/pkgm": "^2.0.0",
+  "dependencies": {
     "@types/node": "^16.0.0",
     "typescript": "^4.4.0",
     "tslib": "^2.3.1"
-  }
+  },
+  "devDependencies": {}
 }

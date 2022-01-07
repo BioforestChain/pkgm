@@ -8,9 +8,11 @@ import type { $ViteConfig } from "../../src/configs/viteConfig";
 import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
 import { Debug } from "../../src/logger";
 import { parseExtensionAndFormat } from "../../src/toolkit";
+import { multi } from "../../src/multi";
 const log = Debug("bfsp:config/vite");
 
 export const ViteConfigFactory = (options: {
+  userConfig: Bfsp.UserConfig;
   projectDirpath: string;
   viteConfig: $ViteConfig;
   tsConfig: $TsConfig;
@@ -51,6 +53,29 @@ export const ViteConfigFactory = (options: {
                 }
               }
             : (source, importer, isResolved) => {
+                log("external", source);
+                if (source.startsWith("#")) {
+                  // profile
+                  return false;
+                }
+
+                // 子包标记为外部
+                // 这里只取了userConfig.name , 并没有收集build字段里的name的原因是
+                // 在子包开发的过程中，通常会把多平台的逻辑冒泡到最外层，所以只有最外层才会有build字段
+                const subProjectNames = multi.userConfigs().map((x) => x.userConfig.name);
+                if (subProjectNames.some((x) => source.startsWith(x))) {
+                  return true;
+                }
+
+                // 用户声明为internal的包（通常是子包），要打包进去
+                const internal = options.userConfig.internal;
+                if (internal) {
+                  if (typeof internal === "function") {
+                    return !internal(source);
+                  } else {
+                    return ![...internal].some((x) => x === source);
+                  }
+                }
                 if (source.startsWith("node:")) {
                   return true;
                 }
@@ -64,6 +89,7 @@ export const ViteConfigFactory = (options: {
                 ) {
                   return true;
                 }
+                return false;
               },
         input: viteConfig.viteInput,
         output: {
@@ -132,8 +158,8 @@ export const ViteConfigFactory = (options: {
         return {
           name: "Profile imports",
           resolveId(source: string) {
-            log("Profile imports", source);
             if (source.startsWith("#")) {
+              log("Profile import", source);
               const imports = profileImports[source as Bfsp.Profile];
               if (Array.isArray(imports)) {
                 return profileExternalId + path.resolve(projectDirpath, imports[0]);

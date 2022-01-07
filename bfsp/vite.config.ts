@@ -13,9 +13,11 @@ export const input: InputOption = {
   "bfsp.bin": "bin/bfsp.cmd.ts",
   "config.test": "tests/config.test.ts",
   "build.test": "tests/build.test.ts",
+  "util.test": "tests/util.test.ts",
   tsc_worker: "bin/tsc/worker.ts",
   ava_worker: "bin/ava/worker.ts",
   terser_worker: "bin/terser/worker.ts",
+  yarn_worker: "bin/yarn/worker.ts",
 };
 export const extension =
   {
