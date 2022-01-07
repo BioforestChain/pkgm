@@ -32,6 +32,11 @@
     "dev": "vite build --watch --minify=false --sourcemap=true",
     "test": "ava"
   },
+  "files": [
+    "dist",
+    "typings",
+    "*.ts"
+  ],
   "keywords": [],
   "author": "",
   "license": "ISC",
