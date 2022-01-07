@@ -1,9 +1,9 @@
-import { PanelStatus, tui } from "./tui";
-import type { BundlePanel, TscPanel } from "./tui";
 import chalk from "chalk";
+import util from "node:util";
 import type { RollupError } from "rollup";
-import type { LogErrorOptions, Logger, LoggerOptions, LogLevel, LogType } from "vite";
+import type { Logger, LoggerOptions, LogLevel } from "vite";
 import { require } from "./toolkit";
+import { PanelStatus, tui } from "./tui/index";
 
 export const LogLevels: Record<LogLevel, number> = {
   silent: 0,
@@ -16,8 +16,8 @@ if (!useScreen) {
   console.log(`面板已被禁用，若要使用面板，请将 useScreen 设为true`);
 }
 
-const bundlePanel = tui.getPanel("Bundle")! as BundlePanel;
-const tscPanel = tui.getPanel("Tsc")! as TscPanel;
+const bundlePanel = tui.getPanel("Bundle");
+const tscPanel = tui.getPanel("Tsc");
 export function createDevTui() {
   if (!useScreen) {
     return {
@@ -107,7 +107,6 @@ export function createDevTui() {
 
 // import D from "debug";
 const D = require("debug") as typeof import("debug");
-import util from "node:util";
 
 export function Debug(label: string) {
   const d = D(label);

@@ -1,16 +1,7 @@
-import { initMultiRoot, initTsc, initTsconfig, initWorkspace, multi } from "../src/multi";
-import { watchDeps } from "../src/deps";
+import path from "node:path";
 import { defineCommand } from "../bin";
 import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
 import { Debug, Warn } from "../src/logger";
-import { doDev } from "./dev.core";
-import path from "node:path";
-import { watchBfspProjectConfig, writeBfspProjectConfig, Loopable } from "../src";
-import { runYarn } from "./yarn/runner";
-import { Tasks, writeJsonConfig } from "./util";
-import { tui } from "../src/tui";
-import type { DepsPanel } from "../src/tui";
-import { boot } from "./boot";
 import { runBuild } from "./build.core";
 
 defineCommand(

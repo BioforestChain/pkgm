@@ -1,14 +1,13 @@
 import chalk from "chalk";
-import path from "node:path";
-import { fileIO, folderIO } from "../src";
-import { exec, spawn } from "node:child_process";
-import { writeFile } from "node:fs/promises";
-import { getYarnPath, writeJsonConfig } from "./util";
-import { fileURLToPath } from "node:url";
+import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
+import { writeFile } from "node:fs/promises";
+import path from "node:path";
+import { folderIO } from "../src";
 import { defaultIgnores } from "../src/configs/commonIgnore";
-import { tui } from "../src/tui";
+import { tui } from "../src/tui/index";
 import { ts } from "./fmt.core";
+import { getYarnPath, writeJsonConfig } from "./util";
 
 export const doInit = async (options: { root: string; name: string; license?: string }) => {
   const { root, name, license = "MIT" } = options;

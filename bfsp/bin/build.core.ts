@@ -1,12 +1,16 @@
 import chalk from "chalk";
-import { renameSync, existsSync, rmSync } from "node:fs";
-import { copyFile, rm } from "node:fs/promises";
+import fs, { existsSync, renameSync, rmSync } from "node:fs";
+import { copyFile, rm, stat, symlink, unlink } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { build as buildBfsp } from "vite";
-import { $BfspUserConfig, parseExports, parseFormats } from "../src";
+import { parseExports, parseFormats } from "../src";
 import { watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
+import { $PackageJson } from "../src/configs/packageJson";
 import { $TsConfig, generateTsConfig, isTestFile } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
+import { consts } from "../src/consts";
+import { watchDeps } from "../src/deps";
 import { Debug } from "../src/logger";
 import {
   initMultiRoot,
@@ -16,23 +20,14 @@ import {
   multi,
   multiDevTui,
   multiTsc,
-  watchTsc,
+  watchTsc
 } from "../src/multi";
-import { Closeable, fileIO, folderIO, SharedAsyncIterable, toPosixPath, walkFiles } from "../src/toolkit";
+import { folderIO, Loopable, SharedAsyncIterable, toPosixPath, walkFiles } from "../src/toolkit";
+import { tui } from "../src/tui/index";
 import { runTerser } from "./terser/runner";
-import { writeJsonConfig } from "./util";
+import { Tasks, writeJsonConfig } from "./util";
 import { ViteConfigFactory } from "./vite/configFactory";
-import { consts } from "../src/consts";
-import { $PackageJson } from "../src/configs/packageJson";
-import { symlink, unlink, stat } from "node:fs/promises";
-import fs from "node:fs";
-import os from "node:os";
-import { watchDeps } from "../src/deps";
-import { tui } from "../src/tui";
-import type { DepsPanel } from "../src/tui";
-import { Loopable } from "../src/toolkit";
 import { runYarn } from "./yarn/runner";
-import { Tasks } from "./util";
 const jsonClone = <T>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;
 // 任务：生成阶段2的tsconfig，用于es2020到es2019
 const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsConfig: $TsConfig, files: string[]) => {
@@ -370,7 +365,7 @@ export function runBuild(opts: { root: string; mode: "build" | "dev" }) {
   const { root, mode } = opts;
 
   const log = Debug("bfsp:bin/boot");
-  const depsLogger = tui.getPanel("Deps")! as DepsPanel;
+  const depsLogger = tui.getPanel("Deps");
 
   const map = new Map<
     string,
