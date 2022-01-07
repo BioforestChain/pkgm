@@ -46,7 +46,6 @@
     "bin/init.bin.ts",
     "bin/init.core.ts",
     "bin/test.bin.ts",
-    "bin/boot.ts",
     "src/logger.ts",
     "src/bfspConfig.ts",
     "src/toolkit.ts",

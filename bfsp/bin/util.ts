@@ -222,11 +222,15 @@ export const getPkgmVersion = () => {
   return packageJson.version;
 };
 
-export class Tasks<T> {
+export class Tasks<T extends string> {
   private _set = new Set<T>();
   private _queue = [] as T[];
+  private _order = [] as T[];
   remaining() {
     return this._set.size;
+  }
+  useOrder(arr: T[]) {
+    this._order = arr;
   }
   add(item: T) {
     this._set.add(item);
@@ -235,6 +239,11 @@ export class Tasks<T> {
     let item = this._queue.shift();
     if (!item) {
       this._queue = [...this._set.values()];
+      this._queue.sort((a, b) => {
+        const aidx = this._order.findIndex((x) => x === a);
+        const bidx = this._order.findIndex((x) => x === b);
+        return aidx - bidx;
+      });
       item = this._queue.shift();
     }
     item && this._set.delete(item);

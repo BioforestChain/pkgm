@@ -28,7 +28,11 @@ import { symlink, unlink, stat } from "node:fs/promises";
 import fs from "node:fs";
 import os from "node:os";
 import { watchDeps } from "../src/deps";
-import { boot } from "./boot";
+import { tui } from "../src/tui";
+import type { DepsPanel } from "../src/tui";
+import { Loopable } from "../src/toolkit";
+import { runYarn } from "./yarn/runner";
+import { Tasks } from "./util";
 const jsonClone = <T>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;
 // 任务：生成阶段2的tsconfig，用于es2020到es2019
 const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsConfig: $TsConfig, files: string[]) => {
@@ -364,7 +368,85 @@ const doBuild = (options: {
 
 export function runBuild(opts: { root: string; mode: "build" | "dev" }) {
   const { root, mode } = opts;
-  const { map, depLoopable, pendingTasks } = boot(root);
+
+  const log = Debug("bfsp:bin/boot");
+  const depsLogger = tui.getPanel("Deps")! as DepsPanel;
+
+  const map = new Map<
+    string,
+    {
+      closable: { start(opts: { stateReporter: (s: string) => void }): Promise<void> };
+      streams: ReturnType<typeof watchBfspProjectConfig>;
+    }
+  >();
+
+  let tasksRunning = false;
+  let depsBuildReady = false; // 需要编译的依赖是否都已就绪
+  let installingDep = false;
+  let pendingDepInstallation = false;
+  let depInited = false;
+  const depLoopable = Loopable("install dep", () => {
+    if (installingDep) {
+      return;
+    }
+    installingDep = true;
+    pendingDepInstallation = false;
+    log("installing dep");
+    depsLogger.updateStatus("loading");
+    runYarn({
+      root,
+      onExit: () => {
+        installingDep = false;
+        if (pendingDepInstallation) {
+          depLoopable.loop();
+        } else {
+          if (!depInited) {
+            tui.status.postMsg("dep installation finished");
+            depInited = true;
+            queueTask();
+          }
+        }
+      },
+      onMessage: (s) => {
+        depsLogger.write(s);
+      },
+    });
+  });
+
+  const pendingTasks = new Tasks<string>();
+
+  const reporter = (s: string) => {
+    tui.status.postMsg(`[ tasks remaining ... ${pendingTasks.remaining()} ] ${s}`);
+  };
+  const queueTask = async () => {
+    if (tasksRunning) {
+      return;
+    }
+    if (!depsBuildReady || !depInited) {
+      return;
+    }
+    tasksRunning = true;
+    const name = pendingTasks.next();
+    if (name) {
+      const s = map.get(name);
+      if (s) {
+        await s.closable.start({ stateReporter: reporter });
+        if (pendingTasks.remaining() === 0) {
+          tui.status.postMsg("all build tasks completed");
+        }
+        tasksRunning = false;
+
+        await queueTask();
+      }
+    } else {
+      tasksRunning = false;
+      tui.status.postMsg("Waiting for tasks...");
+      // 这里不用setInterval而采用链式setTimeout的原因是任务时间是不确定的
+      setTimeout(async () => {
+        await queueTask();
+      }, 1000);
+    }
+  };
 
   multi.registerAllUserConfigEvent(async (e) => {
     const resolvedDir = path.resolve(e.path);
@@ -378,6 +460,7 @@ export function runBuild(opts: { root: string; mode: "build" | "dev" }) {
       }
       return;
     }
+
     if (map.has(e.path)) {
       return;
     }
@@ -406,6 +489,16 @@ export function runBuild(opts: { root: string; mode: "build" | "dev" }) {
     subStreams.viteConfigStream.onNext((x) => pendingTasks.add(e.path));
     tscStream.onNext((x) => pendingTasks.add(e.path));
     depStream.onNext((x) => pendingTasks.add(e.path));
+
+    const order = multi.getOrder();
+    const idx = order.findIndex((x) => x === undefined);
+    if (idx >= 0) {
+      return;
+    } else {
+      pendingTasks.useOrder(order as string[]);
+      depsBuildReady = true;
+      await queueTask();
+    }
   });
 
   initMultiRoot(root);

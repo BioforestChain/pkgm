@@ -17,6 +17,7 @@ import { getPkgmVersion, Tree, TreeNode, writeJsonConfig } from "../bin/util";
 import { $PackageJson, generatePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig } from "./configs/tsConfig";
 import { createDevTui, Debug } from "./logger";
+import { DepGraph } from "dependency-graph";
 const debug = Debug("bfsp/multi");
 
 let root: string = process.cwd();
@@ -117,6 +118,7 @@ class MultiTsc {
     this.tscSucecssCbMap.set(p, cb);
   }
   build(opts: { tsConfigPath: string }) {
+    const logger = this._getLogger();
     return runTsc({
       ...this._baseRunTscOpts(),
       tsconfigPath: opts.tsConfigPath,
@@ -124,6 +126,7 @@ class MultiTsc {
       onSuccess: () => {
         this.tscSucecssCbMap.forEach((x) => x());
       },
+      onClear: () => logger.clear(),
     });
   }
   async buildStage2(opts: { tsConfigPath: string }) {
@@ -221,6 +224,7 @@ class States {
     }
   }
 }
+const dg = new DepGraph<string>();
 export class Multi {
   private _states = new States();
   private _tsWatcherCbMap: Map<string, (p: string, type: WatcherAction) => Promise<void>> = new Map();
@@ -238,6 +242,10 @@ export class Multi {
   }
   paths() {
     return this._states.paths();
+  }
+  getOrder() {
+    const order = dg.overallOrder().map((x) => this._states.findByName(x)?.path);
+    return order;
   }
 
   async getTsConfigPaths(baseDir: string) {
@@ -303,6 +311,7 @@ export class Multi {
       if (!target) {
         return;
       }
+      dg.removeNode(dirname);
       const n = tree.del(target.data);
       const cfg = this._states.findByPath(target.data)!.user;
       const userConfigCb = this._userConfigCbMap.get(target.data);
@@ -323,6 +332,11 @@ export class Multi {
       const tsConfig = await generateTsConfig(resolvedDir, userConfig);
       const packageJson = await generatePackageJson(resolvedDir, userConfig, tsConfig);
       this._states.add(dirname, { user: userConfig, packageJson, tsConfig, path: dirname });
+      dg.addNode(userConfig.userConfig.name);
+      userConfig.userConfig.deps?.map((x) => {
+        dg.addNode(x);
+        dg.addDependency(userConfig.userConfig.name, x);
+      });
       const userConfigCb = this._userConfigCbMap.get(dirname);
       const evtArgs = { cfg: userConfig, isRoot: dirname === ".", type, path: dirname };
       userConfigCb && userConfigCb(evtArgs);

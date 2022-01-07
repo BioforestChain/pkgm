@@ -889,6 +889,11 @@ del@^6.0.0:
     rimraf "^3.0.2"
     slash "^3.0.0"
 
+dependency-graph@^0.11.0:
+  version "0.11.0"
+  resolved "https://registry.nlark.com/dependency-graph/download/dependency-graph-0.11.0.tgz#ac0ce7ed68a54da22165a85e97a01d53f5eb2e27"
+  integrity sha1-rAzn7WilTaIhZahel6AdU/XrLic=
+
 dir-glob@^3.0.1:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/dir-glob/-/dir-glob-3.0.1.tgz#56dbf73d992a4a93ba1584f4534063fd2e41717f"

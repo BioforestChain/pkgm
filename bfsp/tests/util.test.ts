@@ -1,6 +1,6 @@
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import test from "ava";
-import { Tree } from "../bin/util";
+import { Tasks, Tree } from "../bin/util";
 import { Closeable } from "../src";
 
 const compareFn = (a: string, b: string) => {
@@ -64,4 +64,15 @@ test("closable", async (t) => {
   });
   await p;
   t.true(c === 2);
+});
+
+test("tasks order", async (t) => {
+  const tasks = new Tasks<string>();
+  tasks.add("1");
+  tasks.add("3");
+  tasks.add("2");
+  tasks.useOrder(["1", "2", "3"]);
+  t.true(tasks.next() === "1");
+  t.true(tasks.next() === "2");
+  t.true(tasks.next() === "3");
 });
