@@ -10,7 +10,7 @@ export class AnimationFrameManager {
       return;
     }
     while (this._funs.size > 0) {
-      await sleep(40); // 25fps
+      await sleep(500); // 10fps
       if (this._funs.size === 0) {
         break;
       }
@@ -26,7 +26,7 @@ export class AnimationFrameManager {
       }
 
       try {
-        this.onAnimationFrame?.();
+        await this.onAnimationFrame?.();
       } catch (err) {
         this._emitError(err);
       }
@@ -45,6 +45,6 @@ export class AnimationFrameManager {
   cancelAnimationFrame(id: number) {
     this._funs.delete(id);
   }
-  onAnimationFrame?: () => void;
+  onAnimationFrame?: () => unknown;
 }
 export const afm = new AnimationFrameManager();

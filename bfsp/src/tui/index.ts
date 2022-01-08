@@ -27,7 +27,7 @@ class Tui {
   private _panels = new Map<BFSP.TUI.Panel.Name, BFSP.TUI.Panel.All>();
   private _screen!: Widgets.Screen;
   status!: StatusBar;
-  constructor() {debugger
+  constructor() {
     this._screen = blessed.screen({
       smartCSR: true,
       useBCE: true,
@@ -170,9 +170,7 @@ class Tui {
     }
 
     /// 绑定动画帧的回调
-    afm.onAnimationFrame = () => {
-      this._screen.render();
-    };
+    afm.onAnimationFrame = () => this._screen.render();
   }
 
   private _updateSelected() {

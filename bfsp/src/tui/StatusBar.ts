@@ -33,16 +33,19 @@ export class StatusBar {
     }
   }
   enableLoading() {
+    if (this._loadingEnabled) {
+      return;
+    }
     this._loadingEnabled = true;
-    this._startLoading();
+    this._render();
   }
   disableLoading() {
     this._loadingEnabled = false;
   }
-  private _startLoading() {
+  private _render() {
     if (this._loadingEnabled) {
       this._loadingFrameId++;
-      afm.requestAnimationFrame(() => this._startLoading());
+      afm.requestAnimationFrame(() => this._render());
     } else {
       this._loadingFrameId = 0;
       afm.requestAnimationFrame(() => {});

@@ -18,13 +18,16 @@ export abstract class Panel<N extends string, K extends number = number> impleme
   readonly elMenu = blessed.box({});
   onStatusChange?: StatusChangeCallback;
   updateStatus(s: PanelStatus) {
+    if (s === this._status) {
+      return;
+    }
     this._status = s;
     this.onStatusChange?.(s, this);
   }
-  private _aniMemu() {
+  private _render() {
     if (this._status === "loading") {
       this._loadingFrameId++;
-      afm.requestAnimationFrame(() => this._aniMemu());
+      afm.requestAnimationFrame(() => this._render());
     } else {
       this._loadingFrameId = 0;
       afm.requestAnimationFrame(() => {});
@@ -58,14 +61,14 @@ export abstract class Panel<N extends string, K extends number = number> impleme
   }
   activate() {
     this._isActive = true;
-    this.elMenu.content = this._buildMenuContent();
     this.elLog.show();
     this.elLog.focus();
+    this._render();
   }
   deactivate() {
     this._isActive = false;
-    this.elMenu.content = this._buildMenuContent();
     this.elLog.hide();
+    this._render();
   }
 }
 export type StatusChangeCallback = (s: PanelStatus, ctx: BFSP.TUI.Panel) => void;

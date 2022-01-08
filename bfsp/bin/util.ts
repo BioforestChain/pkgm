@@ -34,7 +34,7 @@ export class Tree<T> {
   private _compareFn: (a: T, b: T) => number;
   private _childFn: (a: T, b: T) => boolean;
   private _eqFn: (a: T, b: T) => boolean;
-  // private _containsFn: (set:Set<T>, b: T) => boolean;
+  private _containsFn: (set: Set<T>, b: T) => boolean;
   constructor(
     opts: {
       /**节点比较器，>0父亲，<0孩子，0兄弟 */
@@ -43,12 +43,24 @@ export class Tree<T> {
       childFn: (a: T, b: T) => boolean;
       /**判断两个节点是否相等 */
       eqFn: (a: T, b: T) => boolean;
+      /**判断指定节点是否存在于某一个集合中 */
+      containsFn?: (set: Set<T>, a: T) => boolean;
     },
     rootData?: T
   ) {
     this._childFn = opts.childFn;
     this._compareFn = opts.compareFn;
     this._eqFn = opts.eqFn;
+    this._containsFn =
+      opts.containsFn ||
+      ((set, b) => {
+        for (const item of set) {
+          if (this._eqFn(item, b)) {
+            return true;
+          }
+        }
+        return false;
+      });
     if (rootData) {
       this.addOrUpdate(rootData);
     }
@@ -63,40 +75,21 @@ export class Tree<T> {
     return r;
   }
   async forEach(r: TreeNode<T>, cb: (n: TreeNode<T>) => BFChainUtil.PromiseMaybe<void>) {
-    const queue = [] as TreeNode<T>[];
-    const visited = [] as TreeNode<T>[];
-    const visit = async (n: TreeNode<T>) => {
-      if (visited.some((x) => this._eqFn(x.data, n.data))) {
-        return;
-      }
-      await cb(n);
-      visited.push(n);
-      if (n.children) {
-        queue.push(...n.children);
-      }
-      const x = queue.shift();
-      x && (await visit(x));
-    };
-    await visit(r);
-  }
-  walk(r: TreeNode<T>) {
-    const queue = [] as TreeNode<T>[];
-    const visited = [] as TreeNode<T>[];
-    const tree = this;
-    function* walk(n: TreeNode<T>): Generator<TreeNode<T>> {
-      if (visited.some((x) => tree._eqFn(x.data, n.data))) {
-        return;
-      }
-      yield n;
-      visited.push(n);
-      if (n.children) {
-        queue.push(...n.children);
-      }
-      const x = queue.shift();
-      x && (yield* walk(x));
+    for (const node of this.walk(r)) {
+      await cb(node);
     }
-
-    return walk(r);
+  }
+  *walk(r: TreeNode<T>) {
+    const visitedNodes = new Set<TreeNode<T>>();
+    visitedNodes.add(r);
+    for (const node of visitedNodes) {
+      yield node;
+      if (node.children) {
+        for (const child of node.children) {
+          visitedNodes.add(child);
+        }
+      }
+    }
   }
   addOrUpdate(d: T) {
     if (!this._root) {

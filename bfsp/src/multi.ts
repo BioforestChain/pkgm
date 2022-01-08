@@ -37,6 +37,7 @@ const tree = new Tree<string /** path */>(
     },
     childFn: (a, b) => a.startsWith(b),
     eqFn: (a, b) => a === b,
+    containsFn: (set, a) => set.has(a),
   },
   "."
 );
