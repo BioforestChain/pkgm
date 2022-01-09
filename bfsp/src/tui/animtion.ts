@@ -4,11 +4,12 @@ export type FrameCallback = (time: number) => unknown;
 export class AnimationFrameManager {
   private _cb_id_acc = new Uint32Array(1);
   private _funs = new Map<number, FrameCallback>();
-  private _loop?: unknown;
+  private _looping = false;
   private async _startLoop() {
-    if (this._loop !== undefined) {
+    if (this._looping) {
       return;
     }
+    this._looping = true;
     while (this._funs.size > 0) {
       await sleep(500); // 10fps
       if (this._funs.size === 0) {
@@ -19,7 +20,7 @@ export class AnimationFrameManager {
       this._funs.clear();
       for (const cb of cbs) {
         try {
-          cb(now);
+          await cb(now);
         } catch (err) {
           this._emitError(err);
         }
@@ -31,6 +32,7 @@ export class AnimationFrameManager {
         this._emitError(err);
       }
     }
+    this._looping = false;
   }
   private _emitError(err: unknown) {
     queueMicrotask(() => {
