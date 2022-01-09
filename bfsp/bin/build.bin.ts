@@ -1,25 +1,7 @@
-import { PromiseOut, sleep } from "@bfchain/util-extends-promise";
-import { existsSync, rmSync } from "node:fs";
-import path, { format } from "node:path";
+import path from "node:path";
 import { defineCommand } from "../bin";
-import {
-  writeBfspProjectConfig,
-  watchBfspProjectConfig,
-  SharedFollower,
-  Loopable,
-  SharedAsyncIterable,
-  Closeable,
-} from "../src";
-import { consts } from "../src/consts";
 import { Debug, Warn } from "../src/logger";
-import { initMultiRoot, initTsc, initTsconfig, initWorkspace, multi, multiTsc, watchTsc } from "../src/multi";
-import { watchDeps } from "../src/deps";
 import { runBuild } from "./build.core";
-import { runYarn } from "./yarn/runner";
-import { Tasks } from "./util";
-import { tui } from "../src/tui";
-import type { DepsPanel } from "../src/tui";
-import { boot } from "./boot";
 
 defineCommand(
   "build",

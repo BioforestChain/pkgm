@@ -5,13 +5,11 @@ import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { folderIO } from "../src";
 import { defaultIgnores } from "../src/configs/commonIgnore";
-import { tui } from "../src/tui/index";
 import { ts } from "./fmt.core";
 import { getYarnPath, writeJsonConfig } from "./util";
 
 export const doInit = async (options: { root: string; name: string; license?: string }) => {
   const { root, name, license = "MIT" } = options;
-  tui.destory();
   folderIO.tryInit(root);
 
   await writeJsonConfig(path.join(root, "package.json"), { name: "bfsp-workspace", private: true, workspaces: [] });

@@ -183,8 +183,11 @@ class Tui {
     this._screen.render();
   }
 }
-export const tui = new Tui();
-(globalThis as any).tui = tui;
+// export const tui = new Tui();
+let tui: Tui | undefined;
+export const getTui = () => {
+  return (tui ??= new Tui());
+};
 
 /**
  * 以下代码用于测试面板是否能正常输出
@@ -192,6 +195,7 @@ export const tui = new Tui();
  * 但只跑这段代码输出时是正常的，因此怀疑可能是vite输出了清屏的ansi指令
  */
 export const testTui = () => {
+  const tui = getTui();
   const tsc = tui.getPanel("Tsc");
   const vite = tui.getPanel("Bundle");
   vite.write("info", "vite v2.7.1 start building");

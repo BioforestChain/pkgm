@@ -3,7 +3,7 @@ import util from "node:util";
 import type { RollupError } from "rollup";
 import type { Logger, LoggerOptions, LogLevel } from "vite";
 import { require } from "./toolkit";
-import { PanelStatus, tui } from "./tui/index";
+import { PanelStatus, getTui } from "./tui/index";
 
 export const LogLevels: Record<LogLevel, number> = {
   silent: 0,
@@ -11,13 +11,11 @@ export const LogLevels: Record<LogLevel, number> = {
   warn: 2,
   info: 3,
 };
-let useScreen = true;
+const useScreen = true;
 if (!useScreen) {
   console.log(`面板已被禁用，若要使用面板，请将 useScreen 设为true`);
 }
 
-const bundlePanel = tui.getPanel("Bundle");
-const tscPanel = tui.getPanel("Tsc");
 export function createDevTui() {
   if (!useScreen) {
     return {
@@ -65,6 +63,7 @@ export function createDevTui() {
   function createViteLogger(level: LogLevel = "info", options: LoggerOptions = {}): Logger {
     const warnedMessages = new Set<string>();
 
+    const bundlePanel = getTui().getPanel("Bundle");
     const logger: Logger = {
       hasWarned: false,
       info(msg, opts) {
@@ -96,6 +95,7 @@ export function createDevTui() {
   }
 
   function createTscLogger() {
+    const tscPanel = getTui().getPanel("Tsc");
     return tscPanel;
   }
 
@@ -126,7 +126,7 @@ export function Debug(label: string) {
       if (!useScreen) {
         console.log(...args);
       } else {
-        tui.debug(...(args as any));
+        getTui().debug(...(args as any));
       }
     },
     { enabled: d.enabled }
@@ -150,7 +150,7 @@ export function Warn(label: string) {
       if (!useScreen) {
         console.log(...args);
       } else {
-        tui.debug(...(args as any));
+        getTui().debug(...(args as any));
       }
     },
     { enabled: true }

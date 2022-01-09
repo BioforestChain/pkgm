@@ -20,10 +20,10 @@ import {
   multi,
   multiDevTui,
   multiTsc,
-  watchTsc
+  watchTsc,
 } from "../src/multi";
 import { folderIO, Loopable, SharedAsyncIterable, toPosixPath, walkFiles } from "../src/toolkit";
-import { tui } from "../src/tui/index";
+import { getTui } from "../src/tui/index";
 import { runTerser } from "./terser/runner";
 import { Tasks, writeJsonConfig } from "./util";
 import { ViteConfigFactory } from "./vite/configFactory";
@@ -365,6 +365,7 @@ export function runBuild(opts: { root: string; mode: "build" | "dev" }) {
   const { root, mode } = opts;
 
   const log = Debug("bfsp:bin/boot");
+  const tui = getTui();
   const depsLogger = tui.getPanel("Deps");
 
   const map = new Map<

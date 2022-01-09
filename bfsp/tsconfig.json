@@ -32,6 +32,7 @@
     "forceConsistentCasingInFileNames": true
   },
   "files": [
+    "package.json",
     "assets/package.template.json",
     "bin/ava/worker.ts",
     "bin/tsc/worker.ts",
@@ -52,6 +53,8 @@
     "bin/init.bin.ts",
     "bin/init.core.ts",
     "bin/test.bin.ts",
+    "bin/version.bin.ts",
+    "src/@type.ts",
     "src/logger.ts",
     "src/bfspConfig.ts",
     "src/toolkit.ts",
@@ -73,7 +76,6 @@
     "src/consts.ts",
     "src/deps.ts",
     "src/index.ts",
-    "src/tui.ts",
     "tests/config.test.ts",
     "tests/build.test.ts",
     "tests/util.test.ts",

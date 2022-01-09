@@ -193,7 +193,7 @@ export const getYarnPath = () => {
   }
 };
 
-export const getPkgmVersion = () => {
+export const getPkgm = () => {
   const importer = import.meta.url;
   const idx = importer.lastIndexOf("@bfchain/pkgm");
   let p = "";
@@ -212,7 +212,10 @@ export const getPkgmVersion = () => {
     p = path.join(bfspDir, "package.json");
   }
   const packageJson = require(p);
-  return packageJson.version;
+  return packageJson as typeof import("../package.json");
+};
+export const getPkgmVersion = () => {
+  return getPkgm().version;
 };
 
 export class Tasks<T extends string> {
