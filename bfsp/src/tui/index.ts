@@ -1,5 +1,5 @@
 import blessed, { Widgets } from "blessed";
-import chalk from "chalk";
+import chalk, { supportsColor } from "chalk";
 import crypto from "node:crypto";
 import "./@type";
 import { afm } from "./animtion";
@@ -33,7 +33,7 @@ class Tui {
       useBCE: true,
       debug: true,
       sendFocus: true,
-      terminal: chalk.supportsColor && chalk.supportsColor.has256 ? "xterm-256color" : "xterm",
+      terminal: supportsColor && supportsColor.has256 ? "xterm-256color" : "xterm",
       fullUnicode: true,
       title: "bfsp - powered by @bfchain/pkgm",
     });
