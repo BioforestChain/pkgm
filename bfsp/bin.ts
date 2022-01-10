@@ -95,7 +95,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
 
     return hanlder(hanlderParams, hanlderArgs);
   };
-  if (ARGV[0] === funName) {
+  if (ARGV[0] === funName || config.alias?.includes(ARGV[0])) {
     binRunner(ARGV.slice(1));
   }
   return binRunner;
@@ -148,6 +148,7 @@ export declare namespace Bfsp {
     > {
       readonly params?: P;
       readonly args?: R;
+      alias?: string[];
     }
     namespace CommandConfig {
       type InputType = "number" | "string" | "boolean" | "rest";
