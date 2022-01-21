@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm",
-  "version": "2.3.0",
+  "version": "2.3.0-alpha.2",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",
@@ -18,7 +18,8 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsp": "./dist/bfsp.bin.mjs"
+    "bfsp": "./dist/bfsp.bin.mjs",
+    "bfsw": "./dist/bfsw.bin.mjs"
   },
   "files": [
     "dist",

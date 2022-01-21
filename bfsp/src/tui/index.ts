@@ -103,6 +103,7 @@ class Tui {
     this._panels.set(bundle.name, bundle);
 
     const deps = new DepsPanel(this, 3, "Deps");
+    deps.updateStatus('success');
     this._panels.set(deps.name, deps);
 
     const sorted = [...this._panels.values()];

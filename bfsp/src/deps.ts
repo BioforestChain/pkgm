@@ -2,9 +2,17 @@ import { Debug } from "./logger";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "./toolkit";
 import { $PackageJson } from "./configs/packageJson";
 import { isDeepStrictEqual } from "node:util";
+import { runYarn } from "../bin/yarn/runner";
+import { getTui } from "./tui";
 
 const log = Debug("bfsp:deps");
-export const watchDeps = (projectDirpath: string, packageJsonStream: SharedAsyncIterable<$PackageJson>) => {
+
+const depsPanel = getTui().getPanel("Deps");
+export const watchDeps = (
+  projectDirpath: string,
+  packageJsonStream: SharedAsyncIterable<$PackageJson>,
+  options?: { runYarn: boolean }
+) => {
   let curDeps = {};
   const follower = new SharedFollower<boolean>();
   let stoppable: { stop: () => void } | undefined;
@@ -14,8 +22,19 @@ export const watchDeps = (projectDirpath: string, packageJsonStream: SharedAsync
       return;
     }
     curDeps = packageJson.dependencies;
-    log("deps changed");
-    follower.push(true);
+    if (options?.runYarn) {
+      log(`deps changed: ${projectDirpath}`);
+      depsPanel.updateStatus("loading");
+      stoppable = runYarn({
+        root: projectDirpath,
+        onMessage: (s) => depsPanel.write(s),
+        onExit: () => {
+          follower.push(true);
+        },
+      });
+    } else {
+      follower.push(true);
+    }
   });
 
   //#region 监听变更

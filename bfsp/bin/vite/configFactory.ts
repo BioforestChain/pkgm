@@ -8,7 +8,7 @@ import type { $ViteConfig } from "../../src/configs/viteConfig";
 import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
 import { Debug } from "../../src/logger";
 import { parseExtensionAndFormat } from "../../src/toolkit";
-import { multi } from "../../src/multi";
+import { BuildService } from "../../src/core";
 const log = Debug("bfsp:config/vite");
 
 export const ViteConfigFactory = (options: {
@@ -16,6 +16,7 @@ export const ViteConfigFactory = (options: {
   projectDirpath: string;
   viteConfig: $ViteConfig;
   tsConfig: $TsConfig;
+  buildService: BuildService;
   format?: Bfsp.Format;
   profiles?: string[];
   outDir?: string;
@@ -59,12 +60,12 @@ export const ViteConfigFactory = (options: {
                   return false;
                 }
 
-                // 子包标记为外部
-                // 这里只取了userConfig.name , 并没有收集build字段里的name的原因是
-                // 在子包开发的过程中，通常会把多平台的逻辑冒泡到最外层，所以只有最外层才会有build字段
-                const subProjectNames = multi.userConfigs().map((x) => x.userConfig.name);
-                if (subProjectNames.some((x) => source.startsWith(x))) {
-                  return true;
+                // 通过编译服务确定包是否应标记为外部
+                const { rollup } = options.buildService;
+                if (rollup) {
+                  if (rollup.isExternal(source, importer, isResolved)) {
+                    return true;
+                  }
                 }
 
                 // 用户声明为internal的包（通常是子包），要打包进去

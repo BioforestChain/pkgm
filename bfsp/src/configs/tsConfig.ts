@@ -23,8 +23,8 @@ import {
 } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { writeJsonConfig } from "../../bin/util";
-import { multi, treeForEach, watchMulti } from "../multi";
 import { existsSync } from "node:fs";
+import { BuildService } from "../core";
 const log = Debug("bfsp:config/tsconfig");
 const warn = Warn("bfsp:config/tsconfig");
 
@@ -312,11 +312,15 @@ export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<s
   }
 };
 
-export const generateTsConfig = async (projectDirpath: string, bfspUserConfig: $BfspUserConfig) => {
-  const allTsFileList = await walkFiles(projectDirpath, {
-    dirFilter: async (fullDirpath) =>
-      (await notGitIgnored(fullDirpath)) && multi.isFileBelongs(projectDirpath, fullDirpath),
-  })
+export const generateTsConfig = async (
+  projectDirpath: string,
+  bfspUserConfig: $BfspUserConfig,
+  buildService: BuildService
+) => {
+  const allTsFileList = await buildService
+    .walkFiles(projectDirpath, {
+      dirFilter: async (fullDirpath) => await notGitIgnored(fullDirpath),
+    })
     .map((fullFilepath) => PathInfoParser(projectDirpath, fullFilepath, true))
     .filter((pathInfo) => isTsFile(pathInfo))
     .map((pathInfo) => toPosixPath(pathInfo.relative))
@@ -462,6 +466,7 @@ export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserC
 export const watchTsConfig = (
   projectDirpath: string,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
+  buildService: BuildService,
   options: {
     tsConfigInitPo?: BFChainUtil.PromiseMaybe<$TsConfig>;
     write?: boolean;
@@ -470,7 +475,6 @@ export const watchTsConfig = (
   const { write = false } = options;
   const follower = new SharedFollower<$TsConfig>();
 
-  const multiStream = watchMulti();
   let tsConfig: $TsConfig | undefined;
   let preTsConfigJson = "";
   /// 循环处理监听到的事件
@@ -479,7 +483,9 @@ export const watchTsConfig = (
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
     // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
     if (tsConfig === undefined) {
-      follower.push((tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig))));
+      follower.push(
+        (tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig, buildService)))
+      );
     }
 
     const { tsFilesLists } = tsConfig;
@@ -553,7 +559,7 @@ export const watchTsConfig = (
     log("tsconfig changed!!");
     follower.push(tsConfig);
   });
-  multi.registerTsWatcherEvent(projectDirpath, async (p, type) => {
+  buildService.watcher.watchTs(projectDirpath, async (p, type) => {
     if (await isTsFile(PathInfoParser(projectDirpath, p))) {
       if (type === "change") {
         return;
@@ -596,7 +602,7 @@ export const watchTsConfig = (
 
   //#region 监听依赖配置来触发更新
   bfspUserConfigStream.onNext(() => looper.loop("bfsp user config changed"));
-  multiStream.onNext(() => looper.loop("multi changed"));
+  buildService.updateTsConfigStream(looper);
   //#endregion
 
   /// 初始化，使用400ms时间来进行防抖

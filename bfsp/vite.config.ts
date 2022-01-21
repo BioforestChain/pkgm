@@ -10,6 +10,7 @@ export const input: InputOption = {
   index: "src/index.ts",
   bin: "bin.ts",
   test: "test.ts",
+  "bfsw.bin":"bin/multi/bfsw.cmd.ts",
   "bfsp.bin": "bin/bfsp.cmd.ts",
   "config.test": "tests/config.test.ts",
   "build.test": "tests/build.test.ts",

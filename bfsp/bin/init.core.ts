@@ -11,12 +11,6 @@ import { getYarnPath, writeJsonConfig } from "./util";
 export const doInit = async (options: { root: string; name: string; license?: string }) => {
   const { root, name, license = "MIT" } = options;
   folderIO.tryInit(root);
-
-  await writeJsonConfig(path.join(root, "package.json"), { name: "bfsp-workspace", private: true, workspaces: [] });
-  await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));
-
-  folderIO.tryInit(path.join(root, name));
-
   const packageJson = {
     name,
     version: "1.0.0",
@@ -26,7 +20,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
     },
   };
   console.log(`creating files`);
-  await writeJsonConfig(path.join(root, name, "package.json"), packageJson);
+  await writeJsonConfig(path.join(root, "package.json"), packageJson);
   const bfspTsFile = ts`
   import { defineConfig } from "@bfchain/pkgm";
   export default defineConfig((info) => {
@@ -39,9 +33,9 @@ export const doInit = async (options: { root: string; name: string; license?: st
   return config;
 });
   `;
-  await writeFile(path.join(root, name, "index.ts"), `export {}`);
-  await writeFile(path.join(root, name, ".gitignore"), [...defaultIgnores.values()].join("\n"));
-  await writeFile(path.join(root, name, "#bfsp.ts"), bfspTsFile);
+  await writeFile(path.join(root, "index.ts"), `export {}`);
+  await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));
+  await writeFile(path.join(root, "#bfsp.ts"), bfspTsFile);
   console.log("linking dependencies");
 
   let yarnPath = getYarnPath();
@@ -53,7 +47,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
   const g = spawn("git", ["init"], { cwd: root });
   g.stdout?.pipe(process.stdout);
   g.stderr?.pipe(process.stderr);
-  const proc = spawn("node", [yarnPath, "add", "-D", "-W", "@bfchain/pkgm"], { cwd: root });
+  const proc = spawn("node", [yarnPath, "add", "-D", "@bfchain/pkgm"], { cwd: root });
   proc.stdout?.pipe(process.stdout);
   proc.stderr?.pipe(process.stderr);
 

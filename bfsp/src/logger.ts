@@ -16,7 +16,9 @@ if (!useScreen) {
   console.log(`面板已被禁用，若要使用面板，请将 useScreen 设为true`);
 }
 
-export function createDevTui() {
+export const { createTscLogger, createViteLogger } = createDevTui();
+
+function createDevTui() {
   if (!useScreen) {
     return {
       createTscLogger: () => {

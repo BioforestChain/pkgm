@@ -17,6 +17,12 @@ declare namespace Bfsp {
     };
     internal?: Iterable<string> | InternalPredict;
   }
+  interface WorkspaceUserConfig extends UserConfig {
+    path: string;
+  }
+  interface Workspace {
+    projects: WorkspaceUserConfig[];
+  }
   type JsFormat = "cjs" | "esm" | "iife";
   type JsExtension = ".cjs" | ".mjs" | ".js";
   type Format = JsFormat | { format: JsFormat; ext: JsExtension };

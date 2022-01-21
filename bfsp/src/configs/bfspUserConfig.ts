@@ -1,5 +1,5 @@
 import chokidar from "chokidar";
-import { build } from "esbuild";
+import { build, Plugin } from "esbuild";
 import { createHash } from "node:crypto";
 import { existsSync, writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -7,6 +7,7 @@ import path, { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
+import bfswTsconfigContent from "../../assets/tsconfig.bfsw.json?raw";
 import {
   CacheGetter,
   fileIO,
@@ -18,7 +19,7 @@ import {
   toPosixPath,
 } from "../toolkit";
 import { Debug } from "../logger";
-import { watchMulti } from "../multi";
+import { BuildService } from "../core";
 const log = Debug("bfsp:config/#bfsp");
 
 // export const enum BUILD_MODE {
@@ -31,9 +32,17 @@ export const enum BUILD_MODE {
   PRODUCTION = "production",
 }
 export const defineConfig = (cb: (info: Bfsp.ConfigEnvInfo) => Bfsp.UserConfig) => {
-  return cb({
-    mode: process.env.mode?.startsWith("prod") ? BUILD_MODE.PRODUCTION : BUILD_MODE.DEVELOPMENT,
-  });
+  new Error().stack;
+  return {
+    ...cb({
+      mode: process.env.mode?.startsWith("prod") ? BUILD_MODE.PRODUCTION : BUILD_MODE.DEVELOPMENT,
+    }),
+    path: "./",
+  };
+};
+
+export const defineWorkspace = (cb: () => Bfsp.Workspace) => {
+  return cb();
 };
 
 /**为出口的js文件进行自动重命名,寻找一个不冲突的文件名
@@ -153,22 +162,25 @@ export const parseFormats = (formats: Bfsp.Format[] = []) => {
   }[];
 };
 
-const bfspTsconfigFilepath = path.join(
-  tmpdir(),
-  `tsconfig.bfsp-${createHash("md5").update(bfspTsconfigContent).digest("hex")}.json`
-);
-if (existsSync(bfspTsconfigFilepath) === false) {
-  writeFileSync(bfspTsconfigFilepath, bfspTsconfigContent);
-  log("tsconfigUrl", bfspTsconfigFilepath);
-}
+const createTsconfigForEsbuild = (content: string) => {
+  const tsConfigPath = path.join(tmpdir(), `tsconfig.bfsp-${createHash("md5").update(content).digest("hex")}.json`);
+  if (existsSync(tsConfigPath) === false) {
+    writeFileSync(tsConfigPath, content);
+    log("tsconfigUrl", tsConfigPath);
+  }
+  return tsConfigPath;
+};
 
-const _readFromMjs = async (filename: string, refresh?: boolean) => {
+const bfspTsconfigFilepath = createTsconfigForEsbuild(bfspTsconfigContent);
+const bfswTsconfigFilepath = createTsconfigForEsbuild(bfswTsconfigContent);
+
+const _readFromMjs = async <T>(filename: string, refresh?: boolean) => {
   const url = pathToFileURL(filename);
   if (refresh) {
     url.searchParams.append("_", Date.now().toString());
   }
   const { default: config } = await import(url.href);
-  return config as Bfsp.UserConfig;
+  return config as T;
 };
 
 export const readUserConfig = async (
@@ -193,7 +205,7 @@ export const readUserConfig = async (
           outfile: cache_filepath,
           tsconfig: bfspTsconfigFilepath,
         });
-        return await _readFromMjs(cache_filepath, options.refresh);
+        return await _readFromMjs<Bfsp.UserConfig>(cache_filepath, options.refresh);
       } finally {
         existsSync(cache_filepath) && unlinkSync(cache_filepath);
       }
@@ -205,6 +217,106 @@ export const readUserConfig = async (
       return JSON.parse(
         (await fileIO.get(resolve(dirname, filename), options.refresh)).toString("utf-8")
       ) as Bfsp.UserConfig;
+    }
+  }
+};
+
+export const readWorkspaceConfig = async (
+  dirname: string,
+  options: {
+    refresh?: boolean;
+  }
+) => {
+  const externalMarker: Plugin = {
+    name: "#bfsw resolver",
+    setup(build) {
+      // #bfsp和#bfsw bundle起来读取
+      build.onResolve({ filter: /^[^.]/ }, (args) => {
+        return {
+          external: true,
+        };
+      });
+    },
+  };
+  // 用来注入路径信息
+  const bfspWrapper: Plugin = {
+    name: "#bfsp-wrapper",
+    setup(build) {
+      build.onResolve(
+        {
+          filter: /^[.]|#$/,
+        },
+        (args) => {
+          if (/#$/.test(args.path)) {
+            return { path: args.path, namespace: "bfsp-wrapper" };
+          } else {
+            return { path: path.join(path.dirname(args.importer), args.path), namespace: "bfsp-wrapper" };
+          }
+        }
+      );
+      build.onLoad(
+        {
+          filter: /.*/,
+          namespace: "bfsp-wrapper",
+        },
+        async (args) => {
+          if (path.basename(args.path) === "#bfsp#") {
+            return {
+              contents: await fileIO.get(path.join(path.dirname(args.path), "#bfsp.ts")),
+              loader: "ts",
+            };
+          }
+
+          if (path.basename(args.path) === "#bfsp") {
+            const bfsp_ = JSON.stringify(toPosixPath(path.join(path.dirname(args.path), "#bfsp#")));
+            const dirname = toPosixPath(path.dirname(args.path));
+            return {
+              contents: `
+                          import defaultValue from ${bfsp_};
+                          export * from ${bfsp_};
+                          const newDefault = {...defaultValue,path:"${dirname}"};
+                          export default newDefault;
+                          `,
+              loader: "ts",
+            };
+          }
+          if (path.basename(args.path) === "#bfsw") {
+            return { contents: await fileIO.get(`${args.path}.ts`), loader: "ts" };
+          }
+          return { contents: await fileIO.get(args.path), loader: "ts" };
+        }
+      );
+    },
+  };
+  for (const filename of await folderIO.get(dirname)) {
+    if (filename === "#bfsw.ts" || filename === "#bfsw.mts" || filename === "#bfsw.mtsx") {
+      const cache_filename = `#bfsw.mjs`;
+      const cache_filepath = resolve(dirname, cache_filename);
+      try {
+        log("complie #bfsw");
+        await build({
+          entryPoints: [filename],
+          absWorkingDir: dirname,
+          bundle: true,
+          platform: "node",
+          format: "esm",
+          write: true,
+          outfile: cache_filepath,
+          tsconfig: bfswTsconfigFilepath,
+          plugins: [externalMarker, bfspWrapper],
+        });
+        return await _readFromMjs<Bfsp.Workspace>(cache_filepath, options.refresh);
+      } finally {
+        existsSync(cache_filepath) && unlinkSync(cache_filepath);
+      }
+    }
+    // if (filename === "#bfsw.mjs") {
+    //   return await _readFromMjs(filename, options.refresh);
+    // }
+    if (filename === "#bfsw.json") {
+      return JSON.parse(
+        (await fileIO.get(resolve(dirname, filename), options.refresh)).toString("utf-8")
+      ) as Bfsp.Workspace;
     }
   }
 };
@@ -233,12 +345,12 @@ export type $BfspUserConfig = BFChainUtil.PromiseReturnType<typeof getBfspUserCo
 
 export const watchBfspUserConfig = (
   projectDirpath: string,
+  buildService: BuildService,
   options: {
     bfspUserConfigInitPo?: BFChainUtil.PromiseMaybe<$BfspUserConfig>;
   } = {}
 ) => {
   const follower = new SharedFollower<$BfspUserConfig>();
-  const multiStream = watchMulti();
 
   let curBfspUserConfig: $BfspUserConfig | undefined;
 
@@ -263,18 +375,12 @@ export const watchBfspUserConfig = (
       follower.push((curBfspUserConfig = _getBfspUserConfig(userConfig)));
     }
   });
-
-  /// 监听配置用户的配置文件
-  const watcher = chokidar.watch(["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"], {
-    cwd: projectDirpath,
-    ignoreInitial: false,
+  buildService.watcher.watchUserConfig(projectDirpath, (p, type) => {
+    if (type === "add" || type === "change") {
+      looper.loop();
+    }
   });
-  watcher.on("change", looper.loop);
-  watcher.on("add", looper.loop);
-  watcher.on("unlink", async () => {
-    await watcher.close();
-  });
-  multiStream.onNext((x) => looper.loop("multi changed"));
+  buildService.updateUserConfigStream(looper);
 
   looper.loop();
 

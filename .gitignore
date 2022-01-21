@@ -1,4 +1,5 @@
-*
--.gitignore
--bfsp
--bfsw
+.git
+yarn.lock
+node_modules
+dist
+build

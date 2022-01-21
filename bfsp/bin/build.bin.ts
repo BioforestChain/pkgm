@@ -1,7 +1,9 @@
 import path from "node:path";
 import { defineCommand } from "../bin";
+import { getBfspBuildService } from "../src/core";
 import { Debug, Warn } from "../src/logger";
-import { runBuild } from "./build.core";
+import { watchSingle } from "../src/watcher";
+import { doBuild } from "./build.core";
 
 defineCommand(
   "build",
@@ -26,6 +28,7 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
-    runBuild({ root, mode: "build" });
+
+    doBuild({ root, buildService: getBfspBuildService(watchSingle()) });
   }
 );

@@ -1,10 +1,10 @@
 import path from "node:path";
-import { defineCommand } from "../bin";
-import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
-import { getBfspBuildService } from "../src/core";
-import { Debug, Warn } from "../src/logger";
-import { watchSingle } from "../src/watcher";
-import { doDev } from "./dev.core";
+import { defineCommand } from "../../bin";
+import { ALLOW_FORMATS, readWorkspaceConfig } from "../../src/configs/bfspUserConfig";
+import { Debug, Warn } from "../../src/logger";
+import { watchWorkspace } from "../../src/watcher";
+import { workspaceInit } from "../../src/workspace";
+import { runBuild } from "./build.core";
 
 defineCommand(
   "dev",
@@ -34,6 +34,7 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
-    doDev({ root, format: format as Bfsp.Format, buildService: getBfspBuildService(watchSingle()) });
+
+    workspaceInit({ root, mode: "dev" });
   }
 );

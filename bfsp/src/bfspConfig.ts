@@ -4,6 +4,7 @@ import { $NpmIgnore, generateNpmIgnore, watchNpmIgnore, writeNpmIgnore } from ".
 import { $PackageJson, generatePackageJson, watchPackageJson, writePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig, watchTsConfig, writeTsConfig } from "./configs/tsConfig";
 import { $ViteConfig, generateViteConfig, watchViteConfig } from "./configs/viteConfig";
+import { BuildService } from "./core";
 
 export const getBfspProjectConfig = async (dirname = process.cwd()) => {
   const bfspUserConfig = await getBfspUserConfig(dirname);
@@ -16,10 +17,10 @@ export const getBfspProjectConfig = async (dirname = process.cwd()) => {
 };
 export type $BfspProjectConfig = BFChainUtil.PromiseReturnType<typeof getBfspProjectConfig>;
 
-export const writeBfspProjectConfig = async (projectConfig: $BfspProjectConfig) => {
+export const writeBfspProjectConfig = async (projectConfig: $BfspProjectConfig, buildService: BuildService) => {
   const { projectDirpath, bfspUserConfig } = projectConfig;
 
-  const tsConfig = await generateTsConfig(projectDirpath, bfspUserConfig);
+  const tsConfig = await generateTsConfig(projectDirpath, bfspUserConfig, buildService);
   const viteConfig = await generateViteConfig(projectDirpath, bfspUserConfig, tsConfig);
 
   const gitIgnorePo = generateGitIgnore(projectDirpath, bfspUserConfig.userConfig);
@@ -38,6 +39,7 @@ export const writeBfspProjectConfig = async (projectConfig: $BfspProjectConfig) 
 
 export const watchBfspProjectConfig = (
   projectConfig: $BfspProjectConfig,
+  buildService: BuildService,
   initConfigs: {
     gitIgnore?: BFChainUtil.PromiseMaybe<$GitIgnore>;
     npmIgnore?: BFChainUtil.PromiseMaybe<$NpmIgnore>;
@@ -47,10 +49,10 @@ export const watchBfspProjectConfig = (
 ) => {
   const { projectDirpath, bfspUserConfig } = projectConfig;
 
-  const userConfigStream = watchBfspUserConfig(projectDirpath, {
+  const userConfigStream = watchBfspUserConfig(projectDirpath, buildService, {
     bfspUserConfigInitPo: bfspUserConfig,
   });
-  const tsConfigStream = watchTsConfig(projectDirpath, userConfigStream, {
+  const tsConfigStream = watchTsConfig(projectDirpath, userConfigStream, buildService, {
     tsConfigInitPo: initConfigs.tsConfig,
     write: true,
   });

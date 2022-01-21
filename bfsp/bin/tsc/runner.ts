@@ -8,6 +8,7 @@ export interface RunTscOption {
   onMessage: (s: string) => void;
   onClear: () => void;
   onSuccess?: () => void;
+  onErrorFound?: (errorCount: number) => void;
   onExit?: () => void;
   watch?: boolean;
 }
@@ -40,6 +41,8 @@ export const runTsc = (opts: RunTscOption) => {
         const errorCount = parseInt(foundErrors[1]);
         if (errorCount === 0) {
           opts.onSuccess && opts.onSuccess();
+        } else {
+          opts.onErrorFound && opts.onErrorFound(errorCount);
         }
       }
       opts.onMessage(data[1]);
