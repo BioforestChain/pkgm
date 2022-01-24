@@ -12,6 +12,7 @@ defineCommand(
     params: [
       { type: "string", name: "format", description: "bundle format: esm or cjs, default is esm." },
       { type: "string", name: "profiles", description: "bundle profiles, default is ['default']." },
+      { type: "number", name: "limit", description: "watch task quatity limit, default is number of cpu cores substract 1." },
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
   } as const,
@@ -35,6 +36,6 @@ defineCommand(
       root = path.resolve(root, maybeRoot);
     }
 
-    workspaceInit({ root, mode: "dev" });
+    workspaceInit({ root, mode: "dev", taskLimit: params?.limit });
   }
 );

@@ -15,6 +15,7 @@ import { createViteLogger, Debug } from "../../src/logger";
 import { Closeable, SharedAsyncIterable } from "../../src/toolkit";
 import { runTsc } from "../tsc/runner";
 import { ViteConfigFactory } from "../vite/configFactory";
+import { TaskPoolRunning } from "../../src/workspace";
 
 export const workspaceItemDoDev = async (options: {
   root?: string;
@@ -89,6 +90,9 @@ export const workspaceItemDoDev = async (options: {
         log("close bfsp build, reason: ", reason);
         preViteConfigBuildOptions = undefined;
         dev.close();
+
+        // watch任务池中任务完成一个，可以继续添加任务
+        TaskPoolRunning.activeTaskNums--;
       });
     })();
 
