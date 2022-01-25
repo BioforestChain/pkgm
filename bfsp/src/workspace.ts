@@ -11,7 +11,6 @@ import { watchWorkspace, states, registerAllUserConfigEvent, CbArgsForAllUserCon
 import { DepGraph } from "dependency-graph";
 import { createTscLogger } from "./logger";
 import { getTui } from "./tui";
-import { StatusBar } from "./tui/StatusBar";
 
 let root = "";
 let appWatcher: ReturnType<typeof watchWorkspace>;
@@ -102,7 +101,7 @@ function runRootTsc() {
     });
   }
 }
-export async function workspaceInit(options: { root: string; mode: "dev" | "build", taskLimit?: number }) {
+export async function workspaceInit(options: { root: string; mode: "dev" | "build", watcherLimit?: number }) {
   root = options.root;
   registerAllUserConfigEvent(handleBfspWatcherEvent);
   runRootTsc();
@@ -110,15 +109,16 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
   bfswBuildService = getBfswBuildService(appWatcher);
 
   if(options.mode === "dev") {
-    let taskLimit = options.taskLimit;
+    let watcherLimit = options.watcherLimit;
     const cpus = os.cpus().length;
 
-    if(taskLimit === undefined || taskLimit < 1) {
-      taskLimit = cpus - 1 >= 1 ? (cpus - 1) : 1;
+    if(watcherLimit === undefined || watcherLimit < 1) {
+      watcherLimit = cpus - 1 >= 1 ? (cpus - 1) : 1;
     }
 
-    const taskPoolRunning = new TaskPoolRunning(taskLimit);
-    await taskPoolRunning.runTask();
+    const taskSerial = new TaskSerial(watcherLimit);
+    taskSerial.runTask();
+    taskSerial.addRollupWatcher();
   } else {
     await runTasks();
   }
@@ -146,52 +146,82 @@ async function runTasks() {
   }, 1000);
 }
 
-export class TaskPoolRunning {
-  public static activeTaskNums: number = 0;
-  public status: StatusBar;
+// 任务串行化
+export class TaskSerial {
+  public static activeWatcherNums: number = 0;
+  public static queue = [] as string[];
 
-  constructor(public taskLimit: number = 1) {
-    if(this.taskLimit < 1) {
-      throw "taskLimit must be interger greater then 1";
+  constructor(public watcherLimit: number = 1) {
+    if(this.watcherLimit < 1) {
+      throw "watcherLimit must be interger greater then 1.";
     }
-    const { status } = getTui();
-    this.status = status;
+  }
+
+  public static push(name: string) {
+    if(!TaskSerial.queue.includes(name)) {
+      TaskSerial.queue.push(name);
+    }
+  }
+
+  async getOrder() {
+    const orders = dg.overallOrder().map((x) => states.findByName(x)?.path);;
+    return orders;
   }
 
   async runTask() {
     let pendingTasksNums = pendingTasks.remaining();
-    
-    while(pendingTasksNums > 0 && TaskPoolRunning.activeTaskNums < this.taskLimit) {
-      pendingTasksNums = pendingTasks.remaining();
-      await this.execute();
+
+    if(pendingTasksNums > 0) {
+      await this.execTask();
+    } else {
+      setTimeout(async () => {
+        await this.runTask();
+      }, 1000);
+    }
+  }
+
+  async execTask() {
+    const orders = await this.getOrder();
+    const idx = orders.findIndex(x => x === undefined);
+
+    if(idx >= 0) {
+      return;
+    } else {
+      pendingTasks.useOrder(orders as string[]);
+      const name = pendingTasks.next();
+
+      if(name) {
+        const state = states.findByName(name);
+
+        if(state) {
+          const resolvedDir = path.join(root, state.path);
+
+          status.postMsg(`compiling ${name}`);
+          const closable = await workspaceItemDoDev({ root: resolvedDir, buildService: bfswBuildService! });
+          runningTasks.set(state.userConfig.name, closable);
+          status.postMsg(`${name} compilation finished`);
+        }
+      }
+    }
+
+    await this.runTask();
+  }
+
+  async addRollupWatcher() {
+    while(TaskSerial.queue.length > 0 && TaskSerial.activeWatcherNums < this.watcherLimit) {
+      TaskSerial.activeWatcherNums++;
+      this.execWatcher();
     }
 
     setTimeout(async () => {
-      await this.runTask();
-    }, 1000)
+      await this.addRollupWatcher();
+    }, 1000);
   }
 
-  async execute() {
-    const name = pendingTasks.next();
+  execWatcher() {
+    const name = TaskSerial.queue.shift()!;
+    const closable = runningTasks.get(name);
 
-    if(name) {
-      const state = states.findByName(name);
-
-      if(state) {
-        TaskPoolRunning.activeTaskNums++;
-
-        const resolvedDir = path.join(root, state.path);
-        const existsClosable = runningTasks.get(state.userConfig.name);
-
-        this.status.postMsg(`compiling ${name}`);
-        if(existsClosable) {
-          existsClosable.start();
-        } else {
-          const closable = await workspaceItemDoDev({ root: resolvedDir, buildService: bfswBuildService! });
-          runningTasks.set(state.userConfig.name, closable);
-        }
-        this.status.postMsg(`${name} compilation finished`);
-      }
-    }
+    closable?.restart();
   }
 }
