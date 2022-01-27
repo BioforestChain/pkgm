@@ -13,9 +13,7 @@ import { $TsConfig, generateTsConfig, isTestFile } from "../src/configs/tsConfig
 import { generateViteConfig } from "../src/configs/viteConfig";
 import { consts } from "../src/consts";
 import { BuildService } from "../src/core";
-// import { watchDeps } from "../src/deps";
 import { createTscLogger, createViteLogger, Debug } from "../src/logger";
-
 import { Closeable, folderIO, Loopable, SharedAsyncIterable, toPosixPath, walkFiles } from "../src/toolkit";
 import { getTui } from "../src/tui/index";
 import { runTerser } from "./terser/runner";
@@ -209,6 +207,17 @@ export const doBuild = async (options: { root?: string; format?: Bfsp.Format; bu
     /// 修改样式
     tscLogger.updateStatus("success");
   };
+
+  /// deps依赖安装
+  const depsPanel = getTui().getPanel("Deps");
+  depsPanel.updateStatus("loading");
+  await runYarn({
+    root: root,
+    onMessage: (s) => depsPanel.write(s),
+    onExit: () => {
+      depsPanel.updateStatus("success");
+    },
+  });
 
   const tscCompilation = new Promise((resolve) => {
     const tscStoppable = runTsc({
