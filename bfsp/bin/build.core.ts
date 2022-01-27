@@ -1,8 +1,8 @@
-import { PromiseOut, sleep } from "@bfchain/util";
 import chalk from "chalk";
+import { sleep } from "@bfchain/util-extends-promise";
+import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import fs, { existsSync, renameSync, rmSync } from "node:fs";
 import { copyFile, rm, stat, symlink, unlink } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { build as buildBfsp } from "vite";
@@ -13,7 +13,7 @@ import { $TsConfig, generateTsConfig, isTestFile } from "../src/configs/tsConfig
 import { generateViteConfig } from "../src/configs/viteConfig";
 import { consts } from "../src/consts";
 import { BuildService } from "../src/core";
-import { watchDeps } from "../src/deps";
+// import { watchDeps } from "../src/deps";
 import { createTscLogger, createViteLogger, Debug } from "../src/logger";
 
 import { Closeable, folderIO, Loopable, SharedAsyncIterable, toPosixPath, walkFiles } from "../src/toolkit";
@@ -231,64 +231,92 @@ export const doBuild = async (options: { root?: string; format?: Bfsp.Format; bu
 
   try {
     /// tsc验证没问题，开始执行vite打包
-    /// @todo 以下流程包裹成 closeable
+    /// 以下流程包裹成 closeable
+    const abortable = Closeable<string, string>("bin:build", async (reasons) => {
+      /**防抖，避免不必要的多次调用 */
+      const closeSign = new PromiseOut<unknown>();
 
-    const buildUserConfigs = userConfig.userConfig.build
-      ? userConfig.userConfig.build.map((build) => {
-          const ret = {
-            ...userConfig.userConfig,
-            ...build,
-          };
-          Reflect.deleteProperty(ret, "build");
-          return ret;
-        })
-      : [userConfig.userConfig];
-    for (const buildConfig of buildUserConfigs.slice()) {
-      if (buildConfig.formats !== undefined && buildConfig.formats.length > 1) {
-        const singleFormatConfigs = buildConfig.formats.map((format) => ({
-          ...buildConfig,
-          formats: [format],
-        }));
-        buildUserConfigs.splice(buildUserConfigs.indexOf(buildConfig), 1, ...singleFormatConfigs);
-      }
-    }
-
-    const buildOutDirs = new Set<string>();
-    let i = 0;
-    for (const x of buildUserConfigs) {
-      i++;
-
-      log(`start build task: ${i}/${buildUserConfigs.length}\n`);
-      log(`removing bundleOutRoot: ${CACHE_BUILD_OUT_ROOT}\n`);
-      const userConfigBuild = x;
-
-      const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfigBuild.name);
-      const cacheBuildOutDir = path.resolve(CACHE_BUILD_OUT_ROOT, userConfigBuild.name);
-      // 状态报告给外层，由外层组装后写入状态栏
-      const singleReporter = (s: string) => {
-        reporter(`${x.name} > ${s}`);
-      };
-      await buildSingle({
-        userConfigBuild,
-        thePackageJson,
-        buildOutDir,
-        cacheBuildOutDir,
-        stateReporter: singleReporter,
-      });
-      buildOutDirs.add(buildOutDir);
-    }
-
-    /// 复制 .d.ts 文件到 source 文件夹中
-    for (const buildOutDir of buildOutDirs) {
-      const tscOutRoot = TSC_OUT_ROOT;
-      for await (const filepath of walkFiles(tscOutRoot, { refreshCache: true })) {
-        if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
-          const destFilepath = path.join(buildOutDir, "source", path.relative(tscOutRoot, filepath));
-          await folderIO.tryInit(path.dirname(destFilepath));
-          await copyFile(filepath, destFilepath);
+      (async () => {
+        /// debounce
+        await sleep(500);
+        if (closeSign.is_finished) {
+          log("skip vite build by debounce");
+          return;
         }
+
+        const buildUserConfigs = userConfig.userConfig.build
+        ? userConfig.userConfig.build.map((build) => {
+            const ret = {
+              ...userConfig.userConfig,
+              ...build,
+            };
+            Reflect.deleteProperty(ret, "build");
+            return ret;
+          })
+        : [userConfig.userConfig];
+        for (const buildConfig of buildUserConfigs.slice()) {
+          if (buildConfig.formats !== undefined && buildConfig.formats.length > 1) {
+            const singleFormatConfigs = buildConfig.formats.map((format) => ({
+              ...buildConfig,
+              formats: [format],
+            }));
+            buildUserConfigs.splice(buildUserConfigs.indexOf(buildConfig), 1, ...singleFormatConfigs);
+          }
+        }
+
+        const buildOutDirs = new Set<string>();
+        let i = 0;
+        for(const x of buildUserConfigs) {
+          i++;
+
+          log(`start build task: ${i}/${buildUserConfigs.length}\n`);
+          log(`removing bundleOutRoot: ${CACHE_BUILD_OUT_ROOT}\n`);
+          const userConfigBuild = x;
+
+          const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfigBuild.name);
+          const cacheBuildOutDir = path.resolve(CACHE_BUILD_OUT_ROOT, userConfigBuild.name);
+          // 状态报告给外层，由外层组装后写入状态栏
+          const singleReporter = (s: string) => {
+            reporter(`${x.name} > ${s}`);
+          };
+          await buildSingle({
+            userConfigBuild,
+            thePackageJson,
+            buildOutDir,
+            cacheBuildOutDir,
+            stateReporter: singleReporter,
+          });
+          buildOutDirs.add(buildOutDir);
+        }
+
+        /// 复制 .d.ts 文件到 source 文件夹中
+        for (const buildOutDir of buildOutDirs) {
+          const tscOutRoot = TSC_OUT_ROOT;
+          for await (const filepath of walkFiles(tscOutRoot, { refreshCache: true })) {
+            if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
+              const destFilepath = path.join(buildOutDir, "source", path.relative(tscOutRoot, filepath));
+              await folderIO.tryInit(path.dirname(destFilepath));
+              await copyFile(filepath, destFilepath);
+            }
+          }
+        }
+
+        closeSign.onSuccess((reason) => {
+          log("close bfsp build, reason: ", reason);
+          // preViteConfigBuildOptions = undefined;
+          // dev.close();
+          viteLogger.info(chalk.green(`close bfsp build, reason: ${reason}`));
+        });
+      })();
+
+      return (reason: unknown) => {
+        closeSign.resolve(reason);
       }
-    }
+    });
+    
+    abortable.start();
+
+    return abortable;
   } catch (e) {
     viteLogger.error(e as any);
   }

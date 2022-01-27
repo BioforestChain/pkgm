@@ -1,6 +1,7 @@
 import path from "node:path";
 import { defineCommand } from "../../bin";
 import { Debug, Warn } from "../../src/logger";
+import { workspaceInit } from "./workspace";
 
 defineCommand(
   "build",
@@ -25,5 +26,7 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
+
+    workspaceInit({ root, mode: "build" });
   }
 );

@@ -30,5 +30,6 @@ defineCommand(
     }
 
     doBuild({ root, buildService: getBfspBuildService(watchSingle()) });
+    // closeable?.start();
   }
 );

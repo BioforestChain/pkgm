@@ -2,15 +2,17 @@ import chokidar from "chokidar";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path, { resolve } from "node:path";
-import { Closeable, notGitIgnored, readUserConfig, readWorkspaceConfig, walkFiles } from ".";
-import { workspaceItemDoDev } from "../bin/multi/dev.core";
-import { runTsc } from "../bin/tsc/runner";
-import { getPkgmVersion, Tasks, writeJsonConfig } from "../bin/util";
-import { BuildService, getBfswBuildService } from "./core";
-import { watchWorkspace, states, registerAllUserConfigEvent, CbArgsForAllUserConfig } from "./watcher";
+import { Closeable, notGitIgnored, readUserConfig, readWorkspaceConfig, walkFiles } from "../../src";
+import { workspaceItemDoDev } from "./dev.core";
+import { workspaceItemDoBuild } from "./build.core";
+// import { doBuild } from "../build.core";
+import { runTsc } from "../tsc/runner";
+import { getPkgmVersion, Tasks, writeJsonConfig } from "../util";
+import { BuildService, getBfswBuildService } from "../../src/core";
+import { watchWorkspace, states, registerAllUserConfigEvent, CbArgsForAllUserConfig } from "../../src/watcher";
 import { DepGraph } from "dependency-graph";
-import { createTscLogger } from "./logger";
-import { getTui } from "./tui";
+import { createTscLogger } from "../../src/logger";
+import { getTui } from "../../src/tui";
 
 let root = "";
 let appWatcher: ReturnType<typeof watchWorkspace>;
@@ -116,8 +118,9 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       watcherLimit = cpus - 1 >= 1 ? (cpus - 1) : 1;
     }
 
+    // 任务串行化(包括 rollup watcher 任务问题)
     const taskSerial = new TaskSerial(watcherLimit);
-    taskSerial.runTask();
+    await taskSerial.runTask();
     taskSerial.addRollupWatcher();
   } else {
     await runTasks();
@@ -125,22 +128,24 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
 
   // TODO: 多项目模式下的依赖管理，考虑拦截deps流之后在这里做依赖安装
 }
-const { status } = getTui();
+
 async function runTasks() {
+  const { status } = getTui();
   const name = pendingTasks.next();
   if (name) {
     const state = states.findByName(name);
     if (state) {
       const resolvedDir = path.join(root, state.path);
 
+      // build task
       status.postMsg(`compiling ${name}`);
-      const closable = await workspaceItemDoDev({ root: resolvedDir, buildService: bfswBuildService! });
-      runningTasks.set(state.userConfig.name, closable);
+      const closable = await workspaceItemDoBuild({root: resolvedDir, buildService: bfswBuildService! });
+      // const closable = await doBuild({root: resolvedDir, buildService: bfswBuildService! });
+      // closable?.start();
       status.postMsg(`${name} compilation finished`);
-      
-      // TODO: build task
     }
   }
+  
   setTimeout(async () => {
     await runTasks();
   }, 1000);
@@ -181,6 +186,7 @@ export class TaskSerial {
   }
 
   async execTask() {
+    const { status } = getTui();
     const orders = await this.getOrder();
     const idx = orders.findIndex(x => x === undefined);
 
@@ -207,14 +213,13 @@ export class TaskSerial {
     await this.runTask();
   }
 
-  async addRollupWatcher() {
+  addRollupWatcher() {
     while(TaskSerial.queue.length > 0 && TaskSerial.activeWatcherNums < this.watcherLimit) {
-      TaskSerial.activeWatcherNums++;
       this.execWatcher();
     }
 
-    setTimeout(async () => {
-      await this.addRollupWatcher();
+    setTimeout(() => {
+      this.addRollupWatcher();
     }, 1000);
   }
 
@@ -222,6 +227,9 @@ export class TaskSerial {
     const name = TaskSerial.queue.shift()!;
     const closable = runningTasks.get(name);
 
-    closable?.restart();
+    if(closable) {
+      TaskSerial.activeWatcherNums++;
+      closable.restart();
+    }
   }
 }

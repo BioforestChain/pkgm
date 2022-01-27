@@ -2,9 +2,7 @@ import path from "node:path";
 import { defineCommand } from "../../bin";
 import { ALLOW_FORMATS, readWorkspaceConfig } from "../../src/configs/bfspUserConfig";
 import { Debug, Warn } from "../../src/logger";
-import { watchWorkspace } from "../../src/watcher";
-import { workspaceInit } from "../../src/workspace";
-import { runBuild } from "./build.core";
+import { workspaceInit } from "./workspace";
 
 defineCommand(
   "dev",

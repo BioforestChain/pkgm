@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import os from "node:os";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -19,7 +20,14 @@ export const runTerser = async (opts: { sourceDir: string; logError: (log: strin
   const tasks = [] as Promise<{ path: string; success: boolean }[]>[];
   rearrange(workerCount, files, (items) => {
     const task = new Promise<{ path: string; success: boolean }[]>((resolve) => {
-      const worker = new Worker(path.join(__dirname, "./terser_worker.mjs"));
+
+      /// 多处引用时会发生找不到的情况，原因是runterser会在dist/chunk目录下
+      let workerMjsPath = path.join(__dirname, "./terser_worker.mjs");      
+      if(!existsSync(workerMjsPath)) {
+        workerMjsPath = path.join(__dirname, "../terser_worker.mjs");
+      }
+      const worker = new Worker(workerMjsPath);
+
       worker.on("message", (v) => {
         if (v.results) {
           worker.terminate();
