@@ -7,12 +7,12 @@ import { getTui } from "./tui";
 
 const log = Debug("bfsp:deps");
 
-const depsPanel = getTui().getPanel("Deps");
 export const watchDeps = (
   projectDirpath: string,
   packageJsonStream: SharedAsyncIterable<$PackageJson>,
   options?: { runYarn: boolean }
 ) => {
+  const depsPanel = getTui().getPanel("Deps");
   let curDeps = {};
   const follower = new SharedFollower<boolean>();
   let stoppable: { stop: () => void } | undefined;

@@ -13,8 +13,8 @@ import { BuildService } from "../../src/core";
 import { watchDeps } from "../../src/deps";
 import { createViteLogger, Debug } from "../../src/logger";
 import { Closeable, SharedAsyncIterable } from "../../src/toolkit";
-import { runTsc } from "../tsc/runner";
 import { ViteConfigFactory } from "../vite/configFactory";
+import { TaskSerial } from "./workspace";
 
 export const workspaceItemDoDev = async (options: {
   root?: string;
@@ -69,6 +69,8 @@ export const workspaceItemDoDev = async (options: {
       log("running bfsp build!");
       //#region vite
       const viteLogger = createViteLogger("info", {});
+      viteLogger.info(chalk.green(`vite ${userConfig.userConfig.name} bundle start`));
+
       const dev = (await buildBfsp({
         // TODO: watcher统一管理
         ...viteBuildConfig,
@@ -88,8 +90,22 @@ export const workspaceItemDoDev = async (options: {
       closeSign.onSuccess((reason) => {
         log("close bfsp build, reason: ", reason);
         preViteConfigBuildOptions = undefined;
-        dev.close();
+        // dev.close();
       });
+
+      dev.on("event", (event) => {
+        // bundle结束，关闭watch
+        if(event.code === "BUNDLE_END") {
+          viteLogger.info(chalk.green(`vite ${userConfig.userConfig.name} bundle end`));
+          TaskSerial.activeWatcherNums--;
+          dev.close();
+        }
+      });
+
+      // dev.on("close", () => {
+      //   // watch池中任务完成一个，可以继续添加任务
+      //   TaskSerial.activeWatcherNums--;
+      // });
     })();
 
     return (reason: unknown) => {
@@ -98,12 +114,25 @@ export const workspaceItemDoDev = async (options: {
   });
 
   /// 开始监听并触发编译
-  subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
-  subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
-  subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
-  depStream.onNext(() => abortable.restart("deps installed "));
+  // subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
+  // subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
+  // subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
+  // depStream.onNext(() => abortable.restart("deps installed "));
+  subStreams.userConfigStream.onNext(() => {
+    TaskSerial.push(bfspUserConfig.userConfig.name);
+  });
+  subStreams.viteConfigStream.onNext(() => {
+    TaskSerial.push(bfspUserConfig.userConfig.name);
+  });
+  subStreams.tsConfigStream.onNext(() => {
+    TaskSerial.push(bfspUserConfig.userConfig.name);
+  });
+  depStream.onNext(() => {
+    TaskSerial.push(bfspUserConfig.userConfig.name);
+  });
+
   if (subStreams.viteConfigStream.hasCurrent()) {
-    abortable.start();
+    TaskSerial.push(bfspUserConfig.userConfig.name);
   }
   return abortable;
 };
