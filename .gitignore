@@ -1,5 +1,6 @@
 .git
-yarn.lock
+.vscode
+*.lock
 node_modules
 dist
 build

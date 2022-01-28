@@ -1,0 +1,6 @@
+.npm
+.vscode
+.gitignore
+tsconfig.json
+vite.config.ts
+test

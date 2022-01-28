@@ -1,0 +1,50 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "composite": true,
+    "noEmit": true,
+    "declaration": true,
+    "sourceMap": false,
+    "target": "es2020",
+    "module": "es2020",
+    "lib": ["ES2020"],
+    "outDir": "./node_modules/.bfsw/",
+    "importHelpers": true,
+    "isolatedModules": false,
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    // "baseUrl": "./",
+    "types": ["node"],
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "files": [
+    "package.json",
+    "bin/bfsw.cmd.ts",
+    "bin/build.bin.ts",
+    "bin/build.core.ts",
+    "bin/dev.bin.ts",
+    "bin/dev.core.ts",
+    "bin/init.bin.ts",
+    "bin/init.core.ts",
+    "bin/workspace.ts",
+    "src/buildService.ts",
+    "src/index.ts",
+    "src/watcher.ts",
+    "src/workspaceConfig.ts"
+  ],
+  "references": [
+    // {
+    //   "path": "./tsconfig.prod.json"
+    // }
+  ]
+}

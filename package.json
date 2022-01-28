@@ -1,0 +1,10 @@
+{
+  "name": "@bfchain/pkgm",
+  "private": true,
+  "devDependencies": {
+    "lerna": "^4.0.0"
+  },
+  "scripts": {
+    "dev": "lerna run dev --stream --parallel"
+  }
+}
