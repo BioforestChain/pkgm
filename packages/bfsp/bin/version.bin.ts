@@ -1,12 +1,12 @@
 import { defineCommand } from "../bin";
 import { require, fileIO } from "../src/toolkit";
-import { getPkgm } from "./util";
+import { getBfspPackageJson } from "./util";
 import chalk from "chalk";
 
 defineCommand("version", {}, async (params, args) => {
   process.noDeprecation = true;
 
-  const pkgm = getPkgm();
+  const pkgm = getBfspPackageJson();
 
   console.log(chalk.bold(`${chalk.green(pkgm.name)}: ${pkgm.version}`));
   console.group(chalk.gray("Dependencies:"));

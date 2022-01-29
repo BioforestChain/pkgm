@@ -75,20 +75,63 @@ const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactor
   });
 };
 
-export const doBuild = async (options: { root?: string; format?: Bfsp.Format; buildService: BuildService }) => {
+export const writeBuildConfigs = async (options: { root?: string; buildService: BuildService }) => {
+  const log = Debug("bfsp:bin/build");
+  const { root = process.cwd(), buildService } = options;
+  const bfspUserConfig = await getBfspUserConfig(root);
+  const projectConfig = { projectDirpath: root, bfspUserConfig };
+  const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
+  return { subConfigs, bfspUserConfig };
+};
+export const installBuildDeps = async (options: { root: string }) => {
+  const { root } = options;
+  const depsPanel = getTui().getPanel("Deps");
+  depsPanel.updateStatus("loading");
+  const installation = new Promise<boolean>(async (resolve) => {
+    await runYarn({
+      root,
+      onMessage: (s) => depsPanel.write(s),
+      onExit: () => {
+        depsPanel.updateStatus("success");
+        resolve(true);
+      },
+    });
+  });
+  return await installation;
+};
+
+export const runBuildTsc = async (options: { root: string; tscLogger: ReturnType<typeof createTscLogger> }) => {
+  const { root, tscLogger } = options;
+  const tscCompilation = new Promise<boolean>((resolve) => {
+    const tscStoppable = runTsc({
+      watch: true,
+      tsconfigPath: path.join(root, "tsconfig.json"),
+      onMessage: (s) => tscLogger.write(s),
+      onClear: () => tscLogger.clear(),
+      onSuccess: () => {
+        tscStoppable.stop();
+        resolve(true);
+      },
+    });
+  });
+  return await tscCompilation;
+};
+export const doBuild = async (options: {
+  root?: string;
+  format?: Bfsp.Format;
+  buildService: BuildService;
+  cfgs: BFChainUtil.PromiseReturnType<typeof writeBuildConfigs>;
+}) => {
   const log = Debug("bfsp:bin/build");
 
   // const cwd = process.cwd();
   // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
-  const { root = process.cwd(), format, buildService } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
-
+  const { root = process.cwd(), format, buildService, cfgs } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
+  const { subConfigs, bfspUserConfig } = cfgs;
   log("root", root);
   const stateReporter = (s: string) => {
     getTui().status.postMsg(s);
   };
-  const bfspUserConfig = await getBfspUserConfig(root);
-  const projectConfig = { projectDirpath: root, bfspUserConfig };
-  const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
   const tscLogger = createTscLogger();
   const viteLogger = createViteLogger();
   const CACHE_BUILD_OUT_ROOT = path.resolve(path.join(root, consts.CacheBuildOutRootPath));
@@ -208,31 +251,6 @@ export const doBuild = async (options: { root?: string; format?: Bfsp.Format; bu
     tscLogger.updateStatus("success");
   };
 
-  /// deps依赖安装
-  const depsPanel = getTui().getPanel("Deps");
-  depsPanel.updateStatus("loading");
-  await runYarn({
-    root: root,
-    onMessage: (s) => depsPanel.write(s),
-    onExit: () => {
-      depsPanel.updateStatus("success");
-    },
-  });
-
-  const tscCompilation = new Promise((resolve) => {
-    const tscStoppable = runTsc({
-      watch: true,
-      tsconfigPath: path.join(root, "tsconfig.json"),
-      onMessage: (s) => tscLogger.write(s),
-      onClear: () => tscLogger.clear(),
-      onSuccess: () => {
-        tscStoppable.stop();
-        resolve(true);
-      },
-    });
-  });
-  await tscCompilation;
-
   const reporter = stateReporter;
   const userConfig = bfspUserConfig;
   const thePackageJson = subConfigs.packageJson;
@@ -240,92 +258,63 @@ export const doBuild = async (options: { root?: string; format?: Bfsp.Format; bu
 
   try {
     /// tsc验证没问题，开始执行vite打包
-    /// 以下流程包裹成 closeable
-    const abortable = Closeable<string, string>("bin:build", async (reasons) => {
-      /**防抖，避免不必要的多次调用 */
-      const closeSign = new PromiseOut<unknown>();
 
-      (async () => {
-        /// debounce
-        await sleep(500);
-        if (closeSign.is_finished) {
-          log("skip vite build by debounce");
-          return;
-        }
-
-        const buildUserConfigs = userConfig.userConfig.build
-        ? userConfig.userConfig.build.map((build) => {
-            const ret = {
-              ...userConfig.userConfig,
-              ...build,
-            };
-            Reflect.deleteProperty(ret, "build");
-            return ret;
-          })
-        : [userConfig.userConfig];
-        for (const buildConfig of buildUserConfigs.slice()) {
-          if (buildConfig.formats !== undefined && buildConfig.formats.length > 1) {
-            const singleFormatConfigs = buildConfig.formats.map((format) => ({
-              ...buildConfig,
-              formats: [format],
-            }));
-            buildUserConfigs.splice(buildUserConfigs.indexOf(buildConfig), 1, ...singleFormatConfigs);
-          }
-        }
-
-        const buildOutDirs = new Set<string>();
-        let i = 0;
-        for(const x of buildUserConfigs) {
-          i++;
-
-          log(`start build task: ${i}/${buildUserConfigs.length}\n`);
-          log(`removing bundleOutRoot: ${CACHE_BUILD_OUT_ROOT}\n`);
-          const userConfigBuild = x;
-
-          const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfigBuild.name);
-          const cacheBuildOutDir = path.resolve(CACHE_BUILD_OUT_ROOT, userConfigBuild.name);
-          // 状态报告给外层，由外层组装后写入状态栏
-          const singleReporter = (s: string) => {
-            reporter(`${x.name} > ${s}`);
+    const buildUserConfigs = userConfig.userConfig.build
+      ? userConfig.userConfig.build.map((build) => {
+          const ret = {
+            ...userConfig.userConfig,
+            ...build,
           };
-          await buildSingle({
-            userConfigBuild,
-            thePackageJson,
-            buildOutDir,
-            cacheBuildOutDir,
-            stateReporter: singleReporter,
-          });
-          buildOutDirs.add(buildOutDir);
-        }
-
-        /// 复制 .d.ts 文件到 source 文件夹中
-        for (const buildOutDir of buildOutDirs) {
-          const tscOutRoot = TSC_OUT_ROOT;
-          for await (const filepath of walkFiles(tscOutRoot, { refreshCache: true })) {
-            if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
-              const destFilepath = path.join(buildOutDir, "source", path.relative(tscOutRoot, filepath));
-              await folderIO.tryInit(path.dirname(destFilepath));
-              await copyFile(filepath, destFilepath);
-            }
-          }
-        }
-
-        closeSign.onSuccess((reason) => {
-          log("close bfsp build, reason: ", reason);
-          // preViteConfigBuildOptions = undefined;
-          // dev.close();
-          viteLogger.info(chalk.green(`close bfsp build, reason: ${reason}`));
-        });
-      })();
-
-      return (reason: unknown) => {
-        closeSign.resolve(reason);
+          Reflect.deleteProperty(ret, "build");
+          return ret;
+        })
+      : [userConfig.userConfig];
+    for (const buildConfig of buildUserConfigs.slice()) {
+      if (buildConfig.formats !== undefined && buildConfig.formats.length > 1) {
+        const singleFormatConfigs = buildConfig.formats.map((format) => ({
+          ...buildConfig,
+          formats: [format],
+        }));
+        buildUserConfigs.splice(buildUserConfigs.indexOf(buildConfig), 1, ...singleFormatConfigs);
       }
-    });
-    
-    abortable.start();
+    }
 
-    return abortable;
+    const buildOutDirs = new Set<string>();
+    let i = 0;
+    for (const x of buildUserConfigs) {
+      i++;
+
+      log(`start build task: ${i}/${buildUserConfigs.length}\n`);
+      log(`removing bundleOutRoot: ${CACHE_BUILD_OUT_ROOT}\n`);
+      const userConfigBuild = x;
+
+      const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfigBuild.name);
+      const cacheBuildOutDir = path.resolve(CACHE_BUILD_OUT_ROOT, userConfigBuild.name);
+      // 状态报告给外层，由外层组装后写入状态栏
+      const singleReporter = (s: string) => {
+        reporter(`${x.name} > ${s}`);
+      };
+      await buildSingle({
+        userConfigBuild,
+        thePackageJson,
+        buildOutDir,
+        cacheBuildOutDir,
+        stateReporter: singleReporter,
+      });
+      buildOutDirs.add(buildOutDir);
+    }
+
+    /// 复制 .d.ts 文件到 source 文件夹中
+    for (const buildOutDir of buildOutDirs) {
+      const tscOutRoot = TSC_OUT_ROOT;
+      for await (const filepath of walkFiles(tscOutRoot, { refreshCache: true })) {
+        if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
+          const destFilepath = path.join(buildOutDir, "source", path.relative(tscOutRoot, filepath));
+          await folderIO.tryInit(path.dirname(destFilepath));
+          await copyFile(filepath, destFilepath);
+        }
+      }
+    }
   } catch (e) {
     viteLogger.error(e as any);
   }

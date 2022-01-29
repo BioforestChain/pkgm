@@ -213,16 +213,46 @@ export const getBfspDir = () => {
   }
   return p;
 };
+
+export const getBfswDir = () => {
+  const importer = import.meta.url;
+  const idx = importer.lastIndexOf("@bfchain/pkgm-bfsw");
+  let p = "";
+  if (idx >= 0) {
+    // 全局安装
+    const baseNodeModulesDir = fileURLToPath(importer.substring(0, idx));
+    p = path.join(baseNodeModulesDir, "@bfchain/pkgm-bfsw"); // yarn global
+    if (!existsSync(p)) {
+      // npm i -g
+      p = baseNodeModulesDir;
+    }
+  } else {
+    // 本地调试
+    const lidx = importer.lastIndexOf("/dist/");
+    const bfspDir = fileURLToPath(importer.substring(0, lidx));
+    p = bfspDir;
+  }
+  return p;
+};
 export const getBfspWorkerDir = () => {
   return path.join(getBfspDir(), "dist");
 };
-export const getPkgm = () => {
+export const getBfspPackageJson = () => {
   const p = path.join(getBfspDir(), "package.json");
   const packageJson = require(p);
   return packageJson as typeof import("../package.json");
 };
-export const getPkgmVersion = () => {
-  return getPkgm().version;
+export const getBfspVersion = () => {
+  return getBfspPackageJson().version;
+};
+
+export const getBfswPackageJson = () => {
+  const p = path.join(getBfswDir(), "package.json");
+  const packageJson = require(p);
+  return packageJson as typeof import("../package.json");
+};
+export const getBfswVersion = () => {
+  return getBfswPackageJson().version;
 };
 
 export class Tasks<T extends string> {

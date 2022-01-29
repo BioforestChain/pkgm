@@ -1,9 +1,9 @@
 import path from "node:path";
 import { defineCommand } from "../bin";
 import { getBfspBuildService } from "../src/buildService";
-import { Debug, Warn } from "../src/logger";
+import { createTscLogger, Debug, Warn } from "../src/logger";
 import { watchSingle } from "../src/watcher";
-import { doBuild } from "./build.core";
+import { doBuild, installBuildDeps, runBuildTsc, writeBuildConfigs } from "./build.core";
 
 defineCommand(
   "build",
@@ -14,7 +14,7 @@ defineCommand(
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
   } as const,
-  (params, args) => {
+  async (params, args) => {
     const warn = Warn("bfsp:bin/build");
     const log = Debug("bfsp:bin/build");
 
@@ -29,7 +29,12 @@ defineCommand(
       root = path.resolve(root, maybeRoot);
     }
 
-    doBuild({ root, buildService: getBfspBuildService(watchSingle()) });
+    const buildService = getBfspBuildService(watchSingle());
+    const cfgs = await writeBuildConfigs({ root, buildService });
+    await installBuildDeps({ root });
+    await runBuildTsc({ root, tscLogger: createTscLogger() });
+
+    doBuild({ root, buildService, cfgs });
     // closeable?.start();
   }
 );

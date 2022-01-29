@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
-import { getPkgmVersion, writeJsonConfig } from "../../bin/util";
+import { getBfspVersion, writeJsonConfig } from "../../bin/util";
 import { Debug } from "../logger";
 import {
   fileIO,
@@ -18,7 +18,7 @@ import { $TsConfig } from "./tsConfig";
 const log = Debug("bfsp:config/package.json");
 // const format
 
-const PKGM_VERSION = getPkgmVersion();
+const PKGM_VERSION = getBfspVersion();
 export const generatePackageJson = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,

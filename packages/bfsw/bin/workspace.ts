@@ -4,22 +4,20 @@ import os from "node:os";
 import path, { resolve } from "node:path";
 import {
   Closeable,
+  doBuild,
+  installBuildDeps,
   notGitIgnored,
   readUserConfig,
   walkFiles,
+  writeBuildConfigs,
 } from "@bfchain/pkgm-bfsp";
 import { workspaceItemDoDev } from "./dev.core";
 import { workspaceItemDoBuild } from "./build.core";
 // import { doBuild } from "../build.core";
 import { runTsc } from "@bfchain/pkgm-bfsp";
-import { getPkgmVersion, Tasks, writeJsonConfig } from "@bfchain/pkgm-bfsp";
+import { getBfswVersion, Tasks, writeJsonConfig } from "@bfchain/pkgm-bfsp";
 import { BuildService } from "@bfchain/pkgm-bfsp";
-import {
-  watchWorkspace,
-  states,
-  registerAllUserConfigEvent,
-  CbArgsForAllUserConfig,
-} from "../src/watcher";
+import { watchWorkspace, states, registerAllUserConfigEvent, CbArgsForAllUserConfig } from "../src/watcher";
 import { DepGraph } from "dependency-graph";
 import { createTscLogger } from "@bfchain/pkgm-bfsp";
 import { getTui } from "@bfchain/pkgm-bfsp";
@@ -69,14 +67,14 @@ async function updateWorkspaceTsConfig() {
   await writeJsonConfig(path.join(root, "tsconfig.json"), tsConfig);
 }
 async function updatePackageJson() {
-  const pkgmVersion = getPkgmVersion();
+  const bfswVersion = getBfswVersion();
 
   const packageJson = {
     name: "bfsp-workspace",
     private: true,
     workspaces: [...states.paths()],
     devDependencies: {
-      "@bfchain/pkgm": `^${pkgmVersion}`,
+      "@bfchain/pkgm-bfsw": `^${bfswVersion}`,
     },
   };
   await writeJsonConfig(path.join(root, `package.json`), packageJson);
@@ -116,18 +114,30 @@ function runRootTsc() {
     });
   }
 }
-export async function workspaceInit(options: {
-  root: string;
-  mode: "dev" | "build";
-  watcherLimit?: number;
-}) {
+function rootTscCompilation() {
+  return new Promise((resolve) => {
+    const logger = createTscLogger();
+    const closable = runTsc({
+      tsconfigPath: path.join(root, "tsconfig.json"),
+      watch: true,
+      onSuccess: () => {
+        closable.stop();
+        resolve(true);
+      },
+      onClear: () => logger.clear(),
+      onMessage: (s) => logger.write(s),
+    });
+  });
+}
+export async function workspaceInit(options: { root: string; mode: "dev" | "build"; watcherLimit?: number }) {
   root = options.root;
   registerAllUserConfigEvent(handleBfspWatcherEvent);
-  runRootTsc();
+
   appWatcher = watchWorkspace({ root });
   bfswBuildService = getBfswBuildService(appWatcher);
 
   if (options.mode === "dev") {
+    runRootTsc();
     let watcherLimit = options.watcherLimit;
     const cpus = os.cpus().length;
 
@@ -140,10 +150,45 @@ export async function workspaceInit(options: {
     await taskSerial.runTask();
     taskSerial.addRollupWatcher();
   } else {
-    await runTasks();
-  }
+    const map = new Map<string, BFChainUtil.PromiseReturnType<typeof writeBuildConfigs>>();
+    for (const p of states.paths()) {
+      const cfgs = await writeBuildConfigs({ root: p, buildService: bfswBuildService });
+      map.set(p, cfgs);
+    }
 
-  // TODO: 多项目模式下的依赖管理，考虑拦截deps流之后在这里做依赖安装
+    await installBuildDeps({ root }); // 等待依赖安装完成
+
+    await rootTscCompilation(); // 等待tsc编译成功
+
+    map.forEach((v, k) => {
+      const cfg = v.bfspUserConfig.userConfig;
+      pendingTasks.add(cfg.name);
+      // dg.addNode(cfg.name);
+      // cfg.deps?.map((x) => {
+      //   dg.addNode(x);
+      //   dg.addDependency(cfg.name, x);
+      // });
+    });
+    pendingTasks.useOrder(dg.overallOrder());
+
+    const runBuildTask = async () => {
+      if (pendingTasks.remaining() === 0) {
+        getTui().status.postMsg("all build tasks finished");
+        return;
+      }
+      const name = pendingTasks.next();
+      if (name) {
+        const s = states.findByName(name);
+        if (s) {
+          await doBuild({ root: s.path, buildService: bfswBuildService!, cfgs: map.get(name)! });
+        }
+      }
+      setTimeout(async () => {
+        await runBuildTask();
+      }, 1000);
+    };
+    runBuildTask();
+  }
 }
 
 async function runTasks() {
@@ -237,10 +282,7 @@ export class TaskSerial {
   }
 
   addRollupWatcher() {
-    while (
-      TaskSerial.queue.length > 0 &&
-      TaskSerial.activeWatcherNums < this.watcherLimit
-    ) {
+    while (TaskSerial.queue.length > 0 && TaskSerial.activeWatcherNums < this.watcherLimit) {
       this.execWatcher();
     }
 

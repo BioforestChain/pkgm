@@ -1,4 +1,4 @@
-import { BuildService, Loopable, walkFiles } from "@bfchain/pkgm-bfsp";
+import { BuildService, createTscLogger, Loopable, walkFiles } from "@bfchain/pkgm-bfsp";
 import { isFileBelongs, states, watchMulti } from "./watcher";
 export function getBfswBuildService(watcher: Bfsp.AppWatcher): BuildService {
   return {
