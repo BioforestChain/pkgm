@@ -19,7 +19,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
   }
 
   const bfswTsFile = ts`
-  import { defineWorkspace } from "@bfchain/pkgm";
+  import { defineWorkspace } from "@bfchain/pkgm-bfsw";
   import project from "./${name}/#bfsp";
   export default defineWorkspace(() => {
     const config: Bfsp.Workspace = {
@@ -46,7 +46,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
   console.log(`creating files`);
   await writeJsonConfig(path.join(root, name, "package.json"), packageJson);
   const bfspTsFile = ts`
-  import { defineConfig } from "@bfchain/pkgm";
+  import { defineConfig } from "@bfchain/pkgm-bfsp";
   export default defineConfig((info) => {
     const config: Bfsp.UserConfig = {
       name: "${name}",
@@ -71,7 +71,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
   const g = spawn("git", ["init"], { cwd: root });
   g.stdout?.pipe(process.stdout);
   g.stderr?.pipe(process.stderr);
-  const proc = spawn("node", [yarnPath, "add", "-D", "-W", "@bfchain/pkgm"], { cwd: root });
+  const proc = spawn("node", [yarnPath, "add", "-D", "-W", "@bfchain/pkgm-bfsw"], { cwd: root });
   proc.stdout?.pipe(process.stdout);
   proc.stderr?.pipe(process.stderr);
 
