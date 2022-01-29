@@ -17,7 +17,7 @@ import { watchDeps } from "@bfchain/pkgm-bfsp";
 import { createViteLogger, Debug } from "@bfchain/pkgm-bfsp";
 import { Closeable, SharedAsyncIterable } from "@bfchain/pkgm-bfsp";
 import { ViteConfigFactory } from "@bfchain/pkgm-bfsp";
-import { TaskSerial } from "./workspace";
+// import { TaskSerial } from "./workspace";
 
 export const workspaceItemDoDev = async (options: {
   root?: string;
@@ -112,7 +112,7 @@ export const workspaceItemDoDev = async (options: {
           viteLogger.info(
             chalk.green(`vite ${userConfig.userConfig.name} bundle end`)
           );
-          TaskSerial.activeWatcherNums--;
+          // TaskSerial.activeWatcherNums--;
           dev.close();
         }
       });
@@ -133,21 +133,21 @@ export const workspaceItemDoDev = async (options: {
   // subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
   // subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
   // depStream.onNext(() => abortable.restart("deps installed "));
-  subStreams.userConfigStream.onNext(() => {
-    TaskSerial.push(bfspUserConfig.userConfig.name);
-  });
-  subStreams.viteConfigStream.onNext(() => {
-    TaskSerial.push(bfspUserConfig.userConfig.name);
-  });
-  subStreams.tsConfigStream.onNext(() => {
-    TaskSerial.push(bfspUserConfig.userConfig.name);
-  });
-  depStream.onNext(() => {
-    TaskSerial.push(bfspUserConfig.userConfig.name);
-  });
+  // subStreams.userConfigStream.onNext(() => {
+  //   TaskSerial.push(bfspUserConfig.userConfig.name);
+  // });
+  // subStreams.viteConfigStream.onNext(() => {
+  //   TaskSerial.push(bfspUserConfig.userConfig.name);
+  // });
+  // subStreams.tsConfigStream.onNext(() => {
+  //   TaskSerial.push(bfspUserConfig.userConfig.name);
+  // });
+  // depStream.onNext(() => {
+  //   TaskSerial.push(bfspUserConfig.userConfig.name);
+  // });
 
-  if (subStreams.viteConfigStream.hasCurrent()) {
-    TaskSerial.push(bfspUserConfig.userConfig.name);
-  }
+  // if (subStreams.viteConfigStream.hasCurrent()) {
+  //   TaskSerial.push(bfspUserConfig.userConfig.name);
+  // }
   return abortable;
 };

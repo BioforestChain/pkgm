@@ -2,9 +2,10 @@ import path from "node:path";
 import { defineCommand } from "../bin";
 import { ALLOW_FORMATS } from "../src/configs/bfspUserConfig";
 import { getBfspBuildService } from "../src/buildService";
-import { Debug, Warn } from "../src/logger";
+import { Debug, Warn, createTscLogger } from "../src/logger";
 import { watchSingle } from "../src/watcher";
 import { doDev } from "./dev.core";
+import { runTsc } from "./tsc/runner";
 
 defineCommand(
   "dev",
@@ -15,7 +16,7 @@ defineCommand(
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
   } as const,
-  (params, args) => {
+  async (params, args) => {
     const warn = Warn("bfsp:bin/dev");
     const log = Debug("bfsp:bin/dev");
     let { format } = params;
@@ -34,6 +35,28 @@ defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
-    doDev({ root, format: format as Bfsp.Format, buildService: getBfspBuildService(watchSingle()) });
+
+    const tscLogger = createTscLogger();
+    const tscStoppable = await runTsc({
+      watch: true,
+      tsconfigPath: path.join(root, "tsconfig.json"),
+      onMessage: (s) => tscLogger.write(s),
+      onClear: () => tscLogger.clear(),
+    });
+
+    const {abortable, depStream, subStreams} = await doDev({ 
+      root, 
+      format: format as Bfsp.Format, 
+      buildService: getBfspBuildService(watchSingle()) 
+    });
+
+    /// 开始监听并触发编译
+    subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
+    subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
+    subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
+    depStream.onNext(() => abortable.restart("deps installed "));
+    if (subStreams.viteConfigStream.hasCurrent()) {
+      abortable.start();
+    }
   }
 );

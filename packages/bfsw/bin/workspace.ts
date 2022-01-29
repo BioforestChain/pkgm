@@ -1,26 +1,32 @@
+import os from "node:os";
 import chokidar from "chokidar";
 import { existsSync } from "node:fs";
-import os from "node:os";
 import path, { resolve } from "node:path";
+import { DepGraph } from "dependency-graph";
 import {
   Closeable,
   doBuild,
+  doDev,
+  activeRollupWatchers,
   installBuildDeps,
   notGitIgnored,
   readUserConfig,
   walkFiles,
   writeBuildConfigs,
+  runTsc,
+  Tasks,
+  writeJsonConfig,
+  BuildService,
+  createTscLogger,
+  getBfswVersion,
+  getTui
 } from "@bfchain/pkgm-bfsp";
-import { workspaceItemDoDev } from "./dev.core";
-import { workspaceItemDoBuild } from "./build.core";
-// import { doBuild } from "../build.core";
-import { runTsc } from "@bfchain/pkgm-bfsp";
-import { getBfswVersion, Tasks, writeJsonConfig } from "@bfchain/pkgm-bfsp";
-import { BuildService } from "@bfchain/pkgm-bfsp";
-import { watchWorkspace, states, registerAllUserConfigEvent, CbArgsForAllUserConfig } from "../src/watcher";
-import { DepGraph } from "dependency-graph";
-import { createTscLogger } from "@bfchain/pkgm-bfsp";
-import { getTui } from "@bfchain/pkgm-bfsp";
+import { 
+  watchWorkspace, 
+  states, 
+  registerAllUserConfigEvent, 
+  CbArgsForAllUserConfig 
+} from "../src/watcher";
 import { getBfswBuildService } from "../src/buildService";
 
 let root = "";
@@ -191,35 +197,9 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
   }
 }
 
-async function runTasks() {
-  const { status } = getTui();
-  const name = pendingTasks.next();
-  if (name) {
-    const state = states.findByName(name);
-    if (state) {
-      const resolvedDir = path.join(root, state.path);
-
-      // build task
-      status.postMsg(`compiling ${name}`);
-      const closable = await workspaceItemDoBuild({
-        root: resolvedDir,
-        buildService: bfswBuildService!,
-      });
-      // const closable = await doBuild({root: resolvedDir, buildService: bfswBuildService! });
-      // closable?.start();
-      status.postMsg(`${name} compilation finished`);
-    }
-  }
-
-  setTimeout(async () => {
-    await runTasks();
-  }, 1000);
-}
-
 // 任务串行化
 export class TaskSerial {
-  public static activeWatcherNums: number = 0;
-  public static queue = [] as string[];
+  public queue = [] as string[];
 
   constructor(public watcherLimit: number = 1) {
     if (this.watcherLimit < 1) {
@@ -227,9 +207,9 @@ export class TaskSerial {
     }
   }
 
-  public static push(name: string) {
-    if (!TaskSerial.queue.includes(name)) {
-      TaskSerial.queue.push(name);
+  public push(name: string) {
+    if (!this.queue.includes(name)) {
+      this.queue.push(name);
     }
   }
 
@@ -268,11 +248,29 @@ export class TaskSerial {
           const resolvedDir = path.join(root, state.path);
 
           status.postMsg(`compiling ${name}`);
-          const closable = await workspaceItemDoDev({
+          const {abortable, depStream, subStreams} = await doDev({
             root: resolvedDir,
             buildService: bfswBuildService!,
           });
-          runningTasks.set(state.userConfig.name, closable);
+
+          subStreams.userConfigStream.onNext(() => {
+            this.push(name);
+          });
+          subStreams.viteConfigStream.onNext(() => {
+            this.push(name);
+          });
+          subStreams.tsConfigStream.onNext(() => {
+            this.push(name);
+          });
+          depStream.onNext(() => {
+            this.push(name);
+          });
+
+          if (subStreams.viteConfigStream.hasCurrent()) {
+            this.push(name);
+          }
+
+          runningTasks.set(state.userConfig.name, abortable);
           status.postMsg(`${name} compilation finished`);
         }
       }
@@ -282,7 +280,7 @@ export class TaskSerial {
   }
 
   addRollupWatcher() {
-    while (TaskSerial.queue.length > 0 && TaskSerial.activeWatcherNums < this.watcherLimit) {
+    while (this.queue.length > 0 && activeRollupWatchers.size < this.watcherLimit) {
       this.execWatcher();
     }
 
@@ -292,11 +290,11 @@ export class TaskSerial {
   }
 
   execWatcher() {
-    const name = TaskSerial.queue.shift()!;
+    const name = this.queue.shift()!;
     const closable = runningTasks.get(name);
 
     if (closable) {
-      TaskSerial.activeWatcherNums++;
+      activeRollupWatchers.add(name);
       closable.restart();
     }
   }

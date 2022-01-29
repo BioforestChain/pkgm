@@ -13,8 +13,10 @@ import { BuildService } from "../src/buildService";
 import { watchDeps } from "../src/deps";
 import { createTscLogger, createViteLogger, Debug } from "../src/logger";
 import { Closeable, SharedAsyncIterable } from "../src/toolkit";
-import { runTsc } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
+
+/// 为了全局获取RollupWatcher监听器数量
+export const activeRollupWatchers: Set<string> = new Set();
 
 export const doDev = async (options: { root?: string; format?: Bfsp.Format; buildService: BuildService }) => {
   const log = Debug("bfsp:bin/dev");
@@ -32,14 +34,6 @@ export const doDev = async (options: { root?: string; format?: Bfsp.Format; buil
 
   /// 监听项目变动
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
-
-  const tscLogger = createTscLogger();
-  const tscStoppable = runTsc({
-    watch: true,
-    tsconfigPath: path.join(root, "tsconfig.json"),
-    onMessage: (s) => tscLogger.write(s),
-    onClear: () => tscLogger.clear(),
-  });
 
   const abortable = Closeable<string, string>("bin:dev", async (reasons) => {
     /**防抖，避免不必要的多次调用 */
@@ -92,8 +86,19 @@ export const doDev = async (options: { root?: string; format?: Bfsp.Format; buil
       closeSign.onSuccess((reason) => {
         log("close bfsp build, reason: ", reason);
         preViteConfigBuildOptions = undefined;
-        dev.close();
+        // dev.close();
         // tscStoppable.stop();
+      });
+
+      dev.on("event", (event) => {
+        // bundle结束，关闭watch
+        if (event.code === "BUNDLE_END") {
+          viteLogger.info(
+            chalk.green(`vite ${userConfig.userConfig.name} bundle end`)
+          );
+          activeRollupWatchers.delete(userConfig.userConfig.name);
+          dev.close();
+        }
       });
     })();
 
@@ -102,13 +107,9 @@ export const doDev = async (options: { root?: string; format?: Bfsp.Format; buil
     };
   });
 
-  /// 开始监听并触发编译
-  subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
-  subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
-  subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
-  depStream.onNext(() => abortable.restart("deps installed "));
-  if (subStreams.viteConfigStream.hasCurrent()) {
-    abortable.start();
-  }
-  return abortable;
+  return {
+    abortable,
+    depStream,
+    subStreams
+  };
 };
