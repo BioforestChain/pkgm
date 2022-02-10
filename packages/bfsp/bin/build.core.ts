@@ -301,6 +301,7 @@ export const doBuild = async (options: {
         cacheBuildOutDir,
         stateReporter: singleReporter,
       });
+      await buildService.afterSingleBuild({ buildOutDir, config: x });
       buildOutDirs.add(buildOutDir);
     }
 

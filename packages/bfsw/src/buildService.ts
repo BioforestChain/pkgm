@@ -1,5 +1,10 @@
-import { BuildService, createTscLogger, Loopable, walkFiles } from "@bfchain/pkgm-bfsp";
-import { isFileBelongs, states, watchMulti } from "./watcher";
+import os from "node:os";
+import path from "node:path";
+import fs from "node:fs";
+import { BuildService, Loopable, walkFiles } from "@bfchain/pkgm-bfsp";
+import { symlink, unlink, stat, mkdir } from "node:fs/promises";
+import { getRoot, isFileBelongs, states, watchMulti } from "./watcher";
+
 export function getBfswBuildService(watcher: Bfsp.AppWatcher): BuildService {
   return {
     watcher,
@@ -33,6 +38,20 @@ export function getBfswBuildService(watcher: Bfsp.AppWatcher): BuildService {
     },
     async calculateRefsByPath(p: string) {
       return await states.calculateRefsByPath(p);
+    },
+    async afterSingleBuild(options: { buildOutDir: string; config: Bfsp.UserConfig }) {
+      const root = getRoot();
+      const symlinkType = os.platform() === "win32" ? "junction" : "dir";
+      const symlinkTarget = path.join(root, "node_modules", options.config.name);
+      if (fs.existsSync(symlinkTarget)) {
+        const s = await stat(symlinkTarget);
+        await unlink(symlinkTarget);
+      }
+      const symlinkTargetDirName = path.dirname(symlinkTarget);
+      if (!fs.existsSync(symlinkTargetDirName)) {
+        await mkdir(symlinkTargetDirName, { recursive: true });
+      }
+      await symlink(options.buildOutDir, symlinkTarget, symlinkType);
     },
     rollup: {
       isExternal(source: string, importer: string, isResolved: boolean) {

@@ -221,6 +221,8 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       map.set(p.name, cfgs);
     }
 
+    await updatePackageJson();
+
     await installBuildDeps({ root }); // 等待依赖安装完成
 
     await rootTscCompilation(); // 等待tsc编译成功

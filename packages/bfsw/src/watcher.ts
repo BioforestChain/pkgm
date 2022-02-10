@@ -100,6 +100,9 @@ export const getValidProjects = async () => {
   return [...validProjects.values()];
 };
 
+export const getRoot = () => {
+  return root;
+};
 const _pathToKey = (p: string) => {
   let relativePath = p;
   if (path.isAbsolute(p)) {
