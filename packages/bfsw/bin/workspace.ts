@@ -1,32 +1,45 @@
-import chokidar from "chokidar";
-import { existsSync } from "node:fs";
 import os from "node:os";
+import chokidar from "chokidar";
+import { existsSync, mkdirSync } from "node:fs";
 import path, { resolve } from "node:path";
+import { DepGraph } from "dependency-graph";
 import {
   Closeable,
   doBuild,
+  doDev,
   installBuildDeps,
   notGitIgnored,
   readUserConfig,
   walkFiles,
   writeBuildConfigs,
+  runTsc,
+  Tasks,
+  writeJsonConfig,
+  BuildService,
+  createTscLogger,
+  getBfswVersion,
+  getTui,
+  getBfspUserConfig,
+  watchBfspProjectConfig,
+  watchDeps,
+  writeBfspProjectConfig,
+  toPosixPath,
 } from "@bfchain/pkgm-bfsp";
-import { workspaceItemDoDev } from "./dev.core";
-import { workspaceItemDoBuild } from "./build.core";
-// import { doBuild } from "../build.core";
-import { runTsc } from "@bfchain/pkgm-bfsp";
-import { getBfswVersion, Tasks, writeJsonConfig } from "@bfchain/pkgm-bfsp";
-import { BuildService } from "@bfchain/pkgm-bfsp";
-import { watchWorkspace, states, registerAllUserConfigEvent, CbArgsForAllUserConfig } from "../src/watcher";
-import { DepGraph } from "dependency-graph";
-import { createTscLogger } from "@bfchain/pkgm-bfsp";
-import { getTui } from "@bfchain/pkgm-bfsp";
+import {
+  watchWorkspace,
+  states,
+  registerAllUserConfigEvent,
+  CbArgsForAllUserConfig,
+  getValidProjects,
+} from "../src/watcher";
 import { getBfswBuildService } from "../src/buildService";
+import { pathToFileURL } from "node:url";
 
 let root = "";
 let appWatcher: ReturnType<typeof watchWorkspace>;
 let bfswBuildService: BuildService | undefined;
-let runningTasks: Map<string, ReturnType<typeof Closeable>> = new Map();
+let runningTasks: Map<string, BFChainUtil.PromiseReturnType<typeof runDevTask>> = new Map();
+let tscClosable: ReturnType<typeof runTsc>;
 const pendingTasks = new Tasks<string>();
 const dg = new DepGraph();
 
@@ -58,16 +71,31 @@ async function updateWorkspaceTsConfig() {
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
     },
-    references: [...states.paths()].map((x) => ({
-      path: path.join(x, `tsconfig.json`),
-    })),
+    references: [...states.paths()].flatMap((x) => {
+      return [
+        {
+          path: path.join(x, `tsconfig.isolated.json`),
+        },
+      ];
+    }),
     // files: tsFilesLists.notestFiles.toArray(),
-    files: [] as string[],
+    files: [],
   };
   await writeJsonConfig(path.join(root, "tsconfig.json"), tsConfig);
 }
 async function updatePackageJson() {
   const bfswVersion = getBfswVersion();
+
+  // const buildDeps = {} as { [index: string]: string };
+  // for (const cfg of states.userConfigs()) {
+  //   cfg.build?.forEach((x) => {
+  //     const p = path.join(cfg.name, "build", x.name!);
+  //     if (!existsSync(p)) {
+  //       mkdirSync(p, { recursive: true });
+  //     }
+  //     buildDeps[x.name!] = `${toPosixPath(p)}`;
+  //   });
+  // }
 
   const packageJson = {
     name: "bfsp-workspace",
@@ -76,6 +104,9 @@ async function updatePackageJson() {
     devDependencies: {
       "@bfchain/pkgm-bfsw": `^${bfswVersion}`,
     },
+    // dependencies: {
+    //   ...buildDeps,
+    // },
   };
   await writeJsonConfig(path.join(root, `package.json`), packageJson);
 }
@@ -93,10 +124,14 @@ async function handleBfspWatcherEvent(args: CbArgsForAllUserConfig) {
   if (type !== "change") {
     // 新增删除都需要更新根tsconfig.json
     await updateWorkspaceTsConfig();
+    // 重启tsc，@FIXME: 等待 https://github.com/microsoft/TypeScript/issues/47799 修复
+    tscClosable && tscClosable.stop();
+    runRootTsc();
   }
   await updatePackageJson();
   if (!runningTasks.has(cfg.name)) {
-    pendingTasks.add(cfg.name);
+    const task = await runDevTask({ root: args.path });
+    runningTasks.set(cfg.name, task);
   }
 }
 function runRootTsc() {
@@ -105,7 +140,7 @@ function runRootTsc() {
     setTimeout(() => runRootTsc(), 1000);
   } else {
     const logger = createTscLogger();
-    runTsc({
+    tscClosable = runTsc({
       tsconfigPath,
       watch: true,
       onSuccess: () => {},
@@ -129,14 +164,43 @@ function rootTscCompilation() {
     });
   });
 }
+async function runDevTask(options: { root: string }) {
+  const p = path.join(root, options.root);
+  const buildService = bfswBuildService!;
+  const bfspUserConfig = await getBfspUserConfig(p);
+  const projectConfig = { projectDirpath: p, bfspUserConfig };
+  const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
+  const subStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
+  const depStream = watchDeps(p, subStreams.packageJsonStream, { runYarn: false });
+
+  const task = await doDev({
+    root: p,
+    buildService,
+    subStreams,
+  });
+
+  const { abortable } = task;
+  /// 开始监听并触发编译
+  subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
+  subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
+  subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
+  depStream.onNext(async () => {
+    await installBuildDeps({ root });
+    abortable.restart("deps installed ");
+  });
+  if (subStreams.viteConfigStream.hasCurrent()) {
+    abortable.start();
+  }
+  return task;
+}
 export async function workspaceInit(options: { root: string; mode: "dev" | "build"; watcherLimit?: number }) {
   root = options.root;
-  registerAllUserConfigEvent(handleBfspWatcherEvent);
 
   appWatcher = watchWorkspace({ root });
   bfswBuildService = getBfswBuildService(appWatcher);
 
   if (options.mode === "dev") {
+    registerAllUserConfigEvent(handleBfspWatcherEvent);
     runRootTsc();
     let watcherLimit = options.watcherLimit;
     const cpus = os.cpus().length;
@@ -146,14 +210,15 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     }
 
     // 任务串行化(包括 rollup watcher 任务问题)
-    const taskSerial = new TaskSerial(watcherLimit);
-    await taskSerial.runTask();
-    taskSerial.addRollupWatcher();
+    // const taskSerial = new TaskSerial(watcherLimit);
+    // await taskSerial.runTask();
+    // taskSerial.addRollupWatcher();
   } else {
     const map = new Map<string, BFChainUtil.PromiseReturnType<typeof writeBuildConfigs>>();
-    for (const p of states.paths()) {
-      const cfgs = await writeBuildConfigs({ root: p, buildService: bfswBuildService });
-      map.set(p, cfgs);
+    const projects = await getValidProjects();
+    for (const p of projects) {
+      const cfgs = await writeBuildConfigs({ root: path.join(root, p.path), buildService: bfswBuildService });
+      map.set(p.name, cfgs);
     }
 
     await installBuildDeps({ root }); // 等待依赖安装完成
@@ -163,16 +228,17 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     map.forEach((v, k) => {
       const cfg = v.bfspUserConfig.userConfig;
       pendingTasks.add(cfg.name);
-      // dg.addNode(cfg.name);
-      // cfg.deps?.map((x) => {
-      //   dg.addNode(x);
-      //   dg.addDependency(cfg.name, x);
-      // });
+      dg.addNode(cfg.name);
+      cfg.deps?.map((x) => {
+        dg.addNode(x);
+        dg.addDependency(cfg.name, x);
+      });
     });
     pendingTasks.useOrder(dg.overallOrder());
 
     const runBuildTask = async () => {
       if (pendingTasks.remaining() === 0) {
+        // await installBuildDeps({ root }); // 重新跑一遍yarn，保证build出来的文件被正确link到node_modules下
         getTui().status.postMsg("all build tasks finished");
         return;
       }
@@ -180,7 +246,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       if (name) {
         const s = states.findByName(name);
         if (s) {
-          await doBuild({ root: s.path, buildService: bfswBuildService!, cfgs: map.get(name)! });
+          await doBuild({ root: path.join(root, s.path), buildService: bfswBuildService!, cfgs: map.get(name)! });
         }
       }
       setTimeout(async () => {
@@ -191,113 +257,105 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
   }
 }
 
-async function runTasks() {
-  const { status } = getTui();
-  const name = pendingTasks.next();
-  if (name) {
-    const state = states.findByName(name);
-    if (state) {
-      const resolvedDir = path.join(root, state.path);
+// // 任务串行化
+// export class TaskSerial {
+//   public queue = [] as string[];
 
-      // build task
-      status.postMsg(`compiling ${name}`);
-      const closable = await workspaceItemDoBuild({
-        root: resolvedDir,
-        buildService: bfswBuildService!,
-      });
-      // const closable = await doBuild({root: resolvedDir, buildService: bfswBuildService! });
-      // closable?.start();
-      status.postMsg(`${name} compilation finished`);
-    }
-  }
+//   constructor(public watcherLimit: number = 1) {
+//     if (this.watcherLimit < 1) {
+//       throw "watcherLimit must be interger greater then 1.";
+//     }
+//   }
 
-  setTimeout(async () => {
-    await runTasks();
-  }, 1000);
-}
+//   public push(name: string) {
+//     if (!this.queue.includes(name)) {
+//       this.queue.push(name);
+//     }
+//   }
 
-// 任务串行化
-export class TaskSerial {
-  public static activeWatcherNums: number = 0;
-  public static queue = [] as string[];
+//   async getOrder() {
+//     const orders = dg.overallOrder().map((x) => states.findByName(x)?.path);
+//     return orders;
+//   }
 
-  constructor(public watcherLimit: number = 1) {
-    if (this.watcherLimit < 1) {
-      throw "watcherLimit must be interger greater then 1.";
-    }
-  }
+//   async runTask() {
+//     let pendingTasksNums = pendingTasks.remaining();
 
-  public static push(name: string) {
-    if (!TaskSerial.queue.includes(name)) {
-      TaskSerial.queue.push(name);
-    }
-  }
+//     if (pendingTasksNums > 0) {
+//       await this.execTask();
+//     } else {
+//       setTimeout(async () => {
+//         await this.runTask();
+//       }, 1000);
+//     }
+//   }
 
-  async getOrder() {
-    const orders = dg.overallOrder().map((x) => states.findByName(x)?.path);
-    return orders;
-  }
+//   async execTask() {
+//     const { status } = getTui();
+//     const orders = await this.getOrder();
+//     const idx = orders.findIndex((x) => x === undefined);
 
-  async runTask() {
-    let pendingTasksNums = pendingTasks.remaining();
+//     if (idx >= 0) {
+//       return;
+//     } else {
+//       pendingTasks.useOrder(orders as string[]);
+//       const name = pendingTasks.next();
 
-    if (pendingTasksNums > 0) {
-      await this.execTask();
-    } else {
-      setTimeout(async () => {
-        await this.runTask();
-      }, 1000);
-    }
-  }
+//       if (name) {
+//         const state = states.findByName(name);
 
-  async execTask() {
-    const { status } = getTui();
-    const orders = await this.getOrder();
-    const idx = orders.findIndex((x) => x === undefined);
+//         if (state) {
+//           const resolvedDir = path.join(root, state.path);
 
-    if (idx >= 0) {
-      return;
-    } else {
-      pendingTasks.useOrder(orders as string[]);
-      const name = pendingTasks.next();
+//           status.postMsg(`compiling ${name}`);
+//           const { abortable, depStream, subStreams } = await doDev({
+//             root: resolvedDir,
+//             buildService: bfswBuildService!,
+//           });
 
-      if (name) {
-        const state = states.findByName(name);
+//           subStreams.userConfigStream.onNext(() => {
+//             this.push(name);
+//           });
+//           subStreams.viteConfigStream.onNext(() => {
+//             this.push(name);
+//           });
+//           subStreams.tsConfigStream.onNext(() => {
+//             this.push(name);
+//           });
+//           depStream.onNext(() => {
+//             this.push(name);
+//           });
 
-        if (state) {
-          const resolvedDir = path.join(root, state.path);
+//           if (subStreams.viteConfigStream.hasCurrent()) {
+//             this.push(name);
+//           }
 
-          status.postMsg(`compiling ${name}`);
-          const closable = await workspaceItemDoDev({
-            root: resolvedDir,
-            buildService: bfswBuildService!,
-          });
-          runningTasks.set(state.userConfig.name, closable);
-          status.postMsg(`${name} compilation finished`);
-        }
-      }
-    }
+//           runningTasks.set(state.userConfig.name, abortable);
+//           status.postMsg(`${name} compilation finished`);
+//         }
+//       }
+//     }
 
-    await this.runTask();
-  }
+//     await this.runTask();
+//   }
 
-  addRollupWatcher() {
-    while (TaskSerial.queue.length > 0 && TaskSerial.activeWatcherNums < this.watcherLimit) {
-      this.execWatcher();
-    }
+//   addRollupWatcher() {
+//     while (this.queue.length > 0 && activeRollupWatchers.size < this.watcherLimit) {
+//       this.execWatcher();
+//     }
 
-    setTimeout(() => {
-      this.addRollupWatcher();
-    }, 1000);
-  }
+//     setTimeout(() => {
+//       this.addRollupWatcher();
+//     }, 1000);
+//   }
 
-  execWatcher() {
-    const name = TaskSerial.queue.shift()!;
-    const closable = runningTasks.get(name);
+//   execWatcher() {
+//     const name = this.queue.shift()!;
+//     const closable = runningTasks.get(name);
 
-    if (closable) {
-      TaskSerial.activeWatcherNums++;
-      closable.restart();
-    }
-  }
-}
+//     if (closable) {
+//       activeRollupWatchers.add(name);
+//       closable.restart();
+//     }
+//   }
+// }

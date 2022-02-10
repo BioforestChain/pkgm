@@ -19,4 +19,5 @@ export * from "../bin/terser/runner";
 export * from "../bin/tsc/runner";
 export * from "../bin/vite/configFactory";
 export { doBuild, writeBuildConfigs, installBuildDeps } from "../bin/build.core";
+export { doDev } from "../bin/dev.core";
 // import {toPosixPath} from 'typings/index'

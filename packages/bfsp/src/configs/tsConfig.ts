@@ -339,7 +339,7 @@ export const generateTsConfig = async (
 
   // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
   // const tsRefs = await multi.getReferences(projectDirpath);
-
+  const depRefs = await buildService.calculateRefsByPath(projectDirpath);
   const tsConfig = {
     compilerOptions: {
       composite: true,
@@ -376,6 +376,7 @@ export const generateTsConfig = async (
       {
         path: "./tsconfig.typings.json",
       },
+      ...depRefs
     ],
     // files: tsFilesLists.notestFiles.toArray(),
     files: [] as string[],
@@ -393,6 +394,7 @@ export const generateTsConfig = async (
       {
         path: "./tsconfig.typings.json",
       },
+      ...depRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
     ],
   };
 
@@ -520,7 +522,7 @@ export const watchTsConfig = (
 
     const paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);
     tsConfig.json.compilerOptions.paths = paths;
-    // const multiRefs = await multi.getReferences(projectDirpath);
+    const depRefs = await buildService.calculateRefsByPath(projectDirpath);
 
     const refs = [
       {
@@ -529,14 +531,14 @@ export const watchTsConfig = (
       {
         path: "./tsconfig.typings.json",
       },
-      // ...multiRefs,
+      ...depRefs,
     ];
     tsConfig.json.references = refs;
     tsConfig.isolatedJson.references = [
       {
         path: "./tsconfig.typings.json",
       },
-      // ...multiRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
+      ...depRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
     ];
     const newTsConfigJson = JSON.stringify({
       json: tsConfig.json,

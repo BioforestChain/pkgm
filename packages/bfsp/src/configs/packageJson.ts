@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { consts } from "..";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { getBfspVersion, writeJsonConfig } from "../../bin/util";
 import { Debug } from "../logger";
@@ -67,7 +68,7 @@ export const generatePackageJson = async (
     packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
       import: getDistFilepath("esm", output),
-      types: `./${toPosixPath(input.replace(/\.ts$/, ".d.ts"))}`,
+      types: `./${toPosixPath(path.join(consts.TscOutRootPath, "isolated", input.replace(/\.ts$/, ".d.ts")))}`,
     };
   }
   const defaultExportConfig = packageJson.exports["."];
