@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { Worker } from "node:worker_threads";
 import type { RollupWatcher } from "./shim";
-import {  buildBfsp } from "./shim";
+import { buildBfsp } from "./shim";
 import { $BfspUserConfig, getBfspUserConfig } from "../src";
 import { watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { BuildService } from "../src/buildService";
@@ -15,27 +15,27 @@ import { createTscLogger, createViteLogger, Debug } from "../src/logger";
 import { Closeable, SharedAsyncIterable } from "../src/toolkit";
 import { ViteConfigFactory } from "./vite/configFactory";
 
-/// 为了全局获取RollupWatcher监听器数量
-export const activeRollupWatchers: Set<string> = new Set();
-
-export const doDev = async (options: { root?: string; format?: Bfsp.Format; buildService: BuildService }) => {
+export const doDev = async (options: {
+  root?: string;
+  format?: Bfsp.Format;
+  buildService: BuildService;
+  subStreams: ReturnType<typeof watchBfspProjectConfig>;
+}) => {
   const log = Debug("bfsp:bin/dev");
 
   // const cwd = process.cwd();
   // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
-  const { root = process.cwd(), format, buildService } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
+  const { root = process.cwd(), format, buildService, subStreams } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
 
   log("root", root);
-  const bfspUserConfig = await getBfspUserConfig(root);
-  const projectConfig = { projectDirpath: root, bfspUserConfig };
-  const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
-  const subStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
-  const depStream = watchDeps(root, subStreams.packageJsonStream, { runYarn: true });
 
   /// 监听项目变动
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
 
-  const abortable = Closeable<string, string>("bin:dev", async (reasons) => {
+  let doneCb: (name: string) => BFChainUtil.PromiseMaybe<void>;
+  let abortable: ReturnType<typeof Closeable>;
+
+  abortable = Closeable<string, string>("bin:dev", async (reasons) => {
     /**防抖，避免不必要的多次调用 */
     const closeSign = new PromiseOut<unknown>();
     (async () => {
@@ -90,14 +90,11 @@ export const doDev = async (options: { root?: string; format?: Bfsp.Format; buil
         // tscStoppable.stop();
       });
 
-      dev.on("event", (event) => {
+      dev.on("event", async (event) => {
         // bundle结束，关闭watch
         if (event.code === "BUNDLE_END") {
-          viteLogger.info(
-            chalk.green(`vite ${userConfig.userConfig.name} bundle end`)
-          );
-          activeRollupWatchers.delete(userConfig.userConfig.name);
-          dev.close();
+          viteLogger.info(chalk.green(`vite ${userConfig.userConfig.name} bundle end`));
+          doneCb && (await doneCb(userConfig.userConfig.name));
         }
       });
     })();
@@ -108,8 +105,9 @@ export const doDev = async (options: { root?: string; format?: Bfsp.Format; buil
   });
 
   return {
-    abortable,
-    depStream,
-    subStreams
+    abortable: abortable!,
+    onDone: (cb: (name: string) => BFChainUtil.PromiseMaybe<void>) => {
+      doneCb = cb;
+    },
   };
 };

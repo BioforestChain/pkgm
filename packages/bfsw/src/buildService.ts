@@ -31,6 +31,9 @@ export function getBfswBuildService(watcher: Bfsp.AppWatcher): BuildService {
       const multiStream = watchMulti();
       multiStream.onNext(() => looper.loop);
     },
+    async calculateRefsByPath(p: string) {
+      return await states.calculateRefsByPath(p);
+    },
     rollup: {
       isExternal(source: string, importer: string, isResolved: boolean) {
         // 子包标记为外部

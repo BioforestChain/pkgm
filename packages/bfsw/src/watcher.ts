@@ -1,5 +1,5 @@
-import chokidar from 'chokidar'
-import { SharedFollower, Loopable, SharedAsyncIterable, readUserConfig } from "@bfchain/pkgm-bfsp";
+import chokidar from "chokidar";
+import { SharedFollower, Loopable, SharedAsyncIterable, readUserConfig, toPosixPath } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 import { readWorkspaceConfig } from "./workspaceConfig";
 /// workspace
@@ -13,6 +13,9 @@ class States {
   }
   paths() {
     return this._pathMap.keys();
+  }
+  states() {
+    return [...this._nameMap.values()];
   }
   add(p: string, s: State) {
     this._pathMap.set(p, s);
@@ -44,6 +47,38 @@ class States {
       this._pathMap.delete(s.path);
     }
   }
+  async calculateRefsByPath(baseDir: string) {
+    const refSet = new Set<string>();
+    // 计算ref
+    // 假设当前查询路径是 ./abc/core , 被计算的路径与计算结果对应如下：
+    // ./abc/core/module => ./module
+    // ./abc/util => ../util
+    const addToSet = (x: string | undefined) => {
+      if (!x) {
+        return;
+      }
+      const p1 = path.join(root, x);
+      const p = path.relative(baseDir, p1);
+      if (p === "") {
+        return; // 自己不需要包含
+      }
+      refSet.add(p);
+    };
+
+    // deps字段里的需要加入
+    const k = _pathToKey(baseDir);
+    const deps = this.findByPath(k)?.userConfig.deps;
+    if (deps) {
+      const pathList = deps.map((x) => this.findByName(x)).map((x) => x?.path);
+      pathList?.forEach((x) => {
+        addToSet(x);
+      });
+    }
+    const refs = [...refSet.values()].map((x) => ({ path: path.join(x, "tsconfig.json") }));
+
+    // console.log(`refs for ${baseDir}`, refs);
+    return refs;
+  }
 }
 
 export interface CbArgsForAllUserConfig {
@@ -53,19 +88,17 @@ export interface CbArgsForAllUserConfig {
 }
 
 let root = "";
-const userConfigCbMap: Map<
-  string,
-  ((p: string, type: Bfsp.WatcherAction) => BFChainUtil.PromiseMaybe<void>)[]
-> = new Map();
-const tsCbMap: Map<
-  string,
-  ((p: string, type: Bfsp.WatcherAction) => BFChainUtil.PromiseMaybe<void>)[]
-> = new Map();
-const allUserConfigCbs: ((
-  args: CbArgsForAllUserConfig
-) => BFChainUtil.PromiseMaybe<void>)[] = [];
+const userConfigCbMap: Map<string, ((p: string, type: Bfsp.WatcherAction) => BFChainUtil.PromiseMaybe<void>)[]> =
+  new Map();
+const tsCbMap: Map<string, ((p: string, type: Bfsp.WatcherAction) => BFChainUtil.PromiseMaybe<void>)[]> = new Map();
+const allUserConfigCbs: ((args: CbArgsForAllUserConfig) => BFChainUtil.PromiseMaybe<void>)[] = [];
 const validProjects = new Map<string, Bfsw.WorkspaceUserConfig>();
 export const states = new States();
+
+export const getValidProjects = async () => {
+  await updateWorkspaceConfig();
+  return [...validProjects.values()];
+};
 
 const _pathToKey = (p: string) => {
   let relativePath = p;
@@ -75,7 +108,7 @@ const _pathToKey = (p: string) => {
   if (relativePath === "") {
     relativePath = ".";
   }
-  return relativePath;
+  return toPosixPath(relativePath);
 };
 
 const _getClosestRoot = (p: string) => {
@@ -112,8 +145,10 @@ async function updateWorkspaceConfig() {
   const workspace = await readWorkspaceConfig(root, { refresh: true });
   if (workspace) {
     validProjects.clear();
+    states.clear();
     workspace.projects.forEach((x) => {
       validProjects.set(x.name, x);
+      states.add(_pathToKey(x.path), { userConfig: x, path: x.path });
     });
   }
 }
@@ -125,18 +160,14 @@ async function handleBfswWatcherEvent(p: string, type: Bfsp.WatcherAction) {
   }
   await updateWorkspaceConfig();
 }
-export function registerAllUserConfigEvent(
-  cb: (args: CbArgsForAllUserConfig) => BFChainUtil.PromiseMaybe<void>
-) {
+export function registerAllUserConfigEvent(cb: (args: CbArgsForAllUserConfig) => BFChainUtil.PromiseMaybe<void>) {
   allUserConfigCbs.push(cb);
 }
 export function watchWorkspace(options: { root: string }) {
   root = options.root;
   const watchBfsw = () => {
     const watcher = chokidar.watch(
-      ["#bfsw.json", "#bfsw.ts", "#bfsw.mts", "#bfsw.mtsx"].map(
-        (x) => `./**/${x}`
-      ),
+      ["#bfsw.json", "#bfsw.ts", "#bfsw.mts", "#bfsw.mtsx"].map((x) => `./**/${x}`),
       { cwd: root, ignoreInitial: false, ignored: [/node_modules*/, /\.bfsp*/] }
     );
     watcher.on("add", (p) => {
@@ -150,17 +181,14 @@ export function watchWorkspace(options: { root: string }) {
     });
   };
 
-  const handleBfspWatcherEvent = async (
-    p: string,
-    type: Bfsp.WatcherAction
-  ) => {
+  const handleBfspWatcherEvent = async (p: string, type: Bfsp.WatcherAction) => {
     await updateWorkspaceConfig(); // 只要bfsp有变动，就更新一下workspace， TODO: 后期优化
     const dirname = path.dirname(p);
     const resolvedDir = path.resolve(dirname);
     const key = _pathToKey(dirname);
     if (type === "unlink") {
       const state = states.findByPath(key);
-      states.delByPath(key);
+      // states.delByPath(key);
       for (const cb of allUserConfigCbs) {
         await cb({ cfg: state!.userConfig, type, path: dirname });
       }
@@ -173,7 +201,7 @@ export function watchWorkspace(options: { root: string }) {
     if (!validProjects.has(config.name)) {
       return;
     }
-    states.add(key, { userConfig: config, path: dirname });
+    // states.add(key, { userConfig: config, path: dirname });
 
     for (const cb of allUserConfigCbs) {
       await cb({ cfg: config, type, path: dirname });
@@ -189,9 +217,7 @@ export function watchWorkspace(options: { root: string }) {
 
   const watchBfsp = () => {
     const watcher = chokidar.watch(
-      ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"].map(
-        (x) => `./**/${x}`
-      ),
+      ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"].map((x) => `./**/${x}`),
       { cwd: root, ignoreInitial: false, ignored: [/node_modules*/, /\.bfsp*/] }
     );
     watcher.on("add", (p) => {
@@ -216,15 +242,7 @@ export function watchWorkspace(options: { root: string }) {
   };
   const watchTsFiles = () => {
     const watcher = chokidar.watch(
-      [
-        "assets/**/*.json",
-        "**/*.ts",
-        "**/*.tsx",
-        "**/*.cts",
-        "**/*.mts",
-        "**/*.ctsx",
-        "**/*.mtsx",
-      ],
+      ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
       {
         cwd: root,
         ignoreInitial: false,
@@ -248,10 +266,7 @@ export function watchWorkspace(options: { root: string }) {
   watchBfsp();
   watchTsFiles();
   return {
-    watchTs(
-      root: string,
-      cb: (p: string, type: Bfsp.WatcherAction) => void
-    ): BFChainUtil.PromiseMaybe<void> {
+    watchTs(root: string, cb: (p: string, type: Bfsp.WatcherAction) => void): BFChainUtil.PromiseMaybe<void> {
       const key = _pathToKey(root);
       const cbs = tsCbMap.get(key);
       if (cbs) {
@@ -260,10 +275,7 @@ export function watchWorkspace(options: { root: string }) {
         tsCbMap.set(key, [cb]);
       }
     },
-    watchUserConfig(
-      root: string,
-      cb: (p: string, type: Bfsp.WatcherAction) => void
-    ): BFChainUtil.PromiseMaybe<void> {
+    watchUserConfig(root: string, cb: (p: string, type: Bfsp.WatcherAction) => void): BFChainUtil.PromiseMaybe<void> {
       const key = _pathToKey(root);
       const cbs = userConfigCbMap.get(key);
       if (cbs) {
