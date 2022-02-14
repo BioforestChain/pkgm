@@ -4,7 +4,7 @@
   "types": "*.ts",
   "type": "module",
   "version": "1.0.0",
-  "packageManager": "yarn",
+  "packageManager": "yarn@1.22.0",
   "engines": {
     "node": ">=14.19.0"
   },

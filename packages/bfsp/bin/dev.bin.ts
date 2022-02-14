@@ -38,12 +38,6 @@ defineCommand(
     }
 
     const tscLogger = createTscLogger();
-    const tscStoppable = await runTsc({
-      watch: true,
-      tsconfigPath: path.join(root, "tsconfig.json"),
-      onMessage: (s) => tscLogger.write(s),
-      onClear: () => tscLogger.clear(),
-    });
 
     const buildService = getBfspBuildService(watchSingle());
 
@@ -53,13 +47,19 @@ defineCommand(
     const subStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
     const depStream = watchDeps(root, subStreams.packageJsonStream, { runYarn: true });
 
+    const tscStoppable = runTsc({
+      watch: true,
+      tsconfigPath: path.join(root, "tsconfig.json"),
+      onMessage: (s) => tscLogger.write(s),
+      onClear: () => tscLogger.clear(),
+    });
+
     const task = await doDev({
       root,
       format: format as Bfsp.Format,
       buildService,
       subStreams,
     });
-
     const { abortable } = task;
     /// 开始监听并触发编译
     subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
