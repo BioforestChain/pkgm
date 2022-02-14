@@ -172,27 +172,6 @@ export class Tree<T> {
   }
 }
 
-export const getYarnPath = () => {
-  const importer = import.meta.url;
-  const idx = importer.lastIndexOf("@bfchain/pkgm-bfsp");
-  if (idx >= 0) {
-    // 全局安装
-    const baseNodeModulesDir = fileURLToPath(importer.substring(0, idx));
-    let yarnPath = path.join(baseNodeModulesDir, "yarn/bin/yarn.js"); // yarn global
-    if (!existsSync(yarnPath)) {
-      // npm i -g
-      yarnPath = path.join(baseNodeModulesDir, "@bfchain/pkgm-bfsp/node_modules/yarn/bin/yarn.js");
-    }
-    return yarnPath;
-  } else {
-    // 本地调试
-    const lidx = importer.lastIndexOf("/dist/");
-    const baseDir = fileURLToPath(importer.substring(0, lidx));
-    let yarnPath = path.join(baseDir, "node_modules/yarn/bin/yarn.js");
-    return yarnPath;
-  }
-};
-
 export const getBfspDir = () => {
   const importer = import.meta.url;
   const idx = importer.lastIndexOf("@bfchain/pkgm-bfsp");

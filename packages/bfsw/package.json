@@ -50,5 +50,8 @@
     "typescript": "^4.3.2",
     "vite": "^2.7.10"
   },
+  "engines": {
+    "node": ">=14.19.0"
+  },
   "gitHead": "30f08935ba4d9b7db7b81a56cdff411e32ab36cf"
 }

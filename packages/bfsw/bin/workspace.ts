@@ -197,7 +197,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
   root = options.root;
 
   appWatcher = watchWorkspace({ root });
-  bfswBuildService = getBfswBuildService(appWatcher);
+  bfswBuildService = getBfswBuildService(await appWatcher);
 
   if (options.mode === "dev") {
     registerAllUserConfigEvent(handleBfspWatcherEvent);
@@ -215,7 +215,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     // taskSerial.addRollupWatcher();
   } else {
     const map = new Map<string, BFChainUtil.PromiseReturnType<typeof writeBuildConfigs>>();
-    const projects = await getValidProjects();
+    const projects = getValidProjects();
     for (const p of projects) {
       const cfgs = await writeBuildConfigs({ root: path.join(root, p.path), buildService: bfswBuildService });
       map.set(p.name, cfgs);

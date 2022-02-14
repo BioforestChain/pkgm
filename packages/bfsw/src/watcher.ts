@@ -95,8 +95,7 @@ const allUserConfigCbs: ((args: CbArgsForAllUserConfig) => BFChainUtil.PromiseMa
 const validProjects = new Map<string, Bfsw.WorkspaceUserConfig>();
 export const states = new States();
 
-export const getValidProjects = async () => {
-  await updateWorkspaceConfig();
+export const getValidProjects = () => {
   return [...validProjects.values()];
 };
 
@@ -166,12 +165,12 @@ async function handleBfswWatcherEvent(p: string, type: Bfsp.WatcherAction) {
 export function registerAllUserConfigEvent(cb: (args: CbArgsForAllUserConfig) => BFChainUtil.PromiseMaybe<void>) {
   allUserConfigCbs.push(cb);
 }
-export function watchWorkspace(options: { root: string }) {
+export async function watchWorkspace(options: { root: string }) {
   root = options.root;
   const watchBfsw = () => {
     const watcher = chokidar.watch(
       ["#bfsw.json", "#bfsw.ts", "#bfsw.mts", "#bfsw.mtsx"].map((x) => `./**/${x}`),
-      { cwd: root, ignoreInitial: false, ignored: [/node_modules*/, /\.bfsp*/] }
+      { cwd: root, ignoreInitial: true, ignored: [/node_modules*/, /\.bfsp*/] }
     );
     watcher.on("add", (p) => {
       handleBfswWatcherEvent(p, "add");
@@ -185,7 +184,7 @@ export function watchWorkspace(options: { root: string }) {
   };
 
   const handleBfspWatcherEvent = async (p: string, type: Bfsp.WatcherAction) => {
-    await updateWorkspaceConfig(); // 只要bfsp有变动，就更新一下workspace， TODO: 后期优化
+    // await updateWorkspaceConfig(); // 只要bfsp有变动，就更新一下workspace， TODO: 后期优化
     const dirname = path.dirname(p);
     const resolvedDir = path.resolve(dirname);
     const key = _pathToKey(dirname);
@@ -264,7 +263,7 @@ export function watchWorkspace(options: { root: string }) {
       await handleTsWatcherEvent(p, "unlink");
     });
   };
-
+  await updateWorkspaceConfig();
   watchBfsw();
   watchBfsp();
   watchTsFiles();

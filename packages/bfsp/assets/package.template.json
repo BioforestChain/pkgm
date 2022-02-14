@@ -4,6 +4,10 @@
   "types": "*.ts",
   "type": "module",
   "version": "1.0.0",
+  "packageManager": "yarn",
+  "engines": {
+    "node": ">=14.19.0"
+  },
   "exports": {
     ".": {
       "import": "",

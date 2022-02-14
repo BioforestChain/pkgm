@@ -1,12 +1,11 @@
 import chalk from "chalk";
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { folderIO } from "@bfchain/pkgm-bfsp";
 import { defaultIgnores } from "@bfchain/pkgm-bfsp";
 import { ts } from "@bfchain/pkgm-bfsp";
-import { getYarnPath, writeJsonConfig } from "@bfchain/pkgm-bfsp";
+import { writeJsonConfig } from "@bfchain/pkgm-bfsp";
 
 export const doInit = async (options: { root: string; name: string; license?: string }) => {
   const { root, name, license = "MIT" } = options;
@@ -61,17 +60,10 @@ export const doInit = async (options: { root: string; name: string; license?: st
   await writeFile(path.join(root, name, ".gitignore"), [...defaultIgnores.values()].join("\n"));
   await writeFile(path.join(root, name, "#bfsp.ts"), bfspTsFile);
   console.log("linking dependencies");
-
-  let yarnPath = getYarnPath();
-  if (!existsSync(yarnPath)) {
-    console.log(`missing package ${chalk.blue("yarn")}`);
-    process.exit();
-  }
-
   const g = spawn("git", ["init"], { cwd: root });
   g.stdout?.pipe(process.stdout);
   g.stderr?.pipe(process.stderr);
-  const proc = spawn("node", [yarnPath, "add", "-D", "-W", "@bfchain/pkgm-bfsw"], { cwd: root });
+  const proc = spawn("corepack", ["yarn", "add", "-D", "-W", "@bfchain/pkgm-bfsw"], { cwd: root });
   proc.stdout?.pipe(process.stdout);
   proc.stderr?.pipe(process.stderr);
 
