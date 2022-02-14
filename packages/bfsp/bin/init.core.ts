@@ -1,5 +1,5 @@
 import chalk from "chalk";
-import { spawn } from "node:child_process";
+import cp, { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { folderIO } from "../src";
@@ -40,7 +40,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
   const g = spawn("git", ["init"], { cwd: root });
   g.stdout?.pipe(process.stdout);
   g.stderr?.pipe(process.stderr);
-  const proc = spawn("corepack", ["yarn", "add", "-D", "@bfchain/pkgm-bfsp"], { cwd: root });
+  const proc = cp.exec("corepack yarn add -D @bfchain/pkgm-bfsp", { cwd: root });
   proc.stdout?.pipe(process.stdout);
   proc.stderr?.pipe(process.stderr);
 
