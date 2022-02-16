@@ -9,12 +9,11 @@ import { isDeepStrictEqual } from "node:util";
 //#endregion
 import type { ModuleFormat } from "rollup";
 import { Debug } from "./logger";
-export * from './toolkit.require'
+export * from "./toolkit.require";
 const log = Debug("toolkit");
 
 // const requireRoot = fileURLToPath(new URL("../", import.meta.url).href);
 // console.log("requireRoot", requireRoot);
-
 
 export const tryRequireResolve = (require: NodeRequire, nm: string) => {
   try {
@@ -69,7 +68,10 @@ abstract class CacheWritter<K, V> extends CacheGetter<K, V> {
     let cache = this._cache.get(key);
     const now = Date.now();
     if (!force) {
-      if ((cache !== undefined && now - cache.time < this.cacheTime) || this.isEqual(key, val, await this.get(key))) {
+      if (
+        (cache !== undefined && now - cache.time < this.cacheTime) ||
+        (this.has(key) && this.isEqual(key, val, await this.get(key)))
+      ) {
         log("ignore write file", key);
         return;
       }

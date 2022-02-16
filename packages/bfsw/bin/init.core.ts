@@ -30,11 +30,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
   `;
   await writeFile(path.join(root, "#bfsw.ts"), bfswTsFile);
 
-  await writeJsonConfig(
-    path.join(root, "package.json"),
-    { name: "bfsp-workspace", private: true, workspaces: [] },
-    { force: true }
-  );
+  await writeJsonConfig(path.join(root, "package.json"), { name: "bfsp-workspace", private: true, workspaces: [] });
   await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));
 
   folderIO.tryInit(path.join(root, name));
@@ -48,7 +44,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
     },
   };
   console.log(`creating files`);
-  await writeJsonConfig(path.join(root, name, "package.json"), packageJson, { force: true });
+  await writeJsonConfig(path.join(root, name, "package.json"), packageJson);
   const bfspTsFile = ts`
   import { defineConfig } from "@bfchain/pkgm-bfsp";
   export default defineConfig((info) => {
