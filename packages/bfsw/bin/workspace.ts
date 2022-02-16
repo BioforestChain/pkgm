@@ -1,39 +1,35 @@
-import os from "node:os";
-import chokidar from "chokidar";
-import { existsSync, mkdirSync } from "node:fs";
-import path, { resolve } from "node:path";
-import { DepGraph } from "dependency-graph";
 import {
-  Closeable,
-  doBuild,
-  doDev,
-  installBuildDeps,
-  notGitIgnored,
-  readUserConfig,
-  walkFiles,
-  writeBuildConfigs,
-  runTsc,
-  Tasks,
-  writeJsonConfig,
   BuildService,
   createTscLogger,
+  doBuild,
+  doDev,
+  getBfspUserConfig,
   getBfswVersion,
   getTui,
-  getBfspUserConfig,
+  installBuildDeps,
+  runTsc,
+  runYarn,
+  Tasks,
   watchBfspProjectConfig,
   watchDeps,
   writeBfspProjectConfig,
-  toPosixPath,
+  writeBuildConfigs,
+  writeJsonConfig,
+  Debug,
 } from "@bfchain/pkgm-bfsp";
+import { DepGraph } from "dependency-graph";
+import { existsSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { getBfswBuildService } from "../src/buildService";
 import {
-  watchWorkspace,
-  states,
-  registerAllUserConfigEvent,
   CbArgsForAllUserConfig,
   getValidProjects,
+  registerAllUserConfigEvent,
+  states,
+  watchWorkspace,
 } from "../src/watcher";
-import { getBfswBuildService } from "../src/buildService";
-import { pathToFileURL } from "node:url";
+const log = Debug("workspace");
 
 let root = "";
 let appWatcher: ReturnType<typeof watchWorkspace>;
@@ -110,7 +106,6 @@ async function updatePackageJson() {
   };
   await writeJsonConfig(path.join(root, `package.json`), packageJson);
 }
-
 async function handleBfspWatcherEvent(args: CbArgsForAllUserConfig) {
   const { type, cfg } = args;
   if (type === "unlink") {
@@ -125,6 +120,7 @@ async function handleBfspWatcherEvent(args: CbArgsForAllUserConfig) {
     // 新增删除都需要更新根tsconfig.json
     await updateWorkspaceTsConfig();
     // 重启tsc，@FIXME: 等待 https://github.com/microsoft/TypeScript/issues/47799 修复
+    // 如果这个问题修复了，那么需要在启动的时候跑一次tsc
     tscClosable && tscClosable.stop();
     runRootTsc();
   }
@@ -149,6 +145,49 @@ function runRootTsc() {
     });
   }
 }
+
+class DepInstaller {
+  private _map: Map<string, () => void> = new Map();
+  private _pendingDeps = false; // 是否还有未执行的‘依赖安装’动作
+  private _closable: ReturnType<typeof runYarn> | undefined;
+  add(opts: { name: string; onDone: () => void }) {
+    this._pendingDeps = true;
+    if (this._map.has(opts.name)) {
+      return;
+    }
+    this._map.set(opts.name, opts.onDone);
+    if (!this._closable) {
+      this._runRootYarn();
+    }
+  }
+  private _runRootYarn() {
+    if (this._closable) {
+      return;
+    }
+    const depsPanel = getTui().getPanel("Deps");
+    depsPanel.updateStatus("loading");
+    this._closable = runYarn({
+      root,
+      onMessage: (s) => depsPanel.write(s),
+      onExit: () => {
+        depsPanel.updateStatus("success");
+        if (this._pendingDeps) {
+          this._pendingDeps = false;
+          this._closable = undefined;
+          this._runRootYarn();
+        } else {
+          // 所有依赖都安装完成，触发map里的回调
+          this._closable = undefined;
+          this._map.forEach((cb, name) => {
+            log(`dep done: ${name}`);
+            cb();
+          });
+        }
+      },
+    });
+  }
+}
+
 function rootTscCompilation() {
   return new Promise((resolve) => {
     const logger = createTscLogger();
@@ -164,6 +203,7 @@ function rootTscCompilation() {
     });
   });
 }
+const depInstaller = new DepInstaller();
 async function runDevTask(options: { root: string }) {
   const p = path.join(root, options.root);
   const buildService = bfswBuildService!;
@@ -185,8 +225,10 @@ async function runDevTask(options: { root: string }) {
   subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
   subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
   depStream.onNext(async () => {
-    await installBuildDeps({ root });
-    abortable.restart("deps installed ");
+    depInstaller.add({
+      name: bfspUserConfig.userConfig.name,
+      onDone: () => abortable.restart("deps installed "),
+    });
   });
   if (subStreams.viteConfigStream.hasCurrent()) {
     abortable.start();
@@ -201,7 +243,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
 
   if (options.mode === "dev") {
     registerAllUserConfigEvent(handleBfspWatcherEvent);
-    runRootTsc();
+    // runRootTsc();
     let watcherLimit = options.watcherLimit;
     const cpus = os.cpus().length;
 

@@ -2,7 +2,7 @@ import chalk from "chalk";
 import util from "node:util";
 import type { RollupError } from "rollup";
 import type { Logger, LoggerOptions, LogLevel } from "vite";
-import { require } from "./toolkit";
+import { require } from "./toolkit.require";
 import { PanelStatus, getTui } from "./tui/index";
 
 export const LogLevels: Record<LogLevel, number> = {

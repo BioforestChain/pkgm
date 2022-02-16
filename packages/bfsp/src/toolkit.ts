@@ -4,15 +4,17 @@ import ignore from "ignore";
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { readdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 //#endregion
 import type { ModuleFormat } from "rollup";
+import { Debug } from "./logger";
+export * from './toolkit.require'
+const log = Debug("toolkit");
 
 // const requireRoot = fileURLToPath(new URL("../", import.meta.url).href);
 // console.log("requireRoot", requireRoot);
-export const require = createRequire(import.meta.url);
+
 
 export const tryRequireResolve = (require: NodeRequire, nm: string) => {
   try {
@@ -66,8 +68,12 @@ abstract class CacheWritter<K, V> extends CacheGetter<K, V> {
   async set(key: K, val: V, force?: boolean) {
     let cache = this._cache.get(key);
     const now = Date.now();
-    if (!force && cache !== undefined && now - cache.time < this.cacheTime && this.isEqual(key, cache.value, val)) {
-      return;
+    if (!force) {
+      if ((cache !== undefined && now - cache.time < this.cacheTime) || this.isEqual(key, val, await this.get(key))) {
+        log("ignore write file", key);
+        return;
+      }
+      cache = this._cache.get(key)!;
     }
     if (await this.setVal(key, val)) {
       if (cache) {

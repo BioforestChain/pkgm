@@ -88,7 +88,7 @@ export const installBuildDeps = async (options: { root: string }) => {
   const depsPanel = getTui().getPanel("Deps");
   depsPanel.updateStatus("loading");
   const installation = new Promise<boolean>(async (resolve) => {
-    await runYarn({
+    runYarn({
       root,
       onMessage: (s) => depsPanel.write(s),
       onExit: () => {

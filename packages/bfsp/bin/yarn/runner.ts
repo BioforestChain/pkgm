@@ -1,34 +1,22 @@
-import { existsSync } from "node:fs";
-import path, { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { Worker } from "node:worker_threads";
-import { getBfspDir, getBfspWorkerDir } from "../util";
-
+import cp from "node:child_process";
 export interface RunYarnOption {
   root: string;
   onExit?: () => void;
   onMessage?: (s: string) => void;
 }
 export const runYarn = (opts: RunYarnOption) => {
-  let workerMjsPath = path.join(getBfspWorkerDir(), "yarn_worker.mjs");
-  const yarnWorker = new Worker(workerMjsPath);
-  let resolve: Function;
-  const ret = Object.assign(new Promise<void>((cb) => (resolve = cb)), {
+  const proc = cp.exec(`corepack yarn`, { cwd: opts.root });
+  const ret = {
     stop() {
-      yarnWorker.terminate();
+      proc.kill();
     },
+  };
+
+  proc.stdout?.on("data", (data: string) => opts.onMessage?.(data));
+  proc.stderr?.on("data", (data: string) => opts.onMessage?.(data));
+  proc.on("exit", (e) => {
+    opts.onExit?.();
   });
 
-  yarnWorker.on("message", (data) => {
-    if (data.exited !== undefined) {
-      resolve();
-      ret.stop();
-      opts.onExit?.();
-    }
-    if (data.msg !== undefined) {
-      opts.onMessage?.(data.msg);
-    }
-  });
-  yarnWorker.postMessage({ path: opts.root });
   return ret;
 };

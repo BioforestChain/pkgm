@@ -56,6 +56,7 @@
     "src/logger.ts",
     "src/bfspConfig.ts",
     "src/toolkit.ts",
+    "src/toolkit.require.ts",
     "src/configs/bfspUserConfig.ts",
     "src/configs/commonIgnore.ts",
     "src/configs/gitIgnore.ts",

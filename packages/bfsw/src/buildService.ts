@@ -20,11 +20,11 @@ export function getBfswBuildService(watcher: Bfsp.AppWatcher): BuildService {
       return walkFiles(dirpath, {
         ...opts,
         dirFilter: async (fullDirpath) => {
-          let pass = false;
+          let pass = true;
           if (dirFilter) {
             pass = await dirFilter(dirpath);
           }
-          return isFileBelongs(dirpath, fullDirpath);
+          return pass && isFileBelongs(dirpath, fullDirpath);
         },
       });
     },
