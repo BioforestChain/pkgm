@@ -184,7 +184,7 @@ export async function watchWorkspace(options: { root: string }) {
   };
 
   const handleBfspWatcherEvent = async (p: string, type: Bfsp.WatcherAction) => {
-    // await updateWorkspaceConfig(); // 只要bfsp有变动，就更新一下workspace， TODO: 后期优化
+    await updateWorkspaceConfig(); // 只要bfsp有变动，就更新一下workspace， TODO: 后期优化
     const dirname = path.dirname(p);
     const resolvedDir = path.resolve(dirname);
     const key = _pathToKey(dirname);

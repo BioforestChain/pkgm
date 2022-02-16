@@ -19,7 +19,7 @@ export const doInit = async (options: { root: string; name: string; license?: st
     },
   };
   console.log(`creating files`);
-  await writeJsonConfig(path.join(root, "package.json"), packageJson);
+  await writeJsonConfig(path.join(root, "package.json"), packageJson, { force: true });
   const bfspTsFile = ts`
   import { defineConfig } from "@bfchain/pkgm-bfsp";
   export default defineConfig((info) => {

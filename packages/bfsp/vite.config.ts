@@ -17,7 +17,6 @@ export const input: InputOption = {
   tsc_worker: "bin/tsc/worker.ts",
   ava_worker: "bin/ava/worker.ts",
   terser_worker: "bin/terser/worker.ts",
-  yarn_worker: "bin/yarn/worker.ts",
 };
 export const extension =
   {

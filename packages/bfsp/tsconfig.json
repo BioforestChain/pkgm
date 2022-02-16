@@ -35,7 +35,6 @@
     "bin/tsc/runner.ts",
     "bin/terser/worker.ts",
     "bin/terser/runner.ts",
-    "bin/yarn/worker.ts",
     "bin/yarn/runner.ts",
     "bin/vite/configFactory.ts",
     "bin/util.ts",
