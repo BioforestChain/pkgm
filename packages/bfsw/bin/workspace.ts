@@ -16,6 +16,7 @@ import {
   writeBuildConfigs,
   writeJsonConfig,
   Debug,
+  createViteLogger,
 } from "@bfchain/pkgm-bfsp";
 import { DepGraph } from "dependency-graph";
 import { existsSync } from "node:fs";
@@ -219,19 +220,18 @@ async function runDevTask(options: { root: string }) {
     subStreams,
   });
 
-  const { abortable } = task;
-  /// 开始监听并触发编译
-  subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
-  subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
-  subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
+  // /// 开始监听并触发编译
+  subStreams.userConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
+  subStreams.viteConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
+  subStreams.tsConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
   depStream.onNext(async () => {
     depInstaller.add({
       name: bfspUserConfig.userConfig.name,
-      onDone: () => abortable.restart("deps installed "),
+      onDone: () => pendingTasks.add(bfspUserConfig.userConfig.name),
     });
   });
   if (subStreams.viteConfigStream.hasCurrent()) {
-    abortable.start();
+    pendingTasks.add(bfspUserConfig.userConfig.name);
   }
   return task;
 }
@@ -248,8 +248,46 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     const cpus = os.cpus().length;
 
     if (watcherLimit === undefined || watcherLimit < 1) {
-      watcherLimit = cpus - 1 >= 1 ? cpus - 1 : 1;
+      watcherLimit = cpus - 1 >= 1 ? (cpus - 1) : 1;
     }
+
+    let startViteWatchTaskNums = 0;
+    const viteLogger = createViteLogger();
+    const execViteTask = async () => {
+      while(pendingTasks.remaining() > 0 && startViteWatchTaskNums < watcherLimit!) {
+        const userConfigName = pendingTasks.next()!;
+
+        const task = runningTasks.get(userConfigName);
+        if(task) {
+          startViteWatchTaskNums++;
+          task?.abortable.restart();
+          task?.onDone(async (name) => {
+            viteLogger.info(`vite rollup ${name} watcher end!`);
+            startViteWatchTaskNums--;
+            await execViteTask();
+          });
+        }
+      }
+
+      if(pendingTasks.remaining() === 0) {
+        viteLogger.info("no rollup watcher tasks remaining!");
+        setTimeout(async () => {
+          await runViteTask();
+        }, 1000);
+      }
+    }
+    
+    const runViteTask = async () => {
+      if(pendingTasks.remaining() > 0) {
+        await execViteTask();
+      } else {
+        setTimeout(async () => {
+          await runViteTask();
+        }, 1000);
+      }
+    }
+
+    await runViteTask();
 
     // 任务串行化(包括 rollup watcher 任务问题)
     // const taskSerial = new TaskSerial(watcherLimit);

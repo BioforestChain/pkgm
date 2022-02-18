@@ -86,14 +86,16 @@ export const doDev = async (options: {
       closeSign.onSuccess((reason) => {
         log("close bfsp build, reason: ", reason);
         preViteConfigBuildOptions = undefined;
-        // dev.close();
-        // tscStoppable.stop();
+      });
+
+      dev.on("change", (id, change) => {
+        viteLogger.info(`${change.event} file: ${id} `);
       });
 
       dev.on("event", async (event) => {
+        viteLogger.info(`event: ${event.code}`);
         // bundle结束，关闭watch
         if (event.code === "BUNDLE_END") {
-          viteLogger.info(chalk.green(`vite ${userConfig.userConfig.name} bundle end`));
           doneCb && (await doneCb(userConfig.userConfig.name));
         }
       });
