@@ -19,12 +19,15 @@ import { $TsConfig } from "./tsConfig";
 const log = Debug("bfsp:config/package.json");
 // const format
 
-const PKGM_VERSION = getBfspVersion();
+let PKGM_VERSION: string;
 export const generatePackageJson = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
   tsConfig: $TsConfig
 ) => {
+  if (!PKGM_VERSION) {
+    PKGM_VERSION = getBfspVersion();
+  }
   const packageJson = JSON.parse(packageJsonTemplate);
   packageJson.name = bfspUserConfig.userConfig.name;
   const { exportsMap } = bfspUserConfig.exportsDetail;
@@ -121,7 +124,7 @@ export const generatePackageJson = async (
   return packageJson as typeof import("../../assets/package.template.json");
 };
 
-export type $PackageJson = BFChainUtil.PromiseReturnType<typeof generatePackageJson>;
+export type $PackageJson = Awaited<ReturnType<typeof generatePackageJson>>;
 export const writePackageJson = (projectDirpath: string, packageJson: $PackageJson) => {
   return writeJsonConfig(path.resolve(projectDirpath, "package.json"), packageJson);
 };

@@ -241,7 +241,7 @@ const _getBfspUserConfig = (userConfig: Bfsp.UserConfig) => {
   };
 };
 
-export type $BfspUserConfig = BFChainUtil.PromiseReturnType<typeof getBfspUserConfig>;
+export type $BfspUserConfig = Awaited<ReturnType<typeof getBfspUserConfig>>;
 
 export const watchBfspUserConfig = (
   projectDirpath: string,

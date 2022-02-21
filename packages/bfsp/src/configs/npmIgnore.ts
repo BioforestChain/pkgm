@@ -13,7 +13,7 @@ export const generateNpmIgnore = async (projectDirpath: string, config: Bfsp.Use
   return effectConfigIgnores(defaultNpmIgnores, config.npmignore);
 };
 
-export type $NpmIgnore = BFChainUtil.PromiseReturnType<typeof generateNpmIgnore>;
+export type $NpmIgnore = Awaited<ReturnType<typeof generateNpmIgnore>>;
 
 export const writeNpmIgnore = (projectDirpath: string, npmIgnore: $NpmIgnore) => {
   return fileIO.set(resolve(projectDirpath, ".npmignore"), Buffer.from([...npmIgnore].join("\n")));

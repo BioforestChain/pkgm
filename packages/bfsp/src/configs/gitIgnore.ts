@@ -13,7 +13,7 @@ export const generateGitIgnore = async (projectDirpath: string, config: Bfsp.Use
   return effectConfigIgnores(defaultGitIgnores, config?.gitignore);
 };
 
-export type $GitIgnore = BFChainUtil.PromiseReturnType<typeof generateGitIgnore>;
+export type $GitIgnore = Awaited<ReturnType<typeof generateGitIgnore>>;
 
 export const writeGitIgnore = (projectDirpath: string, gitIgnore: $GitIgnore) => {
   return fileIO.set(resolve(projectDirpath, ".gitignore"), Buffer.from([...gitIgnore].join("\n")));

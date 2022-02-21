@@ -418,7 +418,7 @@ export const generateTsConfig = async (
   };
 };
 
-export type $TsConfig = BFChainUtil.PromiseReturnType<typeof generateTsConfig>;
+export type $TsConfig = Awaited<ReturnType<typeof generateTsConfig>>;
 export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserConfig, tsConfig: $TsConfig) => {
   return Promise.all([
     writeJsonConfig(resolve(projectDirpath, "tsconfig.json"), tsConfig.json),

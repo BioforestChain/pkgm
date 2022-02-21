@@ -35,7 +35,7 @@ const log = Debug("workspace");
 let root = "";
 let appWatcher: ReturnType<typeof watchWorkspace>;
 let bfswBuildService: BuildService | undefined;
-let runningTasks: Map<string, BFChainUtil.PromiseReturnType<typeof runDevTask>> = new Map();
+let runningTasks: Map<string, Awaited<ReturnType<typeof runDevTask>>> = new Map();
 let tscClosable: ReturnType<typeof runTsc>;
 const pendingTasks = new Tasks<string>();
 const dg = new DepGraph();
@@ -248,17 +248,17 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     const cpus = os.cpus().length;
 
     if (watcherLimit === undefined || watcherLimit < 1) {
-      watcherLimit = cpus - 1 >= 1 ? (cpus - 1) : 1;
+      watcherLimit = cpus - 1 >= 1 ? cpus - 1 : 1;
     }
 
     let startViteWatchTaskNums = 0;
     const viteLogger = createViteLogger();
     const execViteTask = async () => {
-      while(pendingTasks.remaining() > 0 && startViteWatchTaskNums < watcherLimit!) {
+      while (pendingTasks.remaining() > 0 && startViteWatchTaskNums < watcherLimit!) {
         const userConfigName = pendingTasks.next()!;
 
         const task = runningTasks.get(userConfigName);
-        if(task) {
+        if (task) {
           startViteWatchTaskNums++;
           task?.abortable.restart();
           task?.onDone(async (name) => {
@@ -269,23 +269,23 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
         }
       }
 
-      if(pendingTasks.remaining() === 0) {
+      if (pendingTasks.remaining() === 0) {
         viteLogger.info("no rollup watcher tasks remaining!");
         setTimeout(async () => {
           await runViteTask();
         }, 1000);
       }
-    }
-    
+    };
+
     const runViteTask = async () => {
-      if(pendingTasks.remaining() > 0) {
+      if (pendingTasks.remaining() > 0) {
         await execViteTask();
       } else {
         setTimeout(async () => {
           await runViteTask();
         }, 1000);
       }
-    }
+    };
 
     await runViteTask();
 
@@ -294,7 +294,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     // await taskSerial.runTask();
     // taskSerial.addRollupWatcher();
   } else {
-    const map = new Map<string, BFChainUtil.PromiseReturnType<typeof writeBuildConfigs>>();
+    const map = new Map<string, Awaited<ReturnType<typeof writeBuildConfigs>>>();
     const projects = getValidProjects();
     for (const p of projects) {
       const cfgs = await writeBuildConfigs({ root: path.join(root, p.path), buildService: bfswBuildService });
@@ -338,106 +338,3 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     runBuildTask();
   }
 }
-
-// // 任务串行化
-// export class TaskSerial {
-//   public queue = [] as string[];
-
-//   constructor(public watcherLimit: number = 1) {
-//     if (this.watcherLimit < 1) {
-//       throw "watcherLimit must be interger greater then 1.";
-//     }
-//   }
-
-//   public push(name: string) {
-//     if (!this.queue.includes(name)) {
-//       this.queue.push(name);
-//     }
-//   }
-
-//   async getOrder() {
-//     const orders = dg.overallOrder().map((x) => states.findByName(x)?.path);
-//     return orders;
-//   }
-
-//   async runTask() {
-//     let pendingTasksNums = pendingTasks.remaining();
-
-//     if (pendingTasksNums > 0) {
-//       await this.execTask();
-//     } else {
-//       setTimeout(async () => {
-//         await this.runTask();
-//       }, 1000);
-//     }
-//   }
-
-//   async execTask() {
-//     const { status } = getTui();
-//     const orders = await this.getOrder();
-//     const idx = orders.findIndex((x) => x === undefined);
-
-//     if (idx >= 0) {
-//       return;
-//     } else {
-//       pendingTasks.useOrder(orders as string[]);
-//       const name = pendingTasks.next();
-
-//       if (name) {
-//         const state = states.findByName(name);
-
-//         if (state) {
-//           const resolvedDir = path.join(root, state.path);
-
-//           status.postMsg(`compiling ${name}`);
-//           const { abortable, depStream, subStreams } = await doDev({
-//             root: resolvedDir,
-//             buildService: bfswBuildService!,
-//           });
-
-//           subStreams.userConfigStream.onNext(() => {
-//             this.push(name);
-//           });
-//           subStreams.viteConfigStream.onNext(() => {
-//             this.push(name);
-//           });
-//           subStreams.tsConfigStream.onNext(() => {
-//             this.push(name);
-//           });
-//           depStream.onNext(() => {
-//             this.push(name);
-//           });
-
-//           if (subStreams.viteConfigStream.hasCurrent()) {
-//             this.push(name);
-//           }
-
-//           runningTasks.set(state.userConfig.name, abortable);
-//           status.postMsg(`${name} compilation finished`);
-//         }
-//       }
-//     }
-
-//     await this.runTask();
-//   }
-
-//   addRollupWatcher() {
-//     while (this.queue.length > 0 && activeRollupWatchers.size < this.watcherLimit) {
-//       this.execWatcher();
-//     }
-
-//     setTimeout(() => {
-//       this.addRollupWatcher();
-//     }, 1000);
-//   }
-
-//   execWatcher() {
-//     const name = this.queue.shift()!;
-//     const closable = runningTasks.get(name);
-
-//     if (closable) {
-//       activeRollupWatchers.add(name);
-//       closable.restart();
-//     }
-//   }
-// }

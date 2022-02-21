@@ -15,7 +15,7 @@ export const getBfspProjectConfig = async (dirname = process.cwd()) => {
   };
   return projectConfig;
 };
-export type $BfspProjectConfig = BFChainUtil.PromiseReturnType<typeof getBfspProjectConfig>;
+export type $BfspProjectConfig = Awaited<ReturnType<typeof getBfspProjectConfig>>;
 
 export const writeBfspProjectConfig = async (projectConfig: $BfspProjectConfig, buildService: BuildService) => {
   const { projectDirpath, bfspUserConfig } = projectConfig;

@@ -120,7 +120,7 @@ export const doBuild = async (options: {
   root?: string;
   format?: Bfsp.Format;
   buildService: BuildService;
-  cfgs: BFChainUtil.PromiseReturnType<typeof writeBuildConfigs>;
+  cfgs: Awaited<ReturnType<typeof writeBuildConfigs>>;
 }) => {
   const log = Debug("bfsp:bin/build");
 

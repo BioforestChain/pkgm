@@ -2,7 +2,7 @@ import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fileIO } from "../src";
-import { require } from "../src/toolkit";
+import { require } from "../src/toolkit.require";
 
 export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) => void) {
   if (items.length < numContainer) {

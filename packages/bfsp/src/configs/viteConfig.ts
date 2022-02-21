@@ -43,7 +43,7 @@ export const generateViteConfig = async (
     viteInput,
   };
 };
-export type $ViteConfig = BFChainUtil.PromiseReturnType<typeof generateViteConfig>;
+export type $ViteConfig = Awaited<ReturnType<typeof generateViteConfig>>;
 // import { resolve } from "node:path";
 // import { fileIO } from "../toolkit";
 // export const writeViteConfig = (
