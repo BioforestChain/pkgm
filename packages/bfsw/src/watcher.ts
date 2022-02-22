@@ -1,5 +1,11 @@
 import chokidar from "chokidar";
-import { SharedFollower, Loopable, SharedAsyncIterable, readUserConfig, toPosixPath } from "@bfchain/pkgm-bfsp";
+import { 
+  SharedFollower, 
+  Loopable, 
+  SharedAsyncIterable, 
+  readUserConfig, 
+  toPosixPath
+} from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 import { readWorkspaceConfig } from "./workspaceConfig";
 /// workspace
@@ -86,12 +92,18 @@ export interface CbArgsForAllUserConfig {
   type: Bfsp.WatcherAction;
   path: string;
 }
+export interface CbArgsForAllTs {
+  path: string;
+  type: Bfsp.WatcherAction;
+  name: string;
+}
 
 let root = "";
 const userConfigCbMap: Map<string, ((p: string, type: Bfsp.WatcherAction) => BFChainUtil.PromiseMaybe<void>)[]> =
   new Map();
 const tsCbMap: Map<string, ((p: string, type: Bfsp.WatcherAction) => BFChainUtil.PromiseMaybe<void>)[]> = new Map();
 const allUserConfigCbs: ((args: CbArgsForAllUserConfig) => BFChainUtil.PromiseMaybe<void>)[] = [];
+const allTsCbs: ((args: CbArgsForAllTs) => BFChainUtil.PromiseMaybe<void>)[] = [];
 const validProjects = new Map<string, Bfsw.WorkspaceUserConfig>();
 export const states = new States();
 
@@ -165,6 +177,10 @@ async function handleBfswWatcherEvent(p: string, type: Bfsp.WatcherAction) {
 export function registerAllUserConfigEvent(cb: (args: CbArgsForAllUserConfig) => BFChainUtil.PromiseMaybe<void>) {
   allUserConfigCbs.push(cb);
 }
+export function registerAllTsEvent(cb: (args: CbArgsForAllTs) => BFChainUtil.PromiseMaybe<void>) {
+  allTsCbs.push(cb);
+}
+
 export async function watchWorkspace(options: { root: string }) {
   root = options.root;
   const watchBfsw = () => {
@@ -236,9 +252,16 @@ export async function watchWorkspace(options: { root: string }) {
   const handleTsWatcherEvent = async (p: string, type: Bfsp.WatcherAction) => {
     const closestRoot = _getClosestRoot(p);
     const cbs = tsCbMap.get(closestRoot);
+    const state = states.findByPath(closestRoot);
+    const _path = path.relative(closestRoot, p);
+
+    allTsCbs.forEach(cb=>{
+      cb({path:_path, type, name:state?.userConfig.name!})
+    });
+
     if (cbs) {
       for (const cb of cbs!) {
-        await cb(path.relative(closestRoot, p), type);
+        await cb(_path, type);
       }
     }
   };

@@ -25,8 +25,10 @@ import path from "node:path";
 import { getBfswBuildService } from "../src/buildService";
 import {
   CbArgsForAllUserConfig,
+  CbArgsForAllTs,
   getValidProjects,
   registerAllUserConfigEvent,
+  registerAllTsEvent,
   states,
   watchWorkspace,
 } from "../src/watcher";
@@ -129,6 +131,14 @@ async function handleBfspWatcherEvent(args: CbArgsForAllUserConfig) {
   if (!runningTasks.has(cfg.name)) {
     const task = await runDevTask({ root: args.path });
     runningTasks.set(cfg.name, task);
+  }
+}
+async function handleTsWatcherEvent(args: CbArgsForAllTs) {
+  const { type, name } = args;
+
+  // rollup watcher运行结束关闭后，ts文件修改，将项目添加到watcher队列
+  if(type === "change") {
+    pendingTasks.add(name);
   }
 }
 function runRootTsc() {
@@ -243,6 +253,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
 
   if (options.mode === "dev") {
     registerAllUserConfigEvent(handleBfspWatcherEvent);
+    registerAllTsEvent(handleTsWatcherEvent);
     // runRootTsc();
     let watcherLimit = options.watcherLimit;
     const cpus = os.cpus().length;
@@ -253,6 +264,8 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
 
     let startViteWatchTaskNums = 0;
     const viteLogger = createViteLogger();
+    let delayRunViteTask: ReturnType<typeof setTimeout>
+
     const execViteTask = async () => {
       while (pendingTasks.remaining() > 0 && startViteWatchTaskNums < watcherLimit!) {
         const userConfigName = pendingTasks.next()!;
@@ -271,7 +284,11 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
 
       if (pendingTasks.remaining() === 0) {
         viteLogger.info("no rollup watcher tasks remaining!");
-        setTimeout(async () => {
+
+        if(delayRunViteTask) {
+          clearTimeout(delayRunViteTask);
+        }
+        delayRunViteTask = setTimeout(async () => {
           await runViteTask();
         }, 1000);
       }
@@ -281,7 +298,12 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       if (pendingTasks.remaining() > 0) {
         await execViteTask();
       } else {
-        setTimeout(async () => {
+        viteLogger.info("runViteTask setTimeout");
+
+        if(delayRunViteTask) {
+          clearTimeout(delayRunViteTask);
+        }
+        delayRunViteTask = setTimeout(async () => {
           await runViteTask();
         }, 1000);
       }

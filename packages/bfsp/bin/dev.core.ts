@@ -97,6 +97,8 @@ export const doDev = async (options: {
         // bundle结束，关闭watch
         if (event.code === "BUNDLE_END") {
           doneCb && (await doneCb(userConfig.userConfig.name));
+        } else if(event.code === "END") {
+          dev.close();
         }
       });
     })();
