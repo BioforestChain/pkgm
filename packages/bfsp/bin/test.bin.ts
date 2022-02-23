@@ -29,7 +29,15 @@ defineCommand(
       log("run test:", test);
     }
 
-    await doTest({ root, tests, debug: inspector.url() !== undefined });
+    await doTest({
+      root,
+      tests,
+      debug: inspector.url() !== undefined,
+      logger: {
+        outWrite: (s) => console.log(s),
+        errWrite: (s) => console.log(s),
+      },
+    });
     process.exit(0);
   }
 );

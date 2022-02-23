@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Worker } from "node:worker_threads";
+import cp from "node:child_process";
+import { require } from "../src/toolkit.require";
 export const doTest = async (options: {
   root?: string;
   tests?: string[];
@@ -12,24 +13,17 @@ export const doTest = async (options: {
   const { logger } = options;
   const pipeStdIo = logger !== undefined;
 
-  const avaWorker = new Worker(path.join(__dirname, "./ava_worker.mjs"), {
-    argv: [],
-    workerData: {
-      root: options.root || process.cwd(),
-      debug: options.debug,
-    },
-    stdin: pipeStdIo,
-    stdout: pipeStdIo,
-    stderr: pipeStdIo,
-  });
+  const avaPath = require.resolve("ava", { paths: [options.root!] });
+  const avaBinPath = path.join(path.dirname(avaPath), "cli.mjs");
+
+  const proc = cp.exec(`node ${avaBinPath}`, { cwd: options.root });
   if (pipeStdIo) {
-    avaWorker.stdout.on("data", (data) => {
+    proc.stdout?.on("data", (data) => {
       logger.outWrite(data);
     });
-    avaWorker.stderr.on("data", (data) => {
+    proc.stderr?.on("data", (data) => {
       logger.errWrite(data);
     });
   }
-  return new Promise<void>((resolve) => avaWorker.on("exit", resolve));
-  //   avaWorker.
+  return new Promise<void>((resolve) => proc.on("exit", resolve));
 };

@@ -30,7 +30,6 @@
   "files": [
     "package.json",
     "assets/package.template.json",
-    "bin/ava/worker.ts",
     "bin/tsc/worker.ts",
     "bin/tsc/runner.ts",
     "bin/terser/worker.ts",

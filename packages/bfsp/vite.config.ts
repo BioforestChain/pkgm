@@ -15,7 +15,6 @@ export const input: InputOption = {
   "build.test": "tests/build.test.ts",
   "util.test": "tests/util.test.ts",
   tsc_worker: "bin/tsc/worker.ts",
-  ava_worker: "bin/ava/worker.ts",
   terser_worker: "bin/terser/worker.ts",
 };
 export const extension =
