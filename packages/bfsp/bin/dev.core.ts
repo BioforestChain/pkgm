@@ -97,8 +97,12 @@ export const doDev = async (options: {
         const name = userConfig.userConfig.name;
         viteLogger.info(`package ${name}: ${event.code}`);
         // bundle结束，关闭watch
-        if(event.code === "END") {
+        if (event.code === "END") {
           doneCb && (await doneCb(name));
+        }
+        if (event.code === "BUNDLE_END") {
+          // close as https://www.rollupjs.org/guide/en/#rollupwatch suggests
+          event.result.close();
         }
       });
     })();
