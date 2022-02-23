@@ -86,6 +86,7 @@ export const doDev = async (options: {
       closeSign.onSuccess((reason) => {
         log("close bfsp build, reason: ", reason);
         preViteConfigBuildOptions = undefined;
+        dev.close();
       });
 
       dev.on("change", (id, change) => {
@@ -93,12 +94,11 @@ export const doDev = async (options: {
       });
 
       dev.on("event", async (event) => {
-        viteLogger.info(`event: ${event.code}`);
+        const name = userConfig.userConfig.name;
+        viteLogger.info(`package ${name}: ${event.code}`);
         // bundle结束，关闭watch
-        if (event.code === "BUNDLE_END") {
-          doneCb && (await doneCb(userConfig.userConfig.name));
-        } else if(event.code === "END") {
-          dev.close();
+        if(event.code === "END") {
+          doneCb && (await doneCb(name));
         }
       });
     })();

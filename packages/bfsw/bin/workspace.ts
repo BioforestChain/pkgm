@@ -273,10 +273,11 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
         const task = runningTasks.get(userConfigName);
         if (task) {
           startViteWatchTaskNums++;
-          task?.abortable.restart();
+          task?.abortable.start();
           task?.onDone(async (name) => {
             viteLogger.info(`vite rollup ${name} watcher end!`);
             startViteWatchTaskNums--;
+            task?.abortable.close();
             await execViteTask();
           });
         }
@@ -298,8 +299,6 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       if (pendingTasks.remaining() > 0) {
         await execViteTask();
       } else {
-        viteLogger.info("runViteTask setTimeout");
-
         if(delayRunViteTask) {
           clearTimeout(delayRunViteTask);
         }
