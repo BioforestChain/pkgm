@@ -57,7 +57,7 @@ const taskRenameJsToTs = async (root: string) => {
   }
   return renameFileMap;
 };
-const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactory>) => {
+const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactory>, opts: { name: string }) => {
   const viteLogger = createViteLogger("info", {});
   await buildBfsp({
     ...viteBuildConfig,
@@ -70,9 +70,11 @@ const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactor
         onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
       },
     },
+    logLevel: "warn", // 防止vite干扰tui界面， @todo: 劫持console或者process
     mode: "production",
     customLogger: viteLogger,
   });
+  viteLogger.info(`${chalk.green("√")} package ${opts.name} build complete`);
 };
 
 export const writeBuildConfigs = async (options: { root?: string; buildService: BuildService }) => {
@@ -173,7 +175,7 @@ export const doBuild = async (options: {
     const defaultOurDir = c.build!.outDir!;
     c.build!.outDir = cacheBuildOutDir;
     report("vite build");
-    await taskViteBuild({ ...c, mode: "development" }); // vite 打包
+    await taskViteBuild({ ...c, mode: "development" }, { name: userConfigBuild.name }); // vite 打包
 
     log(`prepare es2020 files for complie to es2019\n`);
     report("prepare es2019");

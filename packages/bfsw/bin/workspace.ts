@@ -137,7 +137,7 @@ async function handleTsWatcherEvent(args: CbArgsForAllTs) {
   const { type, name } = args;
 
   // rollup watcher运行结束关闭后，ts文件修改，将项目添加到watcher队列
-  if(type === "change") {
+  if (type === "change") {
     pendingTasks.add(name);
   }
 }
@@ -263,9 +263,8 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     }
 
     let startViteWatchTaskNums = 0;
-    const viteLogger = createViteLogger();
-    let delayRunViteTask: ReturnType<typeof setTimeout>
-
+    let delayRunViteTask: ReturnType<typeof setTimeout>;
+    const bundlePanel = getTui().getPanel("Bundle");
     const execViteTask = async () => {
       while (pendingTasks.remaining() > 0 && startViteWatchTaskNums < watcherLimit!) {
         const userConfigName = pendingTasks.next()!;
@@ -275,7 +274,8 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
           startViteWatchTaskNums++;
           task?.abortable.start();
           task?.onDone(async (name) => {
-            viteLogger.info(`vite rollup ${name} watcher end!`);
+            log(`vite rollup ${name} watcher end!`);
+            bundlePanel.updateStatus("loading");
             startViteWatchTaskNums--;
             task?.abortable.close();
             await execViteTask();
@@ -284,9 +284,10 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       }
 
       if (pendingTasks.remaining() === 0) {
-        viteLogger.info("no rollup watcher tasks remaining!");
+        log("no rollup watcher tasks remaining!");
+        bundlePanel.updateStatus("success");
 
-        if(delayRunViteTask) {
+        if (delayRunViteTask) {
           clearTimeout(delayRunViteTask);
         }
         delayRunViteTask = setTimeout(async () => {
@@ -299,7 +300,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       if (pendingTasks.remaining() > 0) {
         await execViteTask();
       } else {
-        if(delayRunViteTask) {
+        if (delayRunViteTask) {
           clearTimeout(delayRunViteTask);
         }
         delayRunViteTask = setTimeout(async () => {

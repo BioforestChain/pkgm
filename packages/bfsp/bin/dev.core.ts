@@ -79,6 +79,7 @@ export const doDev = async (options: {
           },
         },
         mode: "development",
+        logLevel: "warn", // 防止vite干扰tui界面， @todo: 劫持console或者process
         customLogger: viteLogger,
       })) as RollupWatcher;
       //#endregion
@@ -90,14 +91,15 @@ export const doDev = async (options: {
       });
 
       dev.on("change", (id, change) => {
-        viteLogger.info(`${change.event} file: ${id} `);
+        log(`${change.event} file: ${id} `);
       });
 
       dev.on("event", async (event) => {
         const name = userConfig.userConfig.name;
-        viteLogger.info(`package ${name}: ${event.code}`);
+        log(`package ${name}: ${event.code}`);
         // bundle结束，关闭watch
         if (event.code === "END") {
+          viteLogger.info(`${chalk.green("√")} package ${name} build complete`);
           doneCb && (await doneCb(name));
         }
         if (event.code === "BUNDLE_END") {

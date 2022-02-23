@@ -28,7 +28,6 @@ export class BundlePanel extends Panel<"Bundle"> {
   private _lastContent = "";
   private _boxContent = "";
   private _isInited = false;
-  private _buildStartMsg = chalk.cyanBright(`\nbuild started...`);
   private _thresh = LogLevels.info;
 
   setLevel(l: LogLevel) {
@@ -52,9 +51,6 @@ export class BundlePanel extends Panel<"Bundle"> {
         }
       }
     }
-    if (text === this._buildStartMsg) {
-      this.clear();
-    }
     if (this._thresh >= LogLevels[type]) {
       const format = () => {
         if (options.timestamp) {
@@ -76,7 +72,6 @@ export class BundlePanel extends Panel<"Bundle"> {
           this._boxContent.slice(0, -this._lastContent.length) +
           (this._lastContent = format() + ` ${chalk.yellow(`(x${this._sameCount + 1})`)}\n`);
         this.elLog.setContent(this._boxContent);
-        this.updateStatus(type);
       } else {
         this._sameCount = 0;
         this._lastMsg = text;
@@ -86,6 +81,8 @@ export class BundlePanel extends Panel<"Bundle"> {
         }
         this._boxContent = this._boxContent + (this._lastContent = format() + `\n`);
         this.elLog.setContent(this._boxContent);
+      }
+      if (type !== "info") {
         this.updateStatus(type);
       }
     }
