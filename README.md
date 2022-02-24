@@ -1,54 +1,73 @@
-# BFSP
+# Package Management Toolset
 
-```mermaid
-flowchart TD
-    BFSP:dev --> init --> watch:ts --> compile
-    BFSP:dev --> tsc:watch
-    BFSP:dev --> vite:watch
-             init --> walk:ts --> compile
-             subgraph compile
-                #bfsp.ts
-                *.ts
-             end
-        #bfsp.ts --> package.json --> yarn_install
-        #bfsp.ts --> ignore_files
-        #bfsp.ts --> tsconfig.json
-        *.ts --> tsconfig.json
+pkgm 是一套用于 BFS 生态下应用开发的工具集，包括了`@bfchain/pkgm-bfsp`和`@bfchain/pkgm-bfsw`分别用于创建单项目和多项目(monorepo)
 
-    tsconfig.json -.-> tsc:watch
-    tsconfig.json -.-> vite:watch
-    package.json -.-> vite:watch
+## Goals
+
+- 🎯 专注于[TypeScript](https://www.typescriptlang.org/)开发而无需关心各种配置文件
+- 🍔 支持多平台编译，通过定义不同 Profile，一次编译，到处运行
+- 🧩 兼容 npmjs 生态
+
+## Get Started
+
+### 单项目开发(bfsp)
+
+1. 全局安装 `@bfchain/pkgm-bfsp`
+
+```
+yarn global add @bfchain/pkgm-bfsp
 ```
 
-```mermaid
-flowchart LR
-    BFSP:build --> init --> tsc:watch --> |on success| vite_bundle --> es2019 --> minify --> copy_assets
+或者
+
+```
+npm i -g @bfchain/pkgm-bfsp
 ```
 
-# BFSW
+2. 创建项目
 
-```mermaid
-flowchart TD
-    BFSW:dev --> init --> #bfsw.ts --> walk:bfsp --> |no install| bfsp:dev_init
-                          #bfsw.ts --> watch:bfsp --> |no install| bfsp:dev_init
-                          bfsp:dev_init --> package.json -.-> yarn_install
-    BFSW:dev --> tsc:watch --> find_bfsp --> vite_queue
-    BFSW:dev --> yarn_install
-    bfsp:dev_init -.-> yarn_install
+```
+bfsp create <projectName>
 ```
 
-# BFSW
+3. 根据指令进入对应目录开始启动开发
 
-```mermaid
-flowchart LR
-    BFSW:build --> init --> tsc:watch --> |on success| vite_queue
-    subgraph vite_queue
-        vite_bundle --> es2019 --> minify --> copy_assets
-    end
+```
+cd <projectName> && bfsp dev
 ```
 
-```mermaid
-flowchart TD
-    bfsw_watcher --> update_valid_projects
-    bfsp_watcher --> check_valid --> |valid| update_yarn_workspaces -.->yarn_install
+### 多项目开发(bfsw)
+
+1. 全局安装 `@bfchain/pkgm-bfsw`
+
 ```
+yarn global add @bfchain/pkgm-bfsw
+```
+
+或者
+
+```
+npm i -g @bfchain/pkgm-bfsw
+```
+
+2. 创建项目
+
+```
+bfsw create <projectName>
+```
+
+3. 根据指令进入对应目录开始启动开发
+
+```
+cd <projectName> && bfsw dev
+```
+
+## 配置
+
+### #bfsp.ts (TBD)
+
+### #bfsw.ts (TBD)
+
+## How to contribute
+
+工作方式&流程参考 [./flow.md](./flow.md)
