@@ -4,4 +4,5 @@ import "./fmt.bin";
 import "./init.bin";
 import "./test.bin";
 import "./version.bin";
+import "./create.bin";
 

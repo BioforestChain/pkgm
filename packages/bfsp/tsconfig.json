@@ -47,6 +47,8 @@
     "bin/fmt.bin.ts",
     "bin/init.bin.ts",
     "bin/init.core.ts",
+    "bin/create.bin.ts",
+    "bin/create.core.ts",
     "bin/test.bin.ts",
     "bin/version.bin.ts",
     "bin/shim.ts",
