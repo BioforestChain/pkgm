@@ -71,7 +71,8 @@ export const generatePackageJson = async (
     packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
       import: getDistFilepath("esm", output),
-      types: `./${toPosixPath(path.join(consts.TscOutRootPath, "isolated", input.replace(/\.ts$/, ".d.ts")))}`,
+      // types: `./${toPosixPath(path.join(consts.TscOutRootPath, "isolated", input.replace(/\.ts$/, ".d.ts")))}`,
+      types: `./${toPosixPath(path.join("./", input.replace(/\.ts$/, ".d.ts")))}`,
     };
   }
   const defaultExportConfig = packageJson.exports["."];
@@ -108,7 +109,8 @@ export const generatePackageJson = async (
 
   // 依赖
 
-  packageJson.dependencies["@bfchain/pkgm-bfsp"] = `^${PKGM_VERSION}`;
+  // packageJson.dependencies["@bfchain/pkgm-bfsp"] = `^${PKGM_VERSION}`;
+  packageJson.devDependencies["@bfchain/pkgm-bfsp"] = `^${PKGM_VERSION}`;
 
   // 提取自己以及build子项的依赖
   let deps = Object.assign({}, bfspUserConfig.userConfig.packageJson?.deps);

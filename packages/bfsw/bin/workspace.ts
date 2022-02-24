@@ -327,6 +327,8 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
 
     await installBuildDeps({ root }); // 等待依赖安装完成
 
+    await updateWorkspaceTsConfig(); // 生成项目根目录tsconfig
+
     await rootTscCompilation(); // 等待tsc编译成功
 
     map.forEach((v, k) => {
