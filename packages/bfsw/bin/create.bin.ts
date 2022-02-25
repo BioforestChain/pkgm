@@ -1,26 +1,30 @@
 import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
 import path from "node:path";
 import { doCreate } from "./create.core";
+import chalk from "chalk";
 
 defineCommand(
   "create",
   {
     params: [
-      { type: "string", name: "path", description: "project path, default is cwd()", require: false },
-      { type: "string", name: "name", description: "project name, default is dirname", require: false },
       { type: "string", name: "license", description: "project license, default is MIT", require: false },
     ],
-    args: [[{ type: "string", name: "path", description: "project path" }], []],
+    args: [[{ type: "string", name: "name", description: "project name, default is dirname" }], []],
   } as const,
   (params, args) => {
-    const { path: projectPath = args[0] || "." } = params;
+    const projectName = args[0];
 
     let root = process.cwd();
 
-    if (projectPath !== undefined) {
-      root = path.resolve(root, projectPath);
+    if (projectName !== undefined) {
+      if(/[\.\/\\]+/.test(projectName)) {
+        throw chalk.red(`Invalid project name '${projectName}'`);
+      }
+
+      root = path.resolve(root, projectName);
+    } else {
+      throw chalk.red("Missing required argument projectName");
     }
-    const projectName = params.name || path.basename(root);
 
     return doCreate({ root, name: projectName, license: params.license });
   }
