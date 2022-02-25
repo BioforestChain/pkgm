@@ -33,6 +33,7 @@ import {
   states,
   watchWorkspace,
 } from "../src/watcher";
+import chalk from "chalk";
 const log = Debug("workspace");
 
 let root = "";
@@ -225,11 +226,17 @@ function rootTscCompilation() {
 
 async function createAllSymlink() {
   const p = getTui().getPanel("Deps");
+  let hasWarning = false;
   for (const s of states.states()) {
     if (s.userConfig.build) {
       for (const buildConfig of s.userConfig.build) {
         // @TODO: 从@bfchain/pkgm-bfsp到处构建outDir的函数
         const outDir = path.join(root, s.path, consts.BuildOutRootPath, buildConfig.name!);
+        if (!existsSync(outDir)) {
+          hasWarning = true;
+          p.write(chalk.yellow(`missing build dep: ${chalk.blue(buildConfig.name)}`));
+          continue;
+        }
         try {
           await createSymlink(root, buildConfig.name!, outDir);
         } catch (e) {
@@ -237,6 +244,9 @@ async function createAllSymlink() {
         }
       }
     }
+  }
+  if (hasWarning) {
+    p.updateStatus("warn");
   }
 }
 const depInstaller = new DepInstaller();
