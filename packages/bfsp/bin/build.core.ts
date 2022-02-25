@@ -194,7 +194,8 @@ export const doBuild = async (options: {
     {
       const repathTypePath = (typePath: string) => {
         // const typesPathInfo = path.parse(typePath);
-        return toPosixPath(path.join("source/isolated", typePath));
+        return typePath.replace(".bfsp/tsc", "source");
+        // return toPosixPath(path.join("source/isolated", typePath));
       };
       for (const exportConfig of Object.values(packageJson.exports)) {
         exportConfig.types = repathTypePath(exportConfig.types);

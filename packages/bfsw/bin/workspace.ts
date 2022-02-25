@@ -227,20 +227,32 @@ function rootTscCompilation() {
 async function createAllSymlink() {
   const p = getTui().getPanel("Deps");
   let hasWarning = false;
+
+  const doCreateSymlink = async (name: string, outDir: string) => {
+    if (!existsSync(outDir)) {
+      hasWarning = true;
+      p.write(chalk.yellow(`missing build dep: ${chalk.blue(name)}`));
+      return false;
+    }
+    try {
+      await createSymlink(root, name, outDir);
+    } catch (e) {
+      p.write(`${e}`);
+    }
+    return true;
+  };
   for (const s of states.states()) {
+    // @TODO: 从@bfchain/pkgm-bfsp到处构建outDir的函数
+    const outDir = path.join(root, s.path, consts.BuildOutRootPath);
+    // if (!(await doCreateSymlink(s.userConfig.name, outDir))) {
+    //   continue;
+    // }
+
     if (s.userConfig.build) {
       for (const buildConfig of s.userConfig.build) {
-        // @TODO: 从@bfchain/pkgm-bfsp到处构建outDir的函数
-        const outDir = path.join(root, s.path, consts.BuildOutRootPath, buildConfig.name!);
-        if (!existsSync(outDir)) {
-          hasWarning = true;
-          p.write(chalk.yellow(`missing build dep: ${chalk.blue(buildConfig.name)}`));
+        const buildOutDir = path.join(outDir, buildConfig.name!);
+        if (!(await doCreateSymlink(buildConfig.name!, buildOutDir))) {
           continue;
-        }
-        try {
-          await createSymlink(root, buildConfig.name!, outDir);
-        } catch (e) {
-          p.write(`${e}`);
         }
       }
     }
