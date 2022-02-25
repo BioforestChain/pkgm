@@ -17,12 +17,13 @@ import {
   writeJsonConfig,
   Debug,
   createViteLogger,
+  consts,
 } from "@bfchain/pkgm-bfsp";
 import { DepGraph } from "dependency-graph";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { getBfswBuildService } from "../src/buildService";
+import { createSymlink, getBfswBuildService } from "../src/buildService";
 import {
   CbArgsForAllUserConfig,
   CbArgsForAllTs,
@@ -158,10 +159,14 @@ function runRootTsc() {
 }
 
 class DepInstaller {
-  private _map: Map<string, () => void> = new Map();
+  private _map: Map<string, () => BFChainUtil.PromiseMaybe<void>> = new Map();
   private _pendingDeps = false; // 是否还有未执行的‘依赖安装’动作
   private _closable: ReturnType<typeof runYarn> | undefined;
-  add(opts: { name: string; onDone: () => void }) {
+  private _allDoneCbs: (() => BFChainUtil.PromiseMaybe<void>)[] = [];
+  onAllDone(cb: () => BFChainUtil.PromiseMaybe<void>) {
+    this._allDoneCbs.push(cb);
+  }
+  add(opts: { name: string; onDone: () => BFChainUtil.PromiseMaybe<void> }) {
     this._pendingDeps = true;
     if (this._map.has(opts.name)) {
       return;
@@ -189,9 +194,12 @@ class DepInstaller {
         } else {
           // 所有依赖都安装完成，触发map里的回调
           this._closable = undefined;
-          this._map.forEach((cb, name) => {
+          this._allDoneCbs.forEach(async (cb) => {
+            await cb();
+          });
+          this._map.forEach(async (cb, name) => {
             log(`dep done: ${name}`);
-            cb();
+            await cb();
           });
         }
       },
@@ -213,6 +221,23 @@ function rootTscCompilation() {
       onMessage: (s) => logger.write(s),
     });
   });
+}
+
+async function createAllSymlink() {
+  const p = getTui().getPanel("Deps");
+  for (const s of states.states()) {
+    if (s.userConfig.build) {
+      for (const buildConfig of s.userConfig.build) {
+        // @TODO: 从@bfchain/pkgm-bfsp到处构建outDir的函数
+        const outDir = path.join(root, s.path, consts.BuildOutRootPath, buildConfig.name!);
+        try {
+          await createSymlink(root, buildConfig.name!, outDir);
+        } catch (e) {
+          p.write(`${e}`);
+        }
+      }
+    }
+  }
 }
 const depInstaller = new DepInstaller();
 async function runDevTask(options: { root: string }) {
@@ -237,7 +262,9 @@ async function runDevTask(options: { root: string }) {
   depStream.onNext(async () => {
     depInstaller.add({
       name: bfspUserConfig.userConfig.name,
-      onDone: () => pendingTasks.add(bfspUserConfig.userConfig.name),
+      onDone: async () => {
+        pendingTasks.add(bfspUserConfig.userConfig.name);
+      },
     });
   });
   if (subStreams.viteConfigStream.hasCurrent()) {
@@ -254,6 +281,12 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
   if (options.mode === "dev") {
     registerAllUserConfigEvent(handleBfspWatcherEvent);
     registerAllTsEvent(handleTsWatcherEvent);
+    depInstaller.onAllDone(async () => {
+      // 其实build的最后一步都会做一下软链接，但为啥这里还要做一遍的原因是
+      // 怀疑yarn在安装完依赖后，会删除软链接，这样如果有些包依赖了profile相关的包
+      // tsc就无法通过验证，就要在所有依赖安装完成后重新创建一遍
+      await createAllSymlink();
+    });
     // runRootTsc();
     let watcherLimit = options.watcherLimit;
     const cpus = os.cpus().length;

@@ -23,7 +23,7 @@ export const doCreate = async (options: { root: string; name: string; license?: 
   import { defineWorkspace } from "@bfchain/pkgm-bfsw";
   import project from "./${name}/#bfsp";
   export default defineWorkspace(() => {
-    const config: Bfsp.Workspace = {
+    const config: Bfsw.Workspace = {
       projects: [project],
     };
     return config;

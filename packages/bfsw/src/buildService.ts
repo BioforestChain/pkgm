@@ -5,6 +5,19 @@ import { BuildService, Loopable, walkFiles } from "@bfchain/pkgm-bfsp";
 import { symlink, unlink, stat, mkdir } from "node:fs/promises";
 import { getRoot, isFileBelongs, states, watchMulti } from "./watcher";
 
+export async function createSymlink(root: string, name: string, outDir: string) {
+  const symlinkType = os.platform() === "win32" ? "junction" : "dir";
+  const symlinkTarget = path.join(root, "node_modules", name);
+  if (fs.existsSync(symlinkTarget)) {
+    const s = await stat(symlinkTarget);
+    await unlink(symlinkTarget);
+  }
+  const symlinkTargetDirName = path.dirname(symlinkTarget);
+  if (!fs.existsSync(symlinkTargetDirName)) {
+    await mkdir(symlinkTargetDirName, { recursive: true });
+  }
+  await symlink(outDir, symlinkTarget, symlinkType);
+}
 export function getBfswBuildService(watcher: Bfsp.AppWatcher): BuildService {
   return {
     watcher,
@@ -41,17 +54,7 @@ export function getBfswBuildService(watcher: Bfsp.AppWatcher): BuildService {
     },
     async afterSingleBuild(options: { buildOutDir: string; config: Bfsp.UserConfig }) {
       const root = getRoot();
-      const symlinkType = os.platform() === "win32" ? "junction" : "dir";
-      const symlinkTarget = path.join(root, "node_modules", options.config.name);
-      if (fs.existsSync(symlinkTarget)) {
-        const s = await stat(symlinkTarget);
-        await unlink(symlinkTarget);
-      }
-      const symlinkTargetDirName = path.dirname(symlinkTarget);
-      if (!fs.existsSync(symlinkTargetDirName)) {
-        await mkdir(symlinkTargetDirName, { recursive: true });
-      }
-      await symlink(options.buildOutDir, symlinkTarget, symlinkType);
+      await createSymlink(root, options.config.name, options.buildOutDir);
     },
     rollup: {
       isExternal(source: string, importer: string, isResolved: boolean) {
