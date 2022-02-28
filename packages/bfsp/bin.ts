@@ -12,6 +12,10 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
   const binRunner = (argv: string[]) => {
     const hanlderParams = {} as any;
     const hanlderArgs = [] as any;
+    const options = JSON.parse(JSON.stringify(argv));
+    let paramOptions: string = "";
+    let argName: string = "";
+    let argOptions: string = "";
 
     /// params
     if (config.params !== undefined) {
@@ -30,6 +34,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
           hanlderParams[paramConfig.name] = rest;
           // argv.filter((arg) => /\-{1,2}(.+)\=/.test(arg));
         } else {
+          paramOptions += `   --${paramConfig.name}\t${paramConfig.description}\n`;
           const found = getArg(argv, paramConfig.name);
           if (found !== undefined) {
             const value = formatTypedValue(found.value, paramConfig.type);
@@ -54,7 +59,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
 
       let schemaMatched = false;
       for (const configArgs of configArgsSchemas) {
-        if (configArgs.filter((c) => c.type !== "rest").length > args.length) {
+        if (configArgs.filter((c) => c.type !== "rest").length > args.length && !options.includes("--help")) {
           continue;
         }
         schemaMatched = true;
@@ -65,6 +70,8 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
             }
             hanlderArgs[i] = args.slice(i);
           } else {
+            argName = ` <${configArg.name}>`;
+            argOptions += `<${configArg.name}>\t\t${configArg.description}\n`;
             const value = formatTypedValue(args[i], configArg.type);
             if (value === undefined) {
               schemaMatched = false;
@@ -91,6 +98,16 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
             .join("\n")
         );
       }
+    }
+
+    if(options.includes("--help")) {
+      const commandName = process.argv[1];
+      const isSingle = commandName.includes("bfsp") ? true : false;
+      console.log(`Usage: ${isSingle ? "bfsp" : "bfsw"} ${funName} ${argName ? "[options]" : ""}${argName}\n`);
+      console.log(argName ? "Options:" : "");
+      console.log(paramOptions);
+      console.log(argOptions);
+      process.exit(0);
     }
 
     return hanlder(hanlderParams, hanlderArgs);

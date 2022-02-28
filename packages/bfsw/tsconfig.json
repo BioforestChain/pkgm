@@ -36,6 +36,7 @@
     "bin/init.core.ts",
     "bin/create.bin.ts",
     "bin/create.core.ts",
+    "bin/version.bin.ts",
     "bin/workspace.ts",
     "src/buildService.ts",
     "src/index.ts",

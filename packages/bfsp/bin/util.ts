@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readdirSync, statSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fileIO } from "../src";
@@ -211,6 +211,8 @@ export const getBfswDir = () => {
     const bfspDir = fileURLToPath(importer.substring(0, lidx));
     p = bfspDir;
   }
+  p = p.replace("bfsp", "bfsw");
+
   return p;
 };
 export const getBfspWorkerDir = () => {
@@ -218,8 +220,7 @@ export const getBfspWorkerDir = () => {
 };
 export const getBfspPackageJson = () => {
   const p = path.join(getBfspDir(), "package.json");
-  const packageJson = require(p);
-  return packageJson as typeof import("../package.json");
+  return new Function(`return ${readFileSync(p, "utf-8")}`)();
 };
 export const getBfspVersion = () => {
   return getBfspPackageJson().version;
@@ -227,8 +228,7 @@ export const getBfspVersion = () => {
 
 export const getBfswPackageJson = () => {
   const p = path.join(getBfswDir(), "package.json");
-  const packageJson = require(p);
-  return packageJson as typeof import("../package.json");
+  return new Function(`return ${readFileSync(p, "utf-8")}`)();
 };
 export const getBfswVersion = () => {
   return getBfswPackageJson().version;
