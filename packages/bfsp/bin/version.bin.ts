@@ -2,7 +2,7 @@ import { defineCommand } from "../bin";
 import { getBfspPackageJson } from "./util";
 import chalk from "chalk";
 
-defineCommand("version", {}, async (params, args) => {
+defineCommand("version", {description:"get bfsp version and dependencies."}, async (params, args) => {
   process.noDeprecation = true;
 
   const pkgm = getBfspPackageJson();

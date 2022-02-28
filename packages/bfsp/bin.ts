@@ -100,10 +100,12 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
       }
     }
 
+    // bfsp/bfsw help
     if(options.includes("--help")) {
       const commandName = process.argv[1];
       const isSingle = commandName.includes("bfsp") ? true : false;
       console.log(`Usage: ${isSingle ? "bfsp" : "bfsw"} ${funName} ${argName ? "[options]" : ""}${argName}\n`);
+      console.log(config.description ? `${config.description}\n` : "");
       console.log(argName ? "Options:" : "");
       console.log(paramOptions);
       console.log(argOptions);
@@ -166,6 +168,7 @@ export declare namespace Bfsp {
       readonly params?: P;
       readonly args?: R;
       alias?: string[];
+      description?: string;
     }
     namespace CommandConfig {
       type InputType = "number" | "string" | "boolean" | "rest";

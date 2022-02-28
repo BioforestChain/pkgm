@@ -9,6 +9,7 @@ defineCommand(
   {
     params: [{ type: "string", name: "path", description: "project path, default is cwd()", require: false }],
     args: [],
+    description: "install dependencies for bfsp project."
   } as const,
   async (params, args) => {
     const { path: projectPath } = params;

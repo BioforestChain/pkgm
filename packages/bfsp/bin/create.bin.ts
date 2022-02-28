@@ -10,6 +10,7 @@ defineCommand(
       { type: "string", name: "license", description: "project license, default is MIT", require: false },
     ],
     args: [[{ type: "string", name: "name", description: "project name, default is dirname" }], []],
+    description: "create a new bfsp project."
   } as const,
   (params, args) => {
     const projectName = args[0];

@@ -35,6 +35,7 @@ defineCommand(
       ],
       [],
     ],
+    description: "enable bfsw project developmer mode, monitor code modifications in real-time."
   } as const,
   (params, args) => {
     const warn = Warn("bfsp:bin/dev");

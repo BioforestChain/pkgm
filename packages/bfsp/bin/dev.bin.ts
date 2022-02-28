@@ -16,6 +16,7 @@ defineCommand(
       { type: "string", name: "profiles", description: "bundle profiles, default is ['default']." },
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
+    description: "enable bfsp project developmer mode, monitor code modifications in real-time."
   } as const,
   async (params, args) => {
     const warn = Warn("bfsp:bin/dev");

@@ -2,7 +2,7 @@ import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
 import { getBfswPackageJson } from "@bfchain/pkgm-bfsp";
 import chalk from "chalk";
 
-defineCommand("version", {}, async (params, args) => {
+defineCommand("version", {description:"get bfsw version and dependencies."}, async (params, args) => {
   process.noDeprecation = true;
   const pkgm = getBfswPackageJson();
 
