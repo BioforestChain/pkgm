@@ -38,6 +38,7 @@
     "bin/create.core.ts",
     "bin/version.bin.ts",
     "bin/help.bin.ts",
+    "bin/help.core.ts",
     "bin/workspace.ts",
     "src/buildService.ts",
     "src/index.ts",

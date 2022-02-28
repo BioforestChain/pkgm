@@ -2,6 +2,7 @@ import path from "node:path";
 import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
 import { Debug, Warn } from "@bfchain/pkgm-bfsp";
 import { workspaceInit } from "./workspace";
+import { helpOptions } from "./help.core";
 
 defineCommand(
   "build",
@@ -11,7 +12,7 @@ defineCommand(
       { type: "string", name: "profiles", description: "bundle profiles, default is ['default']." },
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
-    description: "bundle multiple profiles code."
+    description: helpOptions.build
   } as const,
   (params, args) => {
     const warn = Warn("bfsp:bin/build");

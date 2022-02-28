@@ -52,6 +52,7 @@
     "bin/test.bin.ts",
     "bin/version.bin.ts",
     "bin/help.bin.ts",
+    "bin/help.core.ts",
     "bin/shim.ts",
     "src/@type.ts",
     "src/logger.ts",

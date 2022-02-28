@@ -4,6 +4,7 @@ import { getBfspBuildService } from "../src/buildService";
 import { createTscLogger, Debug, Warn } from "../src/logger";
 import { watchSingle } from "../src/watcher";
 import { doBuild, installBuildDeps, runBuildTsc, writeBuildConfigs } from "./build.core";
+import { helpOptions } from "./help.core";
 
 defineCommand(
   "build",
@@ -13,7 +14,7 @@ defineCommand(
       { type: "string", name: "profiles", description: "bundle profiles, default is ['default']." },
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
-    description: "bundle multiple profiles code."
+    description: helpOptions.build
   } as const,
   async (params, args) => {
     const warn = Warn("bfsp:bin/build");

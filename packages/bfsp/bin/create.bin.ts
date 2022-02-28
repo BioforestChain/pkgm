@@ -1,6 +1,7 @@
 import { defineCommand } from "../bin";
 import path from "node:path";
 import { doCreate } from "./create.core";
+import { helpOptions } from "./help.core";
 import chalk from "chalk";
 
 defineCommand(
@@ -10,7 +11,7 @@ defineCommand(
       { type: "string", name: "license", description: "project license, default is MIT", require: false },
     ],
     args: [[{ type: "string", name: "name", description: "project name, default is dirname" }], []],
-    description: "create a new bfsp project."
+    description: helpOptions.create
   } as const,
   (params, args) => {
     const projectName = args[0];

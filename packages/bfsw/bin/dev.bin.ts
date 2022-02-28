@@ -3,6 +3,7 @@ import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
 import { ALLOW_FORMATS } from "@bfchain/pkgm-bfsp";
 import { Debug, Warn } from "@bfchain/pkgm-bfsp";
 import { workspaceInit } from "./workspace";
+import { helpOptions } from "./help.core";
 
 defineCommand(
   "dev",
@@ -35,7 +36,7 @@ defineCommand(
       ],
       [],
     ],
-    description: "enable bfsw project developmer mode, monitor code modifications in real-time."
+    description: helpOptions.dev
   } as const,
   (params, args) => {
     const warn = Warn("bfsp:bin/dev");

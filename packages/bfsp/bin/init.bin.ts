@@ -1,5 +1,6 @@
 import { defineCommand } from "../bin";
 import { doInit } from "./init.core";
+import { helpOptions } from "./help.core";
 import path from "node:path";
 import { existsSync } from "node:fs";
 import chalk from "chalk";
@@ -9,7 +10,7 @@ defineCommand(
   {
     params: [{ type: "string", name: "path", description: "project path, default is cwd()", require: false }],
     args: [],
-    description: "install dependencies for bfsp project."
+    description: helpOptions.init
   } as const,
   async (params, args) => {
     const { path: projectPath } = params;
