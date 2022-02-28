@@ -51,6 +51,7 @@
     "bin/create.core.ts",
     "bin/test.bin.ts",
     "bin/version.bin.ts",
+    "bin/help.bin.ts",
     "bin/shim.ts",
     "src/@type.ts",
     "src/logger.ts",
