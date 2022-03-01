@@ -34,7 +34,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
           hanlderParams[paramConfig.name] = rest;
           // argv.filter((arg) => /\-{1,2}(.+)\=/.test(arg));
         } else {
-          paramOptions += `   --${paramConfig.name}\t${paramConfig.description}\n`;
+          paramOptions += `   --${paramConfig.name}=\t\t${paramConfig.description}\n`;
           const found = getArg(argv, paramConfig.name);
           if (found !== undefined) {
             const value = formatTypedValue(found.value, paramConfig.type);
@@ -71,7 +71,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
             hanlderArgs[i] = args.slice(i);
           } else {
             argName = ` <${configArg.name}>`;
-            argOptions += `<${configArg.name}>\t\t${configArg.description}\n`;
+            argOptions += `<${configArg.name}>\t\t\t${configArg.description}\n`;
             const value = formatTypedValue(args[i], configArg.type);
             if (value === undefined) {
               schemaMatched = false;
@@ -104,9 +104,9 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
     if(options.includes("--help")) {
       const commandName = process.argv[1];
       const isSingle = commandName.includes("bfsp") ? true : false;
-      console.log(`Usage: ${isSingle ? "bfsp" : "bfsw"} ${funName} ${argName ? "[options]" : ""}${argName}\n`);
+      console.log(`Usage: ${isSingle ? "bfsp" : "bfsw"} ${funName} ${paramOptions ? "[options]" : ""}${argName}\n`);
       console.log(config.description ? `${config.description}\n` : "");
-      console.log(argName ? "Options:" : "");
+      console.log(paramOptions ? "Options:" : "");
       console.log(paramOptions);
       console.log(argOptions);
       process.exit(0);
