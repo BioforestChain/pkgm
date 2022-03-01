@@ -79,7 +79,7 @@ export const doDev = async (options: {
           },
         },
         mode: "development",
-        logLevel: "warn", // 防止vite干扰tui界面， @todo: 劫持console或者process
+        // logLevel: "warn", // 防止vite干扰tui界面， @todo: 劫持console或者process
         customLogger: viteLogger,
       })) as RollupWatcher;
       //#endregion

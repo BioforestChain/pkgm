@@ -75,7 +75,7 @@ export type StatusChangeCallback = (s: PanelStatus, ctx: BFSP.TUI.Panel) => void
 export type PanelStatus = "success" | "error" | "warn" | "loading" | "info";
 const logWidgetOptions: Widgets.BoxOptions = {
   ...getBaseWidgetOptions(),
-  top: H_NAV,
+  top: 2 * H_NAV,
   width: W_MAIN,
   height: H_LOG,
   keys: true,

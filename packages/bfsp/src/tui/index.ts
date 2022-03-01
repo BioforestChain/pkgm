@@ -11,6 +11,7 @@ export * from "./Panel";
 
 const TuiStyle = {
   nav: {
+    top: H_NAV,
     height: H_NAV,
     width: W_MAIN,
   } as Widgets.BoxOptions,

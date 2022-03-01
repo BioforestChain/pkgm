@@ -21,7 +21,7 @@ export const getBaseWidgetOptions = () =>
 
 export const H_NAV = 1;
 export const H_STATUSBAR = 3;
-export const H_LOG = `100%-${H_NAV + H_STATUSBAR}`;
+export const H_LOG = `100%-${2 * H_NAV + H_STATUSBAR}`;
 export const W_MAIN_N = 70;
 export const W_INFO_N = 30;
 export const W_MAIN = `${W_MAIN_N}%`;
