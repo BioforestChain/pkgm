@@ -362,6 +362,7 @@ export const generateTsConfig = async (
       alwaysStrict: true,
       moduleResolution: "node",
       resolveJsonModule: true,
+      emitDeclarationOnly:false,
       // baseUrl: "./",
       // types: ["node"],
       paths: tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles),
@@ -388,6 +389,7 @@ export const generateTsConfig = async (
       isolatedModules: true,
       outDir: `${TSC_OUT_ROOT}/isolated`,
       noEmit: false,
+      emitDeclarationOnly:false,
     },
     files: tsFilesLists.isolatedFiles.toArray(),
     references: [

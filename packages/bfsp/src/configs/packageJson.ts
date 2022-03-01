@@ -82,6 +82,22 @@ export const generatePackageJson = async (
   }
   //#endregion
 
+  // typesVersions
+
+  const typesVersionsEntries: { [index: string]: string[] } = {};
+  for (const [key, exportEntry] of Object.entries(packageJson.exports)) {
+    if (key === ".") {
+      continue;
+    }
+    const trimedKey = key.substring(2); // removes './'
+    typesVersionsEntries[trimedKey] = [(exportEntry as any).types];
+  }
+  if (Object.keys(typesVersionsEntries).length > 0) {
+    packageJson.typesVersions = {
+      "*": typesVersionsEntries,
+    };
+  }
+
   //#region bin 导出
 
   if (tsConfig.tsFilesLists.binFiles.size === 0) {
