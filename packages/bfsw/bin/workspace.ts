@@ -317,6 +317,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       watcherLimit = cpus - 1 >= 1 ? cpus - 1 : 1;
     }
 
+    // 任务串行化(包括 rollup watcher 任务问题)
     let startViteWatchTaskNums = 0;
     let delayRunViteTask: ReturnType<typeof setTimeout>;
     const bundlePanel = getTui().getPanel("Bundle");
@@ -365,11 +366,6 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     };
 
     await runViteTask();
-
-    // 任务串行化(包括 rollup watcher 任务问题)
-    // const taskSerial = new TaskSerial(watcherLimit);
-    // await taskSerial.runTask();
-    // taskSerial.addRollupWatcher();
   } else {
     const map = new Map<string, Awaited<ReturnType<typeof writeBuildConfigs>>>();
     const projects = getValidProjects();

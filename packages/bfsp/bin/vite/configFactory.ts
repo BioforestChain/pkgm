@@ -163,14 +163,14 @@ export const ViteConfigFactory = (options: {
               log("Profile import", source);
               const imports = profileImports[source as Bfsp.Profile];
               if (Array.isArray(imports)) {
-                return profileExternalId + path.resolve(projectDirpath, imports[0]);
+                return path.resolve(projectDirpath, imports[0]) + profileExternalId;
               }
             }
             return null;
           },
           load(source: string) {
-            if (source.startsWith(profileExternalId)) {
-              return fs.readFileSync(source.slice(profileExternalId.length), "utf-8");
+            if (source.endsWith(profileExternalId)) {
+              return fs.readFileSync(source.slice(0, -`${profileExternalId}`.length), "utf-8");
             }
             return null;
           },
