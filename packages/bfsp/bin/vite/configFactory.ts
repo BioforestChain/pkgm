@@ -155,22 +155,23 @@ export const ViteConfigFactory = (options: {
       (() => {
         const profileImports = options.tsConfig.json.compilerOptions.paths;
         log("profileImports", profileImports);
-        const profileExternalId = "#PROFILE#";
         return {
           name: "Profile imports",
-          resolveId(source: string) {
+          async resolveId(source: string, importer: string, options: any) {
             if (source.startsWith("#")) {
               log("Profile import", source);
               const imports = profileImports[source as Bfsp.Profile];
               if (Array.isArray(imports)) {
-                return path.resolve(projectDirpath, imports[0]) + profileExternalId;
+                const id = path.resolve(projectDirpath, imports[0]);
+                const resolution = await this.resolve(id, importer, { skipSelf: true, ...options });
+                if (resolution) {
+                  this.load(resolution); // preload
+                } else {
+                  log(`unable to resolve:  ${source}`);
+                  return source; // can't resolve
+                }
+                return id;
               }
-            }
-            return null;
-          },
-          load(source: string) {
-            if (source.endsWith(profileExternalId)) {
-              return fs.readFileSync(source.slice(0, -`${profileExternalId}`.length), "utf-8");
             }
             return null;
           },
