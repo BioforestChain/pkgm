@@ -1,8 +1,8 @@
-import { existsSync, readdirSync, statSync, readFileSync } from "node:fs";
+import { PromiseOut } from "@bfchain/util-extends-promise-out";
+import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { fileIO } from "../src";
-import { require } from "../src/toolkit.require";
 
 export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) => void) {
   if (items.length < numContainer) {
@@ -234,31 +234,51 @@ export const getBfswVersion = () => {
   return getBfswPackageJson().version;
 };
 
+type OrderMap<T> = Map<T, { has: boolean }>;
 export class Tasks<T extends string> {
-  private _set = new Set<T>();
-  private _queue = [] as T[];
-  private _order = [] as T[];
-  remaining() {
-    return this._set.size;
+  private _order: OrderMap<T> = new Map(); // [] as T[];
+  hasRemaining() {
+    for (const info of this._order.values()) {
+      if (info.has) {
+        return true;
+      }
+    }
+    return false;
   }
   useOrder(arr: T[]) {
-    this._order = arr;
+    const newOrder: OrderMap<T> = new Map();
+    const oldOrder = this._order;
+    for (const item of arr) {
+      newOrder.set(item, oldOrder.get(item) ?? { has: false });
+    }
+    this._order = newOrder;
   }
   add(item: T) {
-    this._set.add(item);
-  }
-  next() {
-    let item = this._queue.shift();
-    if (!item) {
-      this._queue = [...this._set.values()];
-      this._queue.sort((a, b) => {
-        const aidx = this._order.findIndex((x) => x === a);
-        const bidx = this._order.findIndex((x) => x === b);
-        return aidx - bidx;
-      });
-      item = this._queue.shift();
+    const info = this._order.get(item);
+    if (info) {
+      const waitter = this._waitters.shift();
+      if (waitter !== undefined) {
+        waitter.resolve(item);
+      } else {
+        info.has = true;
+      }
     }
-    item && this._set.delete(item);
-    return item;
+  }
+  getOrder() {
+    return this._order.keys();
+  }
+
+  private _waitters: PromiseOut<T>[] = [];
+  async next() {
+    for (const [item, info] of this._order) {
+      if (info.has) {
+        info.has = false;
+        return item;
+      }
+    }
+
+    const waitter = new PromiseOut<T>();
+    this._waitters.push(waitter);
+    return waitter.promise;
   }
 }

@@ -1,6 +1,8 @@
 import {
   BuildService,
+  consts,
   createTscLogger,
+  Debug,
   doBuild,
   doDev,
   getBfspUserConfig,
@@ -15,33 +17,35 @@ import {
   writeBfspProjectConfig,
   writeBuildConfigs,
   writeJsonConfig,
-  Debug,
-  createViteLogger,
-  consts,
 } from "@bfchain/pkgm-bfsp";
+import chalk from "chalk";
 import { DepGraph } from "dependency-graph";
 import { existsSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
 import { createSymlink, getBfswBuildService } from "../src/buildService";
+import { ParallelRunner } from "../src/util";
 import {
-  CbArgsForAllUserConfig,
   CbArgsForAllTs,
+  CbArgsForAllUserConfig,
   getValidProjects,
-  registerAllUserConfigEvent,
   registerAllTsEvent,
+  registerAllUserConfigEvent,
   states,
   watchWorkspace,
 } from "../src/watcher";
-import chalk from "chalk";
+
 const log = Debug("workspace");
 
 let root = "";
 let appWatcher: ReturnType<typeof watchWorkspace>;
 let bfswBuildService: BuildService | undefined;
-let runningTasks: Map<string, Awaited<ReturnType<typeof runDevTask>>> = new Map();
-let tscClosable: ReturnType<typeof runTsc>;
+type DevTask = Awaited<ReturnType<typeof runDevTask>>;
+const runableDevTasks: Map<string, DevTask> = new Map();
 const pendingTasks = new Tasks<string>();
+
+let tscClosable: ReturnType<typeof runTsc> | undefined;
 const dg = new DepGraph();
 
 async function updateWorkspaceTsConfig() {
@@ -101,6 +105,7 @@ async function updatePackageJson() {
   const packageJson = {
     name: "bfsp-workspace",
     private: true,
+    packageManager: "yarn@1.22.0",
     workspaces: [...states.paths()],
     devDependencies: {
       "@bfchain/pkgm-bfsw": `^${bfswVersion}`,
@@ -111,28 +116,44 @@ async function updatePackageJson() {
   };
   await writeJsonConfig(path.join(root, `package.json`), packageJson);
 }
+const oldCfgDeps = new Map<string, string[] | undefined>();
 async function handleBfspWatcherEvent(args: CbArgsForAllUserConfig) {
   const { type, cfg } = args;
+
+  /// 构建依赖关系
   if (type === "unlink") {
     dg.removeNode(cfg.name);
+  } else {
+    dg.addNode(cfg.name);
+    const oldDeps = oldCfgDeps.get(cfg.name);
+    const newDeps = cfg.deps;
+    oldCfgDeps.set(cfg.name, newDeps);
+    oldDeps?.forEach((dep) => {
+      dg.removeDependency(cfg.name, dep);
+    });
+    cfg.deps?.forEach((dep) => {
+      dg.addNode(dep);
+      dg.addDependency(cfg.name, dep);
+    });
   }
-  dg.addNode(cfg.name);
-  cfg.deps?.map((x) => {
-    dg.addNode(x);
-    dg.addDependency(cfg.name, x);
-  });
+  pendingTasks.useOrder(dg.overallOrder());
+
   if (type !== "change") {
     // 新增删除都需要更新根tsconfig.json
     await updateWorkspaceTsConfig();
-    // 重启tsc，@FIXME: 等待 https://github.com/microsoft/TypeScript/issues/47799 修复
-    // 如果这个问题修复了，那么需要在启动的时候跑一次tsc
+  }
+
+  await updatePackageJson();
+  if (!runableDevTasks.has(cfg.name)) {
+    const task = await runDevTask({ root: args.path });
+    runableDevTasks.set(cfg.name, task);
+  }
+
+  // 重启tsc，@FIXME: 等待 https://github.com/microsoft/TypeScript/issues/47799 修复
+  // 如果这个问题修复了，那么需要在启动的时候跑一次tsc
+  if (type !== "change") {
     tscClosable && tscClosable.stop();
     runRootTsc();
-  }
-  await updatePackageJson();
-  if (!runningTasks.has(cfg.name)) {
-    const task = await runDevTask({ root: args.path });
-    runningTasks.set(cfg.name, task);
   }
 }
 async function handleTsWatcherEvent(args: CbArgsForAllTs) {
@@ -294,6 +315,28 @@ async function runDevTask(options: { root: string }) {
   }
   return task;
 }
+
+class RunningDevTasks {
+  private _tasks = new Set<DevTask>();
+  /**关闭很久没有执行的任务 */
+  deleteOld(max: number) {
+    if (max <= this._tasks.size) {
+      for (const oldTask of this._tasks) {
+        this._tasks.delete(oldTask);
+        oldTask.abortable.close();
+        break;
+      }
+    }
+  }
+  /**
+   * 将刚刚执行的任务塞到末尾
+   */
+  addNew(task: DevTask) {
+    this._tasks.delete(task);
+    this._tasks.add(task);
+  }
+}
+
 export async function workspaceInit(options: { root: string; mode: "dev" | "build"; watcherLimit?: number }) {
   root = options.root;
 
@@ -301,7 +344,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
   bfswBuildService = getBfswBuildService(await appWatcher);
 
   if (options.mode === "dev") {
-    registerAllUserConfigEvent(handleBfspWatcherEvent);
+    registerAllUserConfigEvent((args) => handleBfspWatcherEvent(args));
     registerAllTsEvent(handleTsWatcherEvent);
     depInstaller.onAllDone(async () => {
       // 其实build的最后一步都会做一下软链接，但为啥这里还要做一遍的原因是
@@ -310,62 +353,31 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       await createAllSymlink();
     });
     // runRootTsc();
-    let watcherLimit = options.watcherLimit;
-    const cpus = os.cpus().length;
-
-    if (watcherLimit === undefined || watcherLimit < 1) {
-      watcherLimit = cpus - 1 >= 1 ? cpus - 1 : 1;
-    }
+    const watcherLimit = Math.max(1, Math.min(options.watcherLimit ?? 1, os.cpus().length - 1));
+    const runningDevTasks = new RunningDevTasks();
 
     // 任务串行化(包括 rollup watcher 任务问题)
-    let startViteWatchTaskNums = 0;
-    let delayRunViteTask: ReturnType<typeof setTimeout>;
     const bundlePanel = getTui().getPanel("Bundle");
-    const execViteTask = async () => {
-      while (pendingTasks.remaining() > 0 && startViteWatchTaskNums < watcherLimit!) {
-        const userConfigName = pendingTasks.next()!;
+    for await (const taskSignal of ParallelRunner(watcherLimit)) {
+      const userConfigName = await pendingTasks.next();
 
-        const task = runningTasks.get(userConfigName);
-        if (task) {
-          startViteWatchTaskNums++;
-          task?.abortable.start();
-          task?.onDone(async (name) => {
-            log(`vite rollup ${name} watcher end!`);
-            bundlePanel.updateStatus("loading");
-            startViteWatchTaskNums--;
-            task?.abortable.close();
-            await execViteTask();
-          });
-        }
-      }
+      const task = runableDevTasks.get(userConfigName);
+      getTui().getPanel("Bundle").write("info", `zzz vite ${userConfigName}`);
+      if (task) {
+        getTui().getPanel("Bundle").write("info", `run vite ${userConfigName}`);
+        runningDevTasks.deleteOld(watcherLimit);
+        task.abortable.start();
+        runningDevTasks.addNew(task);
 
-      if (pendingTasks.remaining() === 0) {
-        log("no rollup watcher tasks remaining!");
-        bundlePanel.updateStatus("success");
-
-        if (delayRunViteTask) {
-          clearTimeout(delayRunViteTask);
-        }
-        delayRunViteTask = setTimeout(async () => {
-          await runViteTask();
-        }, 1000);
-      }
-    };
-
-    const runViteTask = async () => {
-      if (pendingTasks.remaining() > 0) {
-        await execViteTask();
+        task.onDone((name) => {
+          log(`vite rollup ${name} watcher end!`);
+          bundlePanel.updateStatus("loading");
+          taskSignal.resolve();
+        });
       } else {
-        if (delayRunViteTask) {
-          clearTimeout(delayRunViteTask);
-        }
-        delayRunViteTask = setTimeout(async () => {
-          await runViteTask();
-        }, 1000);
+        taskSignal.resolve();
       }
-    };
-
-    await runViteTask();
+    }
   } else {
     const map = new Map<string, Awaited<ReturnType<typeof writeBuildConfigs>>>();
     const projects = getValidProjects();
@@ -384,32 +396,20 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
 
     map.forEach((v, k) => {
       const cfg = v.bfspUserConfig.userConfig;
-      pendingTasks.add(cfg.name);
       dg.addNode(cfg.name);
       cfg.deps?.map((x) => {
         dg.addNode(x);
         dg.addDependency(cfg.name, x);
       });
     });
-    pendingTasks.useOrder(dg.overallOrder());
 
-    const runBuildTask = async () => {
-      if (pendingTasks.remaining() === 0) {
-        // await installBuildDeps({ root }); // 重新跑一遍yarn，保证build出来的文件被正确link到node_modules下
-        getTui().status.postMsg("all build tasks finished");
-        return;
+    /// run build tasks
+    for (const name of dg.overallOrder()) {
+      const s = states.findByName(name);
+      if (s) {
+        await doBuild({ root: path.join(root, s.path), buildService: bfswBuildService!, cfgs: map.get(name)! });
       }
-      const name = pendingTasks.next();
-      if (name) {
-        const s = states.findByName(name);
-        if (s) {
-          await doBuild({ root: path.join(root, s.path), buildService: bfswBuildService!, cfgs: map.get(name)! });
-        }
-      }
-      setTimeout(async () => {
-        await runBuildTask();
-      }, 1000);
-    };
-    runBuildTask();
+    }
+    getTui().status.postMsg("all build tasks finished");
   }
 }

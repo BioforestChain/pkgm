@@ -42,6 +42,7 @@
     "bin/workspace.ts",
     "src/buildService.ts",
     "src/index.ts",
+    "src/util.ts",
     "src/watcher.ts",
     "src/workspaceConfig.ts"
   ],
