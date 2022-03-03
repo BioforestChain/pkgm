@@ -1,6 +1,7 @@
 {
   "name": "@bfchain/pkgm",
   "private": true,
+  "packageManager": "yarn@1.22.0",
   "devDependencies": {
     "lerna": "^4.0.0"
   },

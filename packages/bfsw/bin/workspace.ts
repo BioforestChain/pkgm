@@ -263,11 +263,8 @@ async function createAllSymlink() {
     return true;
   };
   for (const s of states.states()) {
-    // @TODO: 从@bfchain/pkgm-bfsp到处构建outDir的函数
+    // @TODO: 从@bfchain/pkgm-bfsp导出构建outDir的函数
     const outDir = path.join(root, s.path, consts.BuildOutRootPath);
-    // if (!(await doCreateSymlink(s.userConfig.name, outDir))) {
-    //   continue;
-    // }
 
     if (s.userConfig.build) {
       for (const buildConfig of s.userConfig.build) {
@@ -298,7 +295,7 @@ async function runDevTask(options: { root: string }) {
     subStreams,
   });
 
-  // /// 开始监听并触发编译
+  /// 开始监听并触发编译
   subStreams.userConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
   subStreams.viteConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
   subStreams.tsConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
@@ -356,15 +353,12 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     const watcherLimit = Math.max(1, Math.min(options.watcherLimit ?? 1, os.cpus().length - 1));
     const runningDevTasks = new RunningDevTasks();
 
-    // 任务串行化(包括 rollup watcher 任务问题)
     const bundlePanel = getTui().getPanel("Bundle");
     for await (const taskSignal of ParallelRunner(watcherLimit)) {
       const userConfigName = await pendingTasks.next();
 
       const task = runableDevTasks.get(userConfigName);
-      getTui().getPanel("Bundle").write("info", `zzz vite ${userConfigName}`);
       if (task) {
-        getTui().getPanel("Bundle").write("info", `run vite ${userConfigName}`);
         runningDevTasks.deleteOld(watcherLimit);
         task.abortable.start();
         runningDevTasks.addNew(task);
