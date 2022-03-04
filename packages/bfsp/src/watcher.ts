@@ -1,33 +1,54 @@
-import chokidar from "chokidar";
-import path from "node:path";
-import { readUserConfig } from "./configs/bfspUserConfig";
-import { Loopable, SharedAsyncIterable, SharedFollower } from "./toolkit";
-
-/// single
+import { getWatcher } from "./toolkit.watcher";
 
 export function watchSingle() {
-  const watchTs = (root: string, cb: (p: string, type: Bfsp.WatcherAction) => void) => {
-    const watcher = chokidar.watch(
-      ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
+  const watchTs = async (root: string, cb: (p: string, type: Bfsp.WatcherAction) => void) => {
+    const watcher = await getWatcher(root);
+    watcher.doWatch(
       {
-        cwd: root,
-        ignoreInitial: false,
-        followSymlinks: true,
-        ignored: ["*.d.ts", ".bfsp", "#bfsp.ts", "node_modules"],
-      }
+        expression: [
+          "allof",
+          ["match", "*.ts", "wholename"],
+          ["match", "*.tsx", "wholename"],
+          ["match", "*.cts", "wholename"],
+          ["match", "*.mts", "wholename"],
+          ["match", "*.ctsx", "wholename"],
+          ["match", "*.mtsx", "wholename"],
+          ["not", ["match", "**/node_modules/**", "wholename"]],
+          ["not", ["match", "**/.*/**", "wholename"]],
+        ],
+        chokidar: [
+          ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
+          {
+            cwd: root,
+            ignoreInitial: false,
+            followSymlinks: true,
+            ignored: ["*.d.ts", ".bfsp", "#bfsp.ts", "node_modules"],
+          },
+        ],
+      },
+      cb
     );
-    watcher.on("add", (p) => cb(p, "add"));
-    watcher.on("unlink", (p) => cb(p, "unlink"));
-    watcher.on("change", (p) => cb(p, "change"));
   };
-  const watchUserConfig = (root: string, cb: (p: string, type: Bfsp.WatcherAction) => void) => {
-    const watcher = chokidar.watch(["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"], {
-      cwd: root,
-      ignoreInitial: false,
-    });
-    watcher.on("add", (p) => cb(p, "add"));
-    watcher.on("unlink", (p) => cb(p, "unlink"));
-    watcher.on("change", (p) => cb(p, "change"));
+  const watchUserConfig = async (root: string, cb: (p: string, type: Bfsp.WatcherAction) => void) => {
+    const watcher = await getWatcher(root);
+    watcher.doWatch(
+      {
+        expression: [
+          "allof",
+          ["name", ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"]],
+          ["not", ["match", "**/node_modules/**", "wholename"]],
+          ["not", ["match", "**/.*/**", "wholename"]],
+        ],
+        chokidar: [
+          ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"],
+          {
+            cwd: root,
+            ignoreInitial: false,
+          },
+        ],
+      },
+      cb
+    );
   };
   return {
     watchTs,

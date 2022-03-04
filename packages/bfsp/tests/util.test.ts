@@ -72,7 +72,7 @@ test("tasks order", async (t) => {
   tasks.add("3");
   tasks.add("2");
   tasks.useOrder(["1", "2", "3"]);
-  t.true(tasks.next() === "1");
-  t.true(tasks.next() === "2");
-  t.true(tasks.next() === "3");
+  t.true((await tasks.next()) === "1");
+  t.true((await tasks.next()) === "2");
+  t.true((await tasks.next()) === "3");
 });

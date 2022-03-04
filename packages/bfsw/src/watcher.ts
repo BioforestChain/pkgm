@@ -1,14 +1,13 @@
-import chokidar from "chokidar";
-import { 
-  SharedFollower, 
-  Loopable, 
-  SharedAsyncIterable, 
-  readUserConfig, 
-  toPosixPath
+import {
+  getWatcher,
+  Loopable,
+  readUserConfig,
+  SharedAsyncIterable,
+  SharedFollower,
+  toPosixPath,
 } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 import { readWorkspaceConfig } from "./workspaceConfig";
-/// workspace
 
 type State = { userConfig: Bfsp.UserConfig; path: string };
 class States {
@@ -181,111 +180,125 @@ export function registerAllTsEvent(cb: (args: CbArgsForAllTs) => BFChainUtil.Pro
   allTsCbs.push(cb);
 }
 
+const handleBfspWatcherEvent = async (p: string, type: Bfsp.WatcherAction) => {
+  await updateWorkspaceConfig(); // 只要bfsp有变动，就更新一下workspace， TODO: 后期优化
+  const dirname = path.dirname(p);
+  const resolvedDir = path.resolve(dirname);
+  const key = _pathToKey(dirname);
+  if (type === "unlink") {
+    const state = states.findByPath(key);
+    // states.delByPath(key);
+    for (const cb of allUserConfigCbs) {
+      await cb({ cfg: state!.userConfig, type, path: dirname });
+    }
+    return;
+  }
+  const config = await readUserConfig(resolvedDir, { refresh: true });
+  if (!config) {
+    return;
+  }
+  if (!validProjects.has(config.name)) {
+    return;
+  }
+  // states.add(key, { userConfig: config, path: dirname });
+
+  for (const cb of allUserConfigCbs) {
+    await cb({ cfg: config, type, path: dirname });
+  }
+
+  const cbs = userConfigCbMap.get(key);
+  if (cbs) {
+    for (const cb of cbs!) {
+      await cb(p, type);
+    }
+  }
+};
+
+const handleTsWatcherEvent = async (p: string, type: Bfsp.WatcherAction) => {
+  const closestRoot = _getClosestRoot(p);
+  const cbs = tsCbMap.get(closestRoot);
+  const state = states.findByPath(closestRoot);
+  const _path = path.relative(closestRoot, p);
+
+  allTsCbs.forEach((cb) => {
+    cb({ path: _path, type, name: state?.userConfig.name! });
+  });
+
+  if (cbs) {
+    for (const cb of cbs!) {
+      await cb(_path, type);
+    }
+  }
+};
+
 export async function watchWorkspace(options: { root: string }) {
   root = options.root;
+  const watcher = await getWatcher(root);
+
   const watchBfsw = () => {
-    const watcher = chokidar.watch(
-      ["#bfsw.json", "#bfsw.ts", "#bfsw.mts", "#bfsw.mtsx"].map((x) => `./**/${x}`),
-      { cwd: root, ignoreInitial: true, ignored: [/node_modules*/, /\.bfsp*/] }
+    watcher.doWatch(
+      {
+        expression: [
+          "allof",
+          ["name", ["#bfsw.json", "#bfsw.ts", "#bfsw.mts", "#bfsw.mtsx"]],
+          ["not", ["match", "**/node_modules/**", "wholename"]],
+          ["not", ["match", "**/.*/**", "wholename"]],
+        ],
+        chokidar: [
+          ["#bfsw.json", "#bfsw.ts", "#bfsw.mts", "#bfsw.mtsx"].map((x) => `./**/${x}`),
+          { cwd: root, ignoreInitial: true, ignored: [/node_modules*/, /\.bfsp*/] },
+        ],
+      },
+      handleBfswWatcherEvent
     );
-    watcher.on("add", (p) => {
-      handleBfswWatcherEvent(p, "add");
-    });
-    watcher.on("change", (p) => {
-      handleBfswWatcherEvent(p, "change");
-    });
-    watcher.on("unlink", (p) => {
-      handleBfswWatcherEvent(p, "unlink");
-    });
-  };
-
-  const handleBfspWatcherEvent = async (p: string, type: Bfsp.WatcherAction) => {
-    await updateWorkspaceConfig(); // 只要bfsp有变动，就更新一下workspace， TODO: 后期优化
-    const dirname = path.dirname(p);
-    const resolvedDir = path.resolve(dirname);
-    const key = _pathToKey(dirname);
-    if (type === "unlink") {
-      const state = states.findByPath(key);
-      // states.delByPath(key);
-      for (const cb of allUserConfigCbs) {
-        await cb({ cfg: state!.userConfig, type, path: dirname });
-      }
-      return;
-    }
-    const config = await readUserConfig(resolvedDir, { refresh: true });
-    if (!config) {
-      return;
-    }
-    if (!validProjects.has(config.name)) {
-      return;
-    }
-    // states.add(key, { userConfig: config, path: dirname });
-
-    for (const cb of allUserConfigCbs) {
-      await cb({ cfg: config, type, path: dirname });
-    }
-
-    const cbs = userConfigCbMap.get(key);
-    if (cbs) {
-      for (const cb of cbs!) {
-        await cb(p, type);
-      }
-    }
   };
 
   const watchBfsp = () => {
-    const watcher = chokidar.watch(
-      ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"].map((x) => `./**/${x}`),
-      { cwd: root, ignoreInitial: false, ignored: [/node_modules*/, /\.bfsp*/] }
-    );
-    watcher.on("add", (p) => {
-      handleBfspWatcherEvent(p, "add");
-    });
-    watcher.on("change", (p) => {
-      handleBfspWatcherEvent(p, "change");
-    });
-    watcher.on("unlink", (p) => {
-      handleBfspWatcherEvent(p, "unlink");
-    });
-  };
-
-  const handleTsWatcherEvent = async (p: string, type: Bfsp.WatcherAction) => {
-    const closestRoot = _getClosestRoot(p);
-    const cbs = tsCbMap.get(closestRoot);
-    const state = states.findByPath(closestRoot);
-    const _path = path.relative(closestRoot, p);
-
-    allTsCbs.forEach(cb=>{
-      cb({path:_path, type, name:state?.userConfig.name!})
-    });
-
-    if (cbs) {
-      for (const cb of cbs!) {
-        await cb(_path, type);
-      }
-    }
-  };
-  const watchTsFiles = () => {
-    const watcher = chokidar.watch(
-      ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
+    watcher.doWatch(
       {
-        cwd: root,
-        ignoreInitial: false,
-        followSymlinks: true,
-        ignored: [/.*\.d\.ts$/, /\.bfsp*/, /#bfsp\.ts$/, /node_modules*/],
-      }
+        expression: [
+          "allof",
+          ["name", ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"]],
+          ["not", ["match", "**/node_modules/**", "wholename"]],
+          ["not", ["match", "**/.*/**", "wholename"]],
+        ],
+        chokidar: [
+          ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"].map((x) => `./**/${x}`),
+          { cwd: root, ignoreInitial: false, ignored: [/node_modules*/, /\.bfsp*/] },
+        ],
+      },
+      handleBfspWatcherEvent
     );
-
-    watcher.on("add", async (p) => {
-      await handleTsWatcherEvent(p, "add");
-    });
-    watcher.on("change", async (p) => {
-      await handleTsWatcherEvent(p, "change");
-    });
-    watcher.on("unlink", async (p) => {
-      await handleTsWatcherEvent(p, "unlink");
-    });
   };
+
+  const watchTsFiles = () => {
+    watcher.doWatch(
+      {
+        expression: [
+          "allof",
+          ["match", "*.ts", "wholename"],
+          ["match", "*.tsx", "wholename"],
+          ["match", "*.cts", "wholename"],
+          ["match", "*.mts", "wholename"],
+          ["match", "*.ctsx", "wholename"],
+          ["match", "*.mtsx", "wholename"],
+          ["not", ["match", "**/node_modules/**", "wholename"]],
+          ["not", ["match", "**/.*/**", "wholename"]],
+        ],
+        chokidar: [
+          ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
+          {
+            cwd: root,
+            ignoreInitial: false,
+            followSymlinks: true,
+            ignored: [/.*\.d\.ts$/, /\.bfsp*/, /#bfsp\.ts$/, /node_modules*/],
+          },
+        ],
+      },
+      handleTsWatcherEvent
+    );
+  };
+
   await updateWorkspaceConfig();
   watchBfsw();
   watchBfsp();

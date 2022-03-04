@@ -10,6 +10,7 @@ import { isDeepStrictEqual } from "node:util";
 import type { ModuleFormat } from "rollup";
 import { Debug } from "./logger";
 export * from "./toolkit.require";
+export * from "./toolkit.watcher";
 const log = Debug("toolkit");
 
 // const requireRoot = fileURLToPath(new URL("../", import.meta.url).href);

@@ -1,15 +1,14 @@
-import chokidar from "chokidar";
-import { build, Plugin } from "esbuild";
+import { build } from "esbuild";
 import { createHash } from "node:crypto";
-import { existsSync, writeFileSync, unlinkSync } from "node:fs";
+import { existsSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
-import { fileURLToPath, pathToFileURL } from "node:url";
+import { pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
-
+import { BuildService } from "../buildService";
+import { Debug } from "../logger";
 import {
-  CacheGetter,
   fileIO,
   folderIO,
   Loopable,
@@ -18,8 +17,7 @@ import {
   SharedFollower,
   toPosixPath,
 } from "../toolkit";
-import { Debug } from "../logger";
-import { BuildService } from "../buildService";
+
 const log = Debug("bfsp:config/#bfsp");
 
 // export const enum BUILD_MODE {
@@ -40,8 +38,6 @@ export const defineConfig = (cb: (info: Bfsp.ConfigEnvInfo) => Bfsp.UserConfig) 
     path: "./",
   };
 };
-
-
 
 /**为出口的js文件进行自动重命名,寻找一个不冲突的文件名
  * input 与 output 一一对应
@@ -171,7 +167,6 @@ export const createTsconfigForEsbuild = (content: string) => {
 
 const bfspTsconfigFilepath = createTsconfigForEsbuild(bfspTsconfigContent);
 
-
 export const _readFromMjs = async <T>(filename: string, refresh?: boolean) => {
   const url = pathToFileURL(filename);
   if (refresh) {
@@ -218,8 +213,6 @@ export const readUserConfig = async (
     }
   }
 };
-
-
 
 export const getBfspUserConfig = async (
   dirname = process.cwd(),

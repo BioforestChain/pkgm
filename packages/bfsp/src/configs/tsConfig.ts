@@ -1,14 +1,13 @@
-import { sleep } from "@bfchain/util-extends-promise";
-import chokidar from "chokidar";
+import { existsSync } from "node:fs";
 import path, { resolve } from "node:path";
-import { dirname } from "node:path";
+import { writeJsonConfig } from "../../bin/util";
+import { BuildService } from "../buildService";
 import { Debug, Warn } from "../logger";
 import {
   $PathInfo,
   fileIO,
   folderIO,
   getExtname,
-  getSecondExtname,
   getTwoExtnames,
   List,
   ListArray,
@@ -18,13 +17,9 @@ import {
   PathInfoParser,
   SharedAsyncIterable,
   SharedFollower,
-  toPosixPath,
-  walkFiles,
+  toPosixPath
 } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
-import { writeJsonConfig } from "../../bin/util";
-import { existsSync } from "node:fs";
-import { BuildService } from "../buildService";
 const log = Debug("bfsp:config/tsconfig");
 const warn = Warn("bfsp:config/tsconfig");
 
@@ -362,7 +357,7 @@ export const generateTsConfig = async (
       alwaysStrict: true,
       moduleResolution: "node",
       resolveJsonModule: true,
-      emitDeclarationOnly:false,
+      emitDeclarationOnly: false,
       // baseUrl: "./",
       // types: ["node"],
       paths: tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles),
@@ -377,7 +372,7 @@ export const generateTsConfig = async (
       {
         path: "./tsconfig.typings.json",
       },
-      ...depRefs
+      ...depRefs,
     ],
     // files: tsFilesLists.notestFiles.toArray(),
     files: [] as string[],
@@ -389,7 +384,7 @@ export const generateTsConfig = async (
       isolatedModules: true,
       outDir: `${TSC_OUT_ROOT}/isolated`,
       noEmit: false,
-      emitDeclarationOnly:false,
+      emitDeclarationOnly: false,
     },
     files: tsFilesLists.isolatedFiles.toArray(),
     references: [
@@ -574,35 +569,8 @@ export const watchTsConfig = (
     }
   });
 
-  //#region 监听文件变动来触发更新
-  // const watcher = chokidar.watch(
-  //   ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
-  //   {
-  //     cwd: projectDirpath,
-  //     ignoreInitial: false,
-  //     followSymlinks: true,
-  //     ignored: ["*.d.ts", ".bfsp", "#bfsp.ts", "node_modules"],
-  //   }
-  // );
-
   type EventType = "add" | "unlink";
   let cachedEventList = new Map<string, EventType>();
-  /// 收集监听到事件
-  // watcher.on("add", async (path) => {
-  //   if (await isTsFile(PathInfoParser(projectDirpath, path))) {
-  //     log("add file", path);
-  //     cachedEventList.set(path, "add");
-  //     looper.loop("add file", 200);
-  //   }
-  // });
-  // watcher.on("unlink", async (path) => {
-  //   if (await isTsFile(PathInfoParser(projectDirpath, path))) {
-  //     log("unlink file", path);
-  //     cachedEventList.set(path, "unlink");
-  //     looper.loop("unlink file", 200);
-  //   }
-  // });
-  //#endregion
 
   //#region 监听依赖配置来触发更新
   bfspUserConfigStream.onNext(() => looper.loop("bfsp user config changed"));

@@ -361,12 +361,15 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
       if (task) {
         runningDevTasks.deleteOld(watcherLimit);
         task.abortable.start();
+        bundlePanel.updateStatus("loading");
         runningDevTasks.addNew(task);
 
         task.onDone((name) => {
           log(`vite rollup ${name} watcher end!`);
-          bundlePanel.updateStatus("loading");
           taskSignal.resolve();
+          if (pendingTasks.hasRemaining() === false) {
+            bundlePanel.updateStatus("success");
+          }
         });
       } else {
         taskSignal.resolve();

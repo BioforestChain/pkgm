@@ -33,6 +33,7 @@
     "*.ts"
   ],
   "scripts": {
+    "postinstall": "npx zx ./assets/postinstall.mjs",
     "up": "yarn upgrade-interactive",
     "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",
@@ -40,8 +41,8 @@
     "test": "ava"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "bnqkl",
+  "license": "MIT",
   "dependencies": {
     "@bfchain/util": "^0.0.1-alpha.4",
     "@types/blessed": "^0.1.19",
@@ -49,8 +50,8 @@
     "ava": "^4.0.1",
     "blessed": "^0.1.81",
     "chalk": "^5.0.0",
-    "chokidar": "^3.5.3",
     "debug": "^4.3.2",
+    "fb-watchman": "^2.0.1",
     "ignore": "^5.2.0",
     "prettier": "^2.5.1",
     "source-map-support": "^0.5.20",
@@ -58,10 +59,11 @@
     "tslib": "^2.3.1",
     "typescript": "^4.5.5",
     "vite": "^2.8.4",
-    "yarn": "^1.22.0"
+    "yarn": "^1.22.17"
   },
   "devDependencies": {
     "@types/debug": "^4.1.7",
+    "@types/fb-watchman": "^2.0.1",
     "@types/prettier": "^2.4.2"
   },
   "engines": {

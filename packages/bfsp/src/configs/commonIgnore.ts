@@ -16,6 +16,8 @@ export const defaultIgnores = new Set([
   "*.tsbuildinfo",
   ".npmignore",
   ".*.ts",
+  "*.log",
+  "*.tmp",
   "typings/dist",
   "typings/dist.d.ts",
   "tsconfig.isolated.json",

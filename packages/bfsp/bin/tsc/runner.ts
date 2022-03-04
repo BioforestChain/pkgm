@@ -17,6 +17,7 @@ export const runTsc = (opts: RunTscOption) => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
   let workerMjsPath = path.join(getBfspWorkerDir(), "tsc_worker.mjs");
+  debugger
   const tscWorker = new Worker(workerMjsPath, {
     argv: [opts.projectMode ? "-p" : "--build", opts.tsconfigPath, opts.watch ? "-w" : ""].filter(
       Boolean /* 一定要过滤掉空字符串，否则可能会被识别成文件名 */
