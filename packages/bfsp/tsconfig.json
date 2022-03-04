@@ -30,6 +30,7 @@
   "files": [
     "package.json",
     "assets/package.template.json",
+    "script/postinstall.ts",
     "bin/tsc/worker.ts",
     "bin/tsc/runner.ts",
     "bin/terser/worker.ts",

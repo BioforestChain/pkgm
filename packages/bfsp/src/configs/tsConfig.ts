@@ -17,7 +17,7 @@ import {
   PathInfoParser,
   SharedAsyncIterable,
   SharedFollower,
-  toPosixPath
+  toPosixPath,
 } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 const log = Debug("bfsp:config/tsconfig");
