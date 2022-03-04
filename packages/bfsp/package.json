@@ -11,13 +11,13 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/index.mjs"
+      "import": "./dist/main/index.mjs"
     },
     "./bin": {
-      "import": "./dist/bin.mjs"
+      "import": "./dist/main/bin.mjs"
     },
     "./test": {
-      "import": "./dist/test.mjs"
+      "import": "./dist/main/test.mjs"
     },
     "./package.json": "./package.json"
   },
@@ -33,18 +33,25 @@
     "*.ts"
   ],
   "scripts": {
-    "postinstall": "node ./dist/postinstall.mjs",
+    "lsdeps": "yarn list --json --prod > .d.json",
+    "postinstall": "node ./dist/script/postinstall.mjs",
     "up": "yarn upgrade-interactive",
     "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",
-    "dev": "vite build --watch --minify=false --sourcemap=true",
+    "dev:main": "vite build --watch --minify=false --sourcemap=true",
+    "dev:script": "yarn dev:main -- --mode=script",
+    "dev": "yarn dev:main",
+    "build:main": "vite build --minify=false --sourcemap=true",
+    "build:script": "yarn build:main -- --mode=script",
+    "build": "yarn build:main & yarn build:script",
     "test": "ava"
   },
   "keywords": [],
   "author": "bnqkl",
   "license": "MIT",
   "dependencies": {
-    "@bfchain/util": "^0.0.1-alpha.4",
+    "@bfchain/util-extends-promise-out": "^0.0.1-alpha.4",
+    "@bfchain/util-extends-map": "^0.0.1-alpha.4",
     "ava": "^4.0.1",
     "blessed": "^0.1.81",
     "chalk": "^5.0.0",
@@ -60,6 +67,7 @@
     "yarn": "^1.22.17"
   },
   "devDependencies": {
+    "@bfchain/pkgm-bfsp": "link:./",
     "zx": "^5.2.0",
     "@types/blessed": "^0.1.19",
     "@types/debug": "^4.1.7",

@@ -4,6 +4,6 @@
 /// <reference path="./gitIgnore.d.ts" />
 /// <reference path="./npmIgnore.d.ts" />
 /// <reference path="./watcher.d.ts" />
-import type {} from "@bfchain/util";
+import type {} from "@bfchain/util-typings";
 
 // export * from '../src/index'

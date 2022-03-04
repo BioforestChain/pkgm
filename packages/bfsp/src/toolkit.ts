@@ -1,4 +1,4 @@
-import { sleep } from "@bfchain/util-extends-promise";
+import { setTimeout as sleep } from "node:timers/promises";
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import ignore from "ignore";
 import { EventEmitter } from "node:events";

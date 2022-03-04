@@ -1,4 +1,4 @@
-import { sleep } from "@bfchain/util-extends-promise";
+import { setTimeout as sleep } from "node:timers/promises";
 import test from "ava";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";

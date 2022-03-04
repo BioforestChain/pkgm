@@ -7,17 +7,23 @@ import { execSync } from "node:child_process";
 
 const libFormat = (process.argv.find((arg) => arg.startsWith("--format="))?.split("=")[1] ?? "esm") as ModuleFormat;
 
-export const input: InputOption = {
+export const defaultInput: InputOption = {
   index: "src/index.ts",
-  postinstall: "script/postinstall.ts",
-  bin: "bin.ts",
-  test: "test.ts",
   "bfsp.bin": "bin/bfsp.cmd.ts",
   "config.test": "tests/config.test.ts",
   "build.test": "tests/build.test.ts",
   "util.test": "tests/util.test.ts",
   tsc_worker: "bin/tsc/worker.ts",
   terser_worker: "bin/terser/worker.ts",
+  test: "test.ts",
+  bin: "bin.ts",
+};
+// export const testInput: InputOption = {
+// };
+// export const binInput: InputOption = {
+// };
+export const scriptInput: InputOption = {
+  postinstall: "script/postinstall.ts",
 };
 export const extension =
   {
@@ -59,8 +65,21 @@ export const getShebangPlugin = (dirname: string) => {
     },
   } as PluginOption;
 };
-import "node:assert";
 export default defineConfig((info) => {
+  const { mode } = info;
+  let modeOutDir = "main";
+  let modeInput = defaultInput;
+  /* if (mode === "test") {
+    modeInput = testInput;
+    modeOutDir = "test";
+  } else if (mode === "bin") {
+    modeInput = binInput;
+    modeOutDir = "bin";
+  } else */ if (mode === "script") {
+    modeInput = scriptInput;
+    modeOutDir = "script";
+  }
+
   const nodejsModules = new Set([
     "assert",
     "async_hooks",
@@ -106,7 +125,7 @@ export default defineConfig((info) => {
     "zlib",
   ]);
   const depsInfo = JSON.parse(execSync("yarn list --prod --json").toString());
-  const allowExternals = new Set<string>();
+  const allowExternals = new Set<string>(["@bfchain/pkgm-bfsp"]);
   for (const item of depsInfo.data.trees) {
     const pkgName = item.name.match(/(.+?)@/)[1];
     allowExternals.add(pkgName);
@@ -115,12 +134,17 @@ export default defineConfig((info) => {
   // const dirname = __dirname.replace(/\\/g, "/");
   const node_module_dirname = path.join(__dirname, "node_module").replace(/\\/g, "/") + "/";
 
+  const viteInnerSources = new Set(["vite/preload-helper"]);
   return {
     build: {
       target: "es2020",
+      outDir: "dist/" + modeOutDir,
       rollupOptions: {
         preserveEntrySignatures: "strict",
         external: (source, importer, isResolved) => {
+          if (viteInnerSources.has(source)) {
+            return;
+          }
           // nodejs协议模块
           if (source.startsWith("node:")) {
             return true;
@@ -133,15 +157,29 @@ export default defineConfig((info) => {
           ) {
             return true;
           }
+          // if (!source.startsWith(".") && !source.startsWith("E:/")) {
+          //   console.log("source", source, importer);
+          // }
 
           /// node_modules文件夹里头的模块
-          if (allowExternals.has(source)) {
+          const fromModuleName = source.startsWith("@")
+            ? source.split("/", 2).slice(0, 2).join("/")
+            : source.split("/", 1)[0];
+          if (allowExternals.has(fromModuleName)) {
+            // console.log("[true]", fromModuleName);
             return true;
           }
+
           const posixSource = source.replace(/\\/g, "/");
           if (posixSource.startsWith(node_module_dirname)) {
-            const fromModuleName = posixSource.slice(node_module_dirname.length).split("/", 1)[0];
+            const fromModulePath = posixSource.slice(node_module_dirname.length);
+            const fromModuleName = fromModulePath.startsWith("@")
+              ? fromModulePath.split("/", 2).slice(0, 2).join("/")
+              : fromModulePath.split("/", 1)[0];
+
+            // console.log("fromModuleName", fromModuleName);
             if (allowExternals.has(fromModuleName)) {
+              // console.log("[true]", fromModuleName);
               return true;
             }
           }
@@ -157,9 +195,9 @@ export default defineConfig((info) => {
           //     return true;
           //   }
           // }
-          console.log("include", source);
+          // console.log("include", source);
         },
-        input,
+        input: modeInput,
         output: {
           entryFileNames: `[name]${extension}`,
           chunkFileNames: `chunk/[name]${extension}`,

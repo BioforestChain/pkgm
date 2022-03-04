@@ -1,7 +1,7 @@
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
-import test from "ava";
+import { defineTest } from "@bfchain/pkgm-bfsp/test";
 import { Tasks, Tree } from "../bin/util";
-import { Closeable } from "../src";
+import { Closeable } from "../src/toolkit";
 
 const compareFn = (a: string, b: string) => {
   if (a === b) {
@@ -14,19 +14,19 @@ const compareFn = (a: string, b: string) => {
   }
 };
 const belongsFn = (a: string, b: string) => a.startsWith(b);
-test("sort tree", async (t) => {
+defineTest("sort tree", async (t) => {
   const tree = new Tree<string>({ compareFn, childFn: belongsFn, eqFn: (a, b) => a === b }, "/");
   const n = tree.addOrUpdate("/a");
 
   t.true(n.data === "/a");
 });
-test("sort tree 1", async (t) => {
+defineTest("sort tree 1", async (t) => {
   const tree = new Tree<string>({ compareFn, childFn: belongsFn, eqFn: (a, b) => a === b }, "/a");
   const n = tree.addOrUpdate("/");
 
   t.true(n.data === "/");
 });
-test("sort tree hole", async (t) => {
+defineTest("sort tree hole", async (t) => {
   const tree = new Tree<string>({ compareFn, childFn: belongsFn, eqFn: (a, b) => a === b }, "/");
   tree.addOrUpdate("/1");
   tree.addOrUpdate("/2");
@@ -40,7 +40,7 @@ test("sort tree hole", async (t) => {
   t.true(d && d.data === "/1/3/5");
 });
 
-test("closable", async (t) => {
+defineTest("closable", async (t) => {
   let c = 0;
   const closable = Closeable("x", () => {
     const closeSign = new PromiseOut<boolean>();
@@ -66,7 +66,7 @@ test("closable", async (t) => {
   t.true(c === 2);
 });
 
-test("tasks order", async (t) => {
+defineTest("tasks order", async (t) => {
   const tasks = new Tasks<string>();
   tasks.add("1");
   tasks.add("3");

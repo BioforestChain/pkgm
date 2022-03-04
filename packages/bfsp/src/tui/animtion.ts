@@ -1,4 +1,4 @@
-import { sleep } from "@bfchain/util-extends-promise";
+import { setTimeout as sleep } from "node:timers/promises";
 import { performance } from "node:perf_hooks";
 export type FrameCallback = (time: number) => unknown;
 export class AnimationFrameManager {

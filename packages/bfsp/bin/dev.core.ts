@@ -1,18 +1,13 @@
-import { sleep } from "@bfchain/util-extends-promise";
+import { setTimeout as sleep } from "node:timers/promises";
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import chalk from "chalk";
-import path, { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
-import { Worker } from "node:worker_threads";
+import { watchBfspProjectConfig } from "../src/bfspConfig";
+import { BuildService } from "../src/buildService";
+import { createViteLogger, Debug } from "../src/logger";
+import { Closeable } from "../src/toolkit";
 import type { RollupWatcher } from "./shim";
 import { buildBfsp } from "./shim";
-import { $BfspUserConfig, getBfspUserConfig } from "../src";
-import { watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
-import { BuildService } from "../src/buildService";
-import { watchDeps } from "../src/deps";
-import { createTscLogger, createViteLogger, Debug } from "../src/logger";
-import { Closeable, SharedAsyncIterable } from "../src/toolkit";
 import { ViteConfigFactory } from "./vite/configFactory";
 
 export const doDev = async (options: {

@@ -83,6 +83,7 @@
     "tests/config.test.ts",
     "tests/build.test.ts",
     "tests/util.test.ts",
+    "test.ts",
     "bin.ts"
   ],
   "references": [
