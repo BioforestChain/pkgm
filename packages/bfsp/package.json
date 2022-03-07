@@ -22,7 +22,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsp": "./dist/bfsp.bin.mjs"
+    "bfsp": "./dist/main/bfsp.bin.mjs"
   },
   "files": [
     "dist",
