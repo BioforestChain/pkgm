@@ -6,7 +6,8 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
   config: T,
   hanlder: (
     params: Bfsp.Bin.ToParamsType<Bfsp.Bin.GetParamsInputType<T>>,
-    args: Bfsp.Bin.ToArgsTupleType<Bfsp.Bin.GetArgsInputType<T>>
+    args: Bfsp.Bin.ToArgsTupleType<Bfsp.Bin.GetArgsInputType<T>>,
+    ctx: CommandContext
   ) => unknown
 ) => {
   const binRunner = (argv: string[]) => {
@@ -101,7 +102,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
     }
 
     // bfsp/bfsw help
-    if(options.includes("--help")) {
+    if (options.includes("--help")) {
       const commandName = process.argv[1];
       const isSingle = commandName.includes("bfsp") ? true : false;
       console.log(`Usage: ${isSingle ? "bfsp" : "bfsw"} ${funName} ${paramOptions ? "[options]" : ""}${argName}\n`);
@@ -112,10 +113,27 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
       process.exit(0);
     }
 
-    return hanlder(hanlderParams, hanlderArgs);
+    return hanlder(
+      hanlderParams,
+      hanlderArgs,
+      new CommandContext({
+        // prompt: chalk.cyan(funName) + ": ",
+        prefix: funName,
+        stderr: process.stderr,
+        stdout: process.stdout,
+      })
+    );
   };
   if (ARGV[0] === funName || config.alias?.includes(ARGV[0])) {
-    binRunner(ARGV.slice(1));
+    (async () => {
+      try {
+        await binRunner(ARGV.slice(1));
+        process.exit(0);
+      } catch (err) {
+        console.error(err);
+        process.exit(1);
+      }
+    })();
   }
   return binRunner;
 };
@@ -159,6 +177,117 @@ const formatTypedValue = (value: string, type?: Bfsp.Bin.CommandConfig.InputType
   }
 };
 
+class CommandContext {
+  constructor(
+    private options: {
+      prefix: string;
+      stdout: NodeJS.WritableStream;
+      stderr: NodeJS.WritableStream;
+    }
+  ) {}
+  async question<R = string>(
+    query: string,
+    options: {
+      map?: (answer: string) => R;
+      filter?: (answer: R) => BFChainUtil.PromiseMaybe<boolean>;
+      stringify?: (result: R) => string;
+      printOutput?: boolean;
+      trimLines?: boolean;
+      stdout?: NodeJS.WritableStream;
+      stdin?: NodeJS.ReadableStream;
+      prompt?: string;
+    } = {}
+  ) {
+    const rl = createInterface({
+      input: options.stdin ?? process.stdin,
+      output: options.stdout ?? this.options.stdout ?? process.stdout,
+      prompt: options.prompt ?? chalk.cyan(this.options.prefix) + ": ",
+    });
+    const {
+      map = (answer) => answer.trim(),
+      filter = (result) => Boolean(result),
+      stringify = (result) => String(result),
+      printOutput = true,
+      trimLines = true,
+    } = options;
+
+    if (trimLines) {
+      query = query
+        .trim()
+        .split("\n")
+        .map((line) => rl.getPrompt() + line.trim())
+        .join("\n");
+    } else {
+      query = query.replace(/\n/g, "\n" + rl.getPrompt());
+    }
+
+    do {
+      const res = map(
+        await new Promise<string>((resolve) => {
+          rl.prompt();
+          rl.question(query, resolve);
+        })
+      ) as R;
+      if (await filter(res)) {
+        if (printOutput) {
+          rl.prompt();
+          rl.write(stringify(res) + "\n");
+        }
+        rl.close();
+        return res;
+      }
+    } while (true);
+  }
+  private _logger?: Bfsp.Bin.Logger;
+  get logger() {
+    if (this._logger === undefined) {
+      const Print = (linePrefix: string, stream: NodeJS.WritableStream, line: boolean) => {
+        linePrefix += ": ";
+        return (format?: any, ...param: any[]) => {
+          const out = linePrefix + util.format(format, ...param).replace(/\n/g, "\n" + linePrefix) + (line ? "\n" : "");
+          stream.write(out);
+        };
+      };
+      const PipeFrom = (stream: NodeJS.WritableStream, printLine: Bfsp.Bin.Print) => {
+        return (input: Readable) => {
+          let hasOutput = false;
+          const onData = (chunk: any) => {
+            hasOutput = true;
+            printLine(String(chunk));
+          };
+          input.on("data", onData);
+          input.once("end", () => {
+            if (hasOutput) {
+              stream.write("\n");
+            }
+            input.off("data", onData);
+          });
+        };
+      };
+      const SuperPrinter = (linePrefix: string, stream: NodeJS.WritableStream) => {
+        const print = Print(linePrefix, stream, true);
+        const line = Print(linePrefix, stream, false);
+        const pipeFrom = PipeFrom(stream, line);
+        return Object.assign(print, { line, pipeFrom });
+      };
+      const { prefix, stderr, stdout } = this.options;
+      this._logger = {
+        isSuperLogger: true,
+        log: SuperPrinter(chalk.cyan(prefix), stdout),
+        info: SuperPrinter(chalk.blue(prefix), stdout),
+        warn: SuperPrinter(chalk.yellow(prefix), stderr),
+        success: SuperPrinter(chalk.green(prefix), stdout),
+        error: SuperPrinter(chalk.red(prefix), stderr),
+      };
+    }
+    return this._logger;
+  }
+}
+
+import chalk from "chalk";
+import { createInterface } from "node:readline";
+import type { Readable } from "node:stream";
+import util from "node:util";
 export declare namespace Bfsp {
   namespace Bin {
     interface CommandConfig<
@@ -233,5 +362,24 @@ export declare namespace Bfsp {
     type ToArgsTupleType<T> = T extends readonly [infer R, ...infer Args]
       ? ToArgsType<R> | ToArgsTupleType<Args>
       : never;
+
+    type Print = (format?: any, ...param: any[]) => void;
+    type PipeFrom = (stream: Readable) => void;
+    type SuperPrinter = Print & { line: Print; pipeFrom: PipeFrom };
+    type Logger = {
+      isSuperLogger: true;
+      log: SuperPrinter;
+      warn: SuperPrinter;
+      error: SuperPrinter;
+      info: SuperPrinter;
+      success: SuperPrinter;
+    };
+    type NormalPrinter = Print & Partial<SuperPrinter>;
+    type ConsoleLogger = {
+      log: NormalPrinter;
+      warn: NormalPrinter;
+      error: NormalPrinter;
+      info: NormalPrinter;
+    } & Partial<Omit<Logger, "log" | "warn" | "error" | "info">>;
   }
 }

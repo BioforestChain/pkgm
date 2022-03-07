@@ -10,21 +10,21 @@ defineCommand(
   {
     params: [{ type: "string", name: "path", description: "project path, default is cwd()", require: false }],
     args: [],
-    description: helpOptions.init
+    description: helpOptions.init,
   } as const,
-  async (params, args) => {
+  async (params, args, ctx) => {
     const { path: projectPath } = params;
     let root = process.cwd();
 
     if (projectPath !== undefined) {
       root = path.resolve(root, projectPath);
 
-      if(!existsSync(root)) {
+      if (!existsSync(root)) {
         throw new Error(chalk.red(`Cannot found directory '${root}'`));
       }
     }
 
-    await doInit({ root });
+    await doInit({ root }, ctx.logger);
     process.exit(0);
   }
 );

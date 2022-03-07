@@ -7,8 +7,12 @@ import { defaultIgnores } from "../src/configs/commonIgnore";
 import { ts } from "./fmt.core";
 import { writeJsonConfig } from "./util";
 import { doInit } from "./init.core";
+import type { Bfsp } from "../bin";
 
-export const doCreate = async (options: { root: string; name: string; license?: string }) => {
+export const doCreate = async (
+  options: { root: string; name: string; license?: string },
+  logger: Bfsp.Bin.ConsoleLogger = console
+) => {
   const { root, name, license = "MIT" } = options;
   folderIO.tryInit(root);
   const version = getBfspVersion();
@@ -23,7 +27,7 @@ export const doCreate = async (options: { root: string; name: string; license?: 
       "@bfchain/pkgm-bfsp": `^${version}`,
     },
   };
-  console.log(`creating files`);
+  logger.log(`creating files`);
   await writeJsonConfig(path.join(root, "package.json"), packageJson);
   const bfspTsFile = ts`
   import { defineConfig } from "@bfchain/pkgm-bfsp";
@@ -41,15 +45,20 @@ export const doCreate = async (options: { root: string; name: string; license?: 
   await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));
   await writeFile(path.join(root, "#bfsp.ts"), bfspTsFile);
 
-  const g = spawn("git", ["init"], { cwd: root });
-  g.stdout?.pipe(process.stdout);
-  g.stderr?.pipe(process.stderr);
-  await doInit({ root });
-  console.log(`project inited, run the following commands to start dev\n`);
+  const g = spawn("git", ["init"], { cwd: root, stdio: "pipe" });
+  if (logger.isSuperLogger) {
+    g.stdout && logger.warn.pipeFrom(g.stdout);
+    g.stderr && logger.error.pipeFrom(g.stderr);
+  } else {
+    g.stdout?.pipe(process.stdout);
+    g.stderr?.pipe(process.stderr);
+  }
+  await doInit({ root }, logger);
+  logger.log(`project inited, run the following commands to start dev\n`);
   const relative_path = path.relative(process.cwd(), root);
   if (relative_path) {
-    console.log(chalk.blue(`cd ${relative_path}`));
+    logger.log(chalk.blue(`cd ${relative_path}`));
   }
-  console.log(chalk.blue(`bfsp dev`));
+  logger.log(chalk.blue(`bfsp dev`));
   process.exit(0);
 };

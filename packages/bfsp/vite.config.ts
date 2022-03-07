@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { InputOption, ModuleFormat } from "rollup";
+import type { InputOption, ModuleFormat, ExternalOption } from "rollup";
 import { defineConfig, PluginOption } from "vite";
 import { execSync } from "node:child_process";
 
@@ -65,21 +65,8 @@ export const getShebangPlugin = (dirname: string) => {
     },
   } as PluginOption;
 };
-export default defineConfig((info) => {
-  const { mode } = info;
-  let modeOutDir = "main";
-  let modeInput = defaultInput;
-  /* if (mode === "test") {
-    modeInput = testInput;
-    modeOutDir = "test";
-  } else if (mode === "bin") {
-    modeInput = binInput;
-    modeOutDir = "bin";
-  } else */ if (mode === "script") {
-    modeInput = scriptInput;
-    modeOutDir = "script";
-  }
 
+export const getExternalOption = (currentPkgName?: string) => {
   const nodejsModules = new Set([
     "assert",
     "async_hooks",
@@ -125,7 +112,10 @@ export default defineConfig((info) => {
     "zlib",
   ]);
   const depsInfo = JSON.parse(execSync("yarn list --prod --json").toString());
-  const allowExternals = new Set<string>(["@bfchain/pkgm-bfsp"]);
+  if (currentPkgName === undefined) {
+    currentPkgName = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf-8")).name;
+  }
+  const allowExternals = new Set<string>([currentPkgName]);
   for (const item of depsInfo.data.trees) {
     const pkgName = item.name.match(/(.+?)@/)[1];
     allowExternals.add(pkgName);
@@ -135,68 +125,87 @@ export default defineConfig((info) => {
   const node_module_dirname = path.join(__dirname, "node_module").replace(/\\/g, "/") + "/";
 
   const viteInnerSources = new Set(["vite/preload-helper"]);
+  const ext: ExternalOption = (source, importer, isResolved) => {
+    if (viteInnerSources.has(source)) {
+      return;
+    }
+    // nodejs协议模块
+    if (source.startsWith("node:")) {
+      return true;
+    }
+    if (
+      // nodejs 直接模块
+      nodejsModules.has(source) ||
+      // nodejs 二级模块 比如 fs/promises
+      (source.includes("/") && nodejsModules.has(source.split("/", 1)[1]))
+    ) {
+      return true;
+    }
+    // if (!source.startsWith(".") && !source.startsWith("E:/")) {
+    //   console.log("source", source, importer);
+    // }
+
+    /// node_modules文件夹里头的模块
+    const fromModuleName = source.startsWith("@")
+      ? source.split("/", 2).slice(0, 2).join("/")
+      : source.split("/", 1)[0];
+    if (allowExternals.has(fromModuleName)) {
+      // console.log("[true]", fromModuleName);
+      return true;
+    }
+
+    const posixSource = source.replace(/\\/g, "/");
+    if (posixSource.startsWith(node_module_dirname)) {
+      const fromModulePath = posixSource.slice(node_module_dirname.length);
+      const fromModuleName = fromModulePath.startsWith("@")
+        ? fromModulePath.split("/", 2).slice(0, 2).join("/")
+        : fromModulePath.split("/", 1)[0];
+
+      // console.log("fromModuleName", fromModuleName);
+      if (allowExternals.has(fromModuleName)) {
+        // console.log("[true]", fromModuleName);
+        return true;
+      }
+    }
+
+    // if (source.startsWith("@bfchain/") || source.includes("node_modules/@bfchain/")) {
+    //   return false;
+    // }
+    // if (source.includes("node_modules")) {
+    //   return true;
+    // }
+    // if (!source.startsWith(".")) {
+    //   if (existsSync(`node_modules/${source}`)) {
+    //     return true;
+    //   }
+    // }
+    // console.log("include", source);
+  };
+  return ext;
+};
+
+export default defineConfig((info) => {
+  const { mode } = info;
+  let modeOutDir = "main";
+  let modeInput = defaultInput;
+  /* if (mode === "test") {
+    modeInput = testInput;
+    modeOutDir = "test";
+  } else if (mode === "bin") {
+    modeInput = binInput;
+    modeOutDir = "bin";
+  } else */ if (mode === "script") {
+    modeInput = scriptInput;
+    modeOutDir = "script";
+  }
+
   return {
     build: {
       target: "es2020",
       outDir: "dist/" + modeOutDir,
       rollupOptions: {
         preserveEntrySignatures: "strict",
-        external: (source, importer, isResolved) => {
-          if (viteInnerSources.has(source)) {
-            return;
-          }
-          // nodejs协议模块
-          if (source.startsWith("node:")) {
-            return true;
-          }
-          if (
-            // nodejs 直接模块
-            nodejsModules.has(source) ||
-            // nodejs 二级模块 比如 fs/promises
-            (source.includes("/") && nodejsModules.has(source.split("/", 1)[1]))
-          ) {
-            return true;
-          }
-          // if (!source.startsWith(".") && !source.startsWith("E:/")) {
-          //   console.log("source", source, importer);
-          // }
-
-          /// node_modules文件夹里头的模块
-          const fromModuleName = source.startsWith("@")
-            ? source.split("/", 2).slice(0, 2).join("/")
-            : source.split("/", 1)[0];
-          if (allowExternals.has(fromModuleName)) {
-            // console.log("[true]", fromModuleName);
-            return true;
-          }
-
-          const posixSource = source.replace(/\\/g, "/");
-          if (posixSource.startsWith(node_module_dirname)) {
-            const fromModulePath = posixSource.slice(node_module_dirname.length);
-            const fromModuleName = fromModulePath.startsWith("@")
-              ? fromModulePath.split("/", 2).slice(0, 2).join("/")
-              : fromModulePath.split("/", 1)[0];
-
-            // console.log("fromModuleName", fromModuleName);
-            if (allowExternals.has(fromModuleName)) {
-              // console.log("[true]", fromModuleName);
-              return true;
-            }
-          }
-
-          // if (source.startsWith("@bfchain/") || source.includes("node_modules/@bfchain/")) {
-          //   return false;
-          // }
-          // if (source.includes("node_modules")) {
-          //   return true;
-          // }
-          // if (!source.startsWith(".")) {
-          //   if (existsSync(`node_modules/${source}`)) {
-          //     return true;
-          //   }
-          // }
-          // console.log("include", source);
-        },
+        external: getExternalOption(),
         input: modeInput,
         output: {
           entryFileNames: `[name]${extension}`,
