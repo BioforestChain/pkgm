@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm-bfsw",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",
