@@ -11,18 +11,15 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/index.mjs"
+      "import": "./dist/main/index.mjs"
     },
     "./bin": {
-      "import": "./dist/bin.mjs"
-    },
-    "./test": {
-      "import": "./dist/test.mjs"
+      "import": "./dist/main/bin.mjs"
     },
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsw": "./dist/bfsw.bin.mjs"
+    "bfsw": "./dist/main/bfsw.bin.mjs"
   },
   "files": [
     "dist",
@@ -36,15 +33,20 @@
     "up": "yarn upgrade-interactive",
     "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",
-    "dev": "vite build --watch --minify=false --sourcemap=true",
-    "build": "vite build",
+    "postinstall": "node ./postinstall.mjs",
+    "dev:main": "vite build --watch --minify=false --sourcemap=true",
+    "dev:script": "yarn dev:main -- --mode=script",
+    "dev": "yarn dev:main",
+    "build:main": "vite build --minify=false --sourcemap=true",
+    "build:script": "yarn build:main -- --mode=script",
+    "build": "yarn build:main & yarn build:script",
     "test": "ava"
   },
   "keywords": [],
   "author": "bnqkl",
   "license": "MIT",
   "dependencies": {
-    "@bfchain/pkgm-bfsp": "^2.4.5",
+    "@bfchain/pkgm-bfsp": "^2.5.2",
     "@bfchain/util": "^0.0.1-alpha.4",
     "@types/node": "^17.0.8",
     "chalk": "^5.0.0",

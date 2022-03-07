@@ -23,7 +23,7 @@ export const defaultInput: InputOption = {
 // export const binInput: InputOption = {
 // };
 export const scriptInput: InputOption = {
-  postinstall: "script/postinstall.ts",
+  postinstall: "postinstall.ts",
 };
 export const extension =
   {
@@ -188,13 +188,7 @@ export default defineConfig((info) => {
   const { mode } = info;
   let modeOutDir = "main";
   let modeInput = defaultInput;
-  /* if (mode === "test") {
-    modeInput = testInput;
-    modeOutDir = "test";
-  } else if (mode === "bin") {
-    modeInput = binInput;
-    modeOutDir = "bin";
-  } else */ if (mode === "script") {
+  if (mode === "script") {
     modeInput = scriptInput;
     modeOutDir = "script";
   }

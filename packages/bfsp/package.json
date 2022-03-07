@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm-bfsp",
-  "version": "2.5.1",
+  "version": "2.5.2",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",
@@ -19,6 +19,9 @@
     "./test": {
       "import": "./dist/main/test.mjs"
     },
+    "./postinstall": {
+      "import": "./dist/script/postinstall.mjs"
+    },
     "./package.json": "./package.json"
   },
   "bin": {
@@ -34,7 +37,7 @@
   ],
   "scripts": {
     "lsdeps": "yarn list --json --prod > .d.json",
-    "postinstall": "node ./dist/script/postinstall.mjs",
+    "postinstall": "node ./postinstall.mjs",
     "up": "yarn upgrade-interactive",
     "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",

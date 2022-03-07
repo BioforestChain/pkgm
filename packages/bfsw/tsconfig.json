@@ -29,6 +29,8 @@
   },
   "files": [
     "package.json",
+    "script/fixNodeModules.ts",
+    "postinstall.ts",
     "bin/bfsw.cmd.ts",
     "bin/build.bin.ts",
     "bin/dev.bin.ts",

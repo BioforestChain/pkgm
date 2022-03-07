@@ -7,6 +7,7 @@
   },
   "scripts": {
     "i": "lerna bootstrap",
+    "dev:script": "lerna run dev:script --stream --parallel",
     "dev": "lerna run dev --stream --parallel",
     "tsc": "lerna run tsc --stream --parallel"
   }
