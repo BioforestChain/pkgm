@@ -1,0 +1,59 @@
+{
+  "name": "@bfchain/pkgm-bfsw",
+  "version": "2.4.5",
+  "description": "",
+  "type": "module",
+  "types": "./src/index.ts",
+  "main": "./dist/index.mjs",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.com/"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs"
+    },
+    "./bin": {
+      "import": "./dist/bin.mjs"
+    },
+    "./test": {
+      "import": "./dist/test.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "bfsw": "./dist/bfsw.bin.mjs"
+  },
+  "files": [
+    "dist",
+    "typings",
+    "src",
+    "bin",
+    "assets",
+    "*.ts"
+  ],
+  "scripts": {
+    "up": "yarn upgrade-interactive",
+    "ndb": "ndb --experimental-modules ",
+    "tsc": "tsc --build tsconfig.json -w",
+    "dev": "vite build --watch --minify=false --sourcemap=true",
+    "test": "ava"
+  },
+  "keywords": [],
+  "author": "bnqkl",
+  "license": "MIT",
+  "dependencies": {
+    "@bfchain/pkgm-bfsp": "^2.4.5",
+    "@bfchain/util": "^0.0.1-alpha.4",
+    "@types/node": "^17.0.8",
+    "chalk": "^5.0.0",
+    "dependency-graph": "^0.11.0",
+    "tslib": "^2.3.1",
+    "vite": "^2.8.4",
+    "yarn": "^1.22.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "gitHead": "30f08935ba4d9b7db7b81a56cdff411e32ab36cf"
+}

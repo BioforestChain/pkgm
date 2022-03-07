@@ -1,4 +1,9 @@
-*
--.gitignore
--bfsp
--bfsw
+.git
+.vscode
+*.lock
+node_modules
+dist
+build
+*.cpuprofile
+*.log
+.*
