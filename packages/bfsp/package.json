@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm-bfsp",
-  "version": "2.5.6",
+  "version": "2.5.7",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",
@@ -75,14 +75,14 @@
     "@bfchain/watchman-binary-win23-x64": "2021.01.10"
   },
   "devDependencies": {
+    "@bfchain/watchman-binary-darwin-x64": "link:../../watchman-binary/darwin/x64",
+    "@bfchain/watchman-binary-linux-x64": "link:../../watchman-binary/linux/x64",
+    "@bfchain/watchman-binary-win23-x64": "link:../../watchman-binary/win23/x64",
     "@types/blessed": "^0.1.19",
     "@types/debug": "^4.1.7",
     "@types/fb-watchman": "^2.0.1",
     "@types/node": "^16.0.0",
     "@types/prettier": "^2.4.2",
-    "@bfchain/watchman-binary-darwin-x64": "link:../../watchman-binary/darwin/x64",
-    "@bfchain/watchman-binary-linux-x64": "link:../../watchman-binary/linux/x64",
-    "@bfchain/watchman-binary-win23-x64": "link:../../watchman-binary/win23/x64",
     "zx": "^5.2.0"
   },
   "engines": {
