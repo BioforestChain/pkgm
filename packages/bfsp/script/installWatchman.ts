@@ -4,7 +4,7 @@ function quiet(promise: any) {
   promise._quiet = true;
   return promise;
 }
-export const installWatchman = async () => {
+export const installWatchman = async (logger: PKGM.ConsoleLogger = console) => {
   const hasCommand =
     os.platform() === "win32"
       ? async (cmd: string) => {
@@ -22,12 +22,6 @@ export const installWatchman = async () => {
     try {
       switch (os.platform()) {
         case "linux": {
-          const z = await quiet($`lsb_release -a`);
-          const distributor = z.stdout
-            .match(/Distributor ID:(.+)/)?.[1]
-            .trim()
-            .toLowerCase();
-
           if (await hasCommand("apt-get")) {
             await $`sudo apt-get install watchman -y`;
           }
@@ -40,16 +34,24 @@ export const installWatchman = async () => {
             await $`sudo yum install watchman -y`;
           }
 
+          if (await hasCommand("brew")) {
+            await $`brew update`;
+            await $`brew install watchman -y`;
+          }
           break;
         }
         case "darwin": {
-          // if (await hasCommand("brew")) {
-          await $`brew install watchman -y`;
-          // }
+          if (await hasCommand("brew")) {
+            await $`brew update`;
+            await $`brew install watchman -y`;
+          }
+          if (await hasCommand("port")) {
+            await $`port install watchman -y`;
+          }
           break;
         }
         case "win32": {
-          // console.log("zzz");
+          // logger.log("zzz");
           // if (await hasCommand("choco")) {
           await $`choco.exe install watchman -y`;
           // }
@@ -58,11 +60,24 @@ export const installWatchman = async () => {
       }
     } catch {}
     if (await hasNoWatchMan()) {
-      console.error("⚠️\tYou maybe need install 'watchman' in you system manually");
+      logger.error("⚠️\tYou maybe need install 'watchman' in you system manually!");
+      switch (os.platform()) {
+        case "win32":
+          logger.error(`https://facebook.github.io/watchman/docs/install.html#download-for-windows-beta`);
+          break;
+        case "linux":
+        case "darwin":
+          logger.error(
+            `https://facebook.github.io/watchman/docs/install.html#installing-on-macos-or-linux-via-homebrew`
+          );
+          break;
+        default:
+          logger.error(`https://facebook.github.io/watchman/docs/install.html`);
+      }
     } else {
-      console.log("✅\tPass environmental test");
+      logger.log("✅\tPass environmental test");
     }
   } else {
-    console.log("✅\tPass environmental test");
+    logger.log("✅\tPass environmental test");
   }
 };

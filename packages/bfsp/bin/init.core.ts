@@ -1,7 +1,7 @@
 import cp from "node:child_process";
 import type { Bfsp } from "../bin";
 
-export const doInit = async (options: { root: string }, logger: Bfsp.Bin.ConsoleLogger = console) => {
+export const doInit = async (options: { root: string }, logger: PKGM.ConsoleLogger = console) => {
   const { root } = options;
 
   logger.info("linking dependencies");
@@ -9,8 +9,8 @@ export const doInit = async (options: { root: string }, logger: Bfsp.Bin.Console
   return new Promise((resolve) => {
     const proc = cp.exec("corepack yarn", { cwd: root });
     if (logger.isSuperLogger) {
-      proc.stdout && logger.warn.pipeFrom(proc.stdout);
-      proc.stderr && logger.error.pipeFrom(proc.stderr);
+      proc.stdout && logger.warn.pipeFrom!(proc.stdout);
+      proc.stderr && logger.error.pipeFrom!(proc.stderr);
     } else {
       proc.stdout?.pipe(process.stdout);
       proc.stderr?.pipe(process.stderr);

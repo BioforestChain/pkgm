@@ -238,7 +238,7 @@ class CommandContext {
       }
     } while (true);
   }
-  private _logger?: Bfsp.Bin.Logger;
+  private _logger?: PKGM.Logger;
   get logger() {
     if (this._logger === undefined) {
       const Print = (linePrefix: string, stream: NodeJS.WritableStream, line: boolean) => {
@@ -248,7 +248,7 @@ class CommandContext {
           stream.write(out);
         };
       };
-      const PipeFrom = (stream: NodeJS.WritableStream, printLine: Bfsp.Bin.Print) => {
+      const PipeFrom = (stream: NodeJS.WritableStream, printLine: PKGM.Print) => {
         return (input: Readable) => {
           let hasOutput = false;
           const onData = (chunk: any) => {
@@ -362,24 +362,5 @@ export declare namespace Bfsp {
     type ToArgsTupleType<T> = T extends readonly [infer R, ...infer Args]
       ? ToArgsType<R> | ToArgsTupleType<Args>
       : never;
-
-    type Print = (format?: any, ...param: any[]) => void;
-    type PipeFrom = (stream: Readable) => void;
-    type SuperPrinter = Print & { line: Print; pipeFrom: PipeFrom };
-    type Logger = {
-      isSuperLogger: true;
-      log: SuperPrinter;
-      warn: SuperPrinter;
-      error: SuperPrinter;
-      info: SuperPrinter;
-      success: SuperPrinter;
-    };
-    type NormalPrinter = Print & Partial<SuperPrinter>;
-    type ConsoleLogger = {
-      log: NormalPrinter;
-      warn: NormalPrinter;
-      error: NormalPrinter;
-      info: NormalPrinter;
-    } & Partial<Omit<Logger, "log" | "warn" | "error" | "info">>;
   }
 }

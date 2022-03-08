@@ -3,3 +3,24 @@ declare namespace NodeJS {
     noDeprecation: boolean;
   }
 }
+
+declare namespace PKGM {
+  type Print = (format?: any, ...param: any[]) => void;
+  type PipeFrom = (stream: import("node:stream").Readable) => void;
+  type SuperPrinter = Print & { line: Print; pipeFrom: PipeFrom };
+  type Logger = {
+    isSuperLogger: true;
+    log: SuperPrinter;
+    warn: SuperPrinter;
+    error: SuperPrinter;
+    info: SuperPrinter;
+    success: SuperPrinter;
+  };
+  type NormalPrinter = Print & Partial<SuperPrinter>;
+  type ConsoleLogger = {
+    log: NormalPrinter;
+    warn: NormalPrinter;
+    error: NormalPrinter;
+    info: NormalPrinter;
+  } & Partial<Omit<Logger, "log" | "warn" | "error" | "info">>;
+}

@@ -11,7 +11,7 @@ import type { Bfsp } from "../bin";
 
 export const doCreate = async (
   options: { root: string; name: string; license?: string },
-  logger: Bfsp.Bin.ConsoleLogger = console
+  logger: PKGM.ConsoleLogger = console
 ) => {
   const { root, name, license = "MIT" } = options;
   folderIO.tryInit(root);
@@ -47,8 +47,8 @@ export const doCreate = async (
 
   const g = spawn("git", ["init"], { cwd: root, stdio: "pipe" });
   if (logger.isSuperLogger) {
-    g.stdout && logger.warn.pipeFrom(g.stdout);
-    g.stderr && logger.error.pipeFrom(g.stderr);
+    g.stdout && logger.warn.pipeFrom!(g.stdout);
+    g.stderr && logger.error.pipeFrom!(g.stderr);
   } else {
     g.stdout?.pipe(process.stdout);
     g.stderr?.pipe(process.stderr);
