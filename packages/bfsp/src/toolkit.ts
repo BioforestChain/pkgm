@@ -237,7 +237,6 @@ class FileIoCache extends CacheWritter<string, Buffer> {
     return existsSync(filepath);
   }
   async setVal(filepath: string, content: Buffer) {
-    // mkdir(path.dirname(filepath))
     await writeFile(filepath, content);
     return true;
   }

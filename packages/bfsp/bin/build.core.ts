@@ -177,6 +177,9 @@ export const doBuild = async (options: {
   const BUILD_OUT_ROOT = path.resolve(path.join(root, consts.BuildOutRootPath));
   const TSC_OUT_ROOT = path.resolve(path.join(root, consts.TscOutRootPath));
 
+  /**已经清理过的文件夹目录，避免重复清理 */
+  const rmDirs = new Set<string>();
+
   const buildSingle = async (options: {
     userConfigBuild: Omit<Bfsp.UserConfig, "build">;
     thePackageJson: $PackageJson;
@@ -186,7 +189,10 @@ export const doBuild = async (options: {
   }) => {
     const report = options.stateReporter;
     const { userConfigBuild, thePackageJson, buildOutDir, cacheBuildOutDir } = options;
-    existsSync(buildOutDir) && (await rm(buildOutDir, { recursive: true, force: true }));
+    if (rmDirs.has(buildOutDir) === false) {
+      rmDirs.add(buildOutDir);
+      existsSync(buildOutDir) && (await rm(buildOutDir, { recursive: true, force: true }));
+    }
 
     const userConfig1 = {
       userConfig: userConfigBuild,
