@@ -58,8 +58,12 @@ export const getShebangPlugin = (dirname: string) => {
       for (const binname in bin) {
         const binFilepath = path.resolve(dirname, bin[binname]);
         if (existsSync(binFilepath)) {
-          writeFileSync(binFilepath, "#!/usr/bin/env node\n" + readFileSync(binFilepath));
-          console.log(`inserted shebang to ${binFilepath}`);
+          const binFileContent = readFileSync(binFilepath, "utf-8");
+          const SHEBANG_PREFIX = "#!/usr/bin/env node\n";
+          if (binFileContent.startsWith(SHEBANG_PREFIX) === false) {
+            writeFileSync(binFilepath, SHEBANG_PREFIX + binFileContent);
+            console.log(`inserted shebang to ${binFilepath}`);
+          }
         }
       }
     },

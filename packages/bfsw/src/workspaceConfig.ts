@@ -1,8 +1,10 @@
 import path, { resolve } from "node:path";
 import { createTsconfigForEsbuild, Debug, fileIO, folderIO, toPosixPath, _readFromMjs } from "@bfchain/pkgm-bfsp";
 import { Plugin, build } from "esbuild";
-import { existsSync, unlinkSync } from "node:fs";
+import { existsSync, unlinkSync, mkdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 import bfswTsconfigContent from "../assets/tsconfig.bfsw.json?raw";
+import { consts } from "./consts";
 
 export const defineWorkspace = (cb: () => Bfsw.Workspace) => {
   return cb();
@@ -95,8 +97,12 @@ export const readWorkspaceConfig = async (
       filename === "#bfsw.mts" ||
       filename === "#bfsw.mtsx"
     ) {
-      const cache_filename = `#bfsw.mjs`;
-      const cache_filepath = resolve(dirname, cache_filename);
+      const cache_filename = `#bfsw-${createHash("md5").update(`${Date.now()}`).digest("hex")}.mjs`;
+      const bfswDir = resolve(dirname, consts.ShadowRootPath);
+      if(!existsSync(bfswDir)) {
+        mkdirSync(bfswDir);
+      }
+      const cache_filepath = resolve(bfswDir, cache_filename);
       try {
         log("complie #bfsw");
         await build({

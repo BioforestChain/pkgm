@@ -57,7 +57,8 @@
     "yarn": "^1.22.0"
   },
   "devDependencies": {
-    "@bfchain/pkgm-bfsp": "link:../bfsp"
+    "@bfchain/pkgm-bfsp": "link:../bfsp",
+    "@bfchain/pkgm-bfsw": "link:./"
   },
   "engines": {
     "node": ">=16.0.0"

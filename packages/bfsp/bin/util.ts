@@ -216,7 +216,7 @@ export const getBfswDir = () => {
   return p;
 };
 export const getBfspWorkerDir = () => {
-  return path.join(getBfspDir(), "dist");
+  return path.join(getBfspDir(), "dist/main");
 };
 export const getBfspPackageJson = () => {
   const p = path.join(getBfspDir(), "package.json");

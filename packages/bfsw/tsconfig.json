@@ -46,6 +46,7 @@
     "src/index.ts",
     "src/util.ts",
     "src/watcher.ts",
+    "src/consts.ts",
     "src/workspaceConfig.ts"
   ],
   "references": [

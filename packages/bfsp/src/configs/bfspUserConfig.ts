@@ -1,6 +1,6 @@
 import { build } from "esbuild";
 import { createHash } from "node:crypto";
-import { existsSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, unlinkSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -8,6 +8,7 @@ import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
 import { BuildService } from "../buildService";
 import { Debug } from "../logger";
+import { consts } from "../consts";
 import {
   fileIO,
   folderIO,
@@ -184,7 +185,11 @@ export const readUserConfig = async (
 ) => {
   for (const filename of await folderIO.get(dirname)) {
     if (filename === "#bfsp.ts" || filename === "#bfsp.mts" || filename === "#bfsp.mtsx") {
-      const cache_filename = `#bfsp.mjs`;
+      const cache_filename = `#bfsp-${createHash("md5").update(`${Date.now()}`).digest("hex")}.mjs`;
+      const bfspDir = resolve(dirname, consts.ShadowRootPath);
+      if(!existsSync(bfspDir)) {
+        mkdirSync(bfspDir);
+      }
       const cache_filepath = resolve(dirname, cache_filename);
       try {
         log("complie #bfsp");
