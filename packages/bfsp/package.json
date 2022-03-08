@@ -33,7 +33,8 @@
     "src",
     "bin",
     "assets",
-    "*.ts"
+    "*.ts",
+    "*.mjs"
   ],
   "scripts": {
     "lsdeps": "yarn list --json --prod > .d.json",

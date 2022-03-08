@@ -27,6 +27,7 @@
     "src",
     "bin",
     "assets",
+    "*.mjs",
     "*.ts"
   ],
   "scripts": {
