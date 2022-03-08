@@ -1,0 +1,20 @@
+{
+  "name": "@bfchain/watchman-binary-darwin-x64",
+  "version": "2021.08.23",
+  "repository": {
+    "url": "https://github.com/BioforestChain/pkgm"
+  },
+  "homepage": "https://github.com/BioforestChain/pkgm#readme",
+  "exports": {
+    "./binary": {
+      "node": "./watchman-v2021.08.23.00-macos/bin/watchman"
+    }
+  },
+  "os": [
+    "linux"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

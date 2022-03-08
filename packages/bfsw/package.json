@@ -6,8 +6,7 @@
   "types": "./src/index.ts",
   "main": "./dist/index.mjs",
   "publishConfig": {
-    "access": "public",
-    "registry": "https://registry.npmjs.com/"
+    "access": "public"
   },
   "exports": {
     ".": {

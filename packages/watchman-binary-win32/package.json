@@ -1,0 +1,20 @@
+{
+  "name": "@bfchain/watchman-binary-win23-x64",
+  "version": "2021.01.10",
+  "repository": {
+    "url": "https://github.com/BioforestChain/pkgm"
+  },
+  "homepage": "https://github.com/BioforestChain/pkgm#readme",
+  "exports": {
+    "./binary": {
+      "node": "./watchman-v2021.01.11.00-windows/bin/watchman.exe"
+    }
+  },
+  "os": [
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ]
+}

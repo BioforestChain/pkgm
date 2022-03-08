@@ -1,27 +1,26 @@
 import { EasyMap } from "@bfchain/util-extends-map";
 import { Client } from "fb-watchman";
 import { createHash } from "node:crypto";
-import { platform } from "node:os";
+import { platform, arch } from "node:os";
 import path from "node:path";
 import { require } from "./toolkit.require";
 import { getTui } from "./tui";
 import { spawnSync } from "node:child_process";
 
 let watchmanBinaryPath: string | undefined;
+/**
+ * 检测是否有全局安装watchman
+ */
 const localWatchmanVersion = spawnSync("watchman", ["--version"]).stdout?.toString();
+/**
+ * 没有全局安装，使用本地依赖的版本
+ */
 if (localWatchmanVersion === undefined) {
-  switch (platform()) {
-    case "win32":
-      watchmanBinaryPath = "watchman-v2021.01.11.00-windows/bin/watchman.exe";
-      break;
-    case "linux":
-      watchmanBinaryPath = "watchman-v2022.02.28.00-linux/bin/watchman";
-      break;
-    case "darwin":
-      watchmanBinaryPath = "watchman-v2021.08.23.00-macos/bin/watchman";
-      break;
-    // default:
-    //   throw new Error(`no support watchman for your platform: ${platform()}`);
+  const binaryPkgName = `@bfchain/watchman-binary-${platform()}-${arch()}`;
+  try {
+    watchmanBinaryPath = require.resolve(binaryPkgName + "/binary");
+  } catch (err) {
+    console.error(err);
   }
   if (watchmanBinaryPath) {
     watchmanBinaryPath = path.join(
