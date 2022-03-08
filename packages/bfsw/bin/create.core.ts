@@ -36,7 +36,7 @@ export const doCreate = async (options: { root: string; name: string; license?: 
     private: true,
     workspaces: [],
     devDependencies: {
-      "@bfchain/pkgm-bfsw": `^${version}`,
+      "@bfchain/pkgm-bfsw": `${version}`,
     },
   });
   await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));

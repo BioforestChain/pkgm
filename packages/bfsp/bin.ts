@@ -128,7 +128,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
     (async () => {
       try {
         await binRunner(ARGV.slice(1));
-        process.exit(0);
+        // process.exit(0);
       } catch (err) {
         console.error(err);
         process.exit(1);

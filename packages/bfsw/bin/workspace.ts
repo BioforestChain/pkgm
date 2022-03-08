@@ -108,7 +108,7 @@ async function updatePackageJson() {
     packageManager: "yarn@1.22.0",
     workspaces: [...states.paths()],
     devDependencies: {
-      "@bfchain/pkgm-bfsw": `^${bfswVersion}`,
+      "@bfchain/pkgm-bfsw": `${bfswVersion}`,
     },
     // dependencies: {
     //   ...buildDeps,

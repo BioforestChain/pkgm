@@ -24,7 +24,7 @@ export const doCreate = async (
       dev: "bfsp dev",
     },
     devDependencies: {
-      "@bfchain/pkgm-bfsp": `^${version}`,
+      "@bfchain/pkgm-bfsp": `${version}`,
     },
   };
   logger.log(`creating files`);
