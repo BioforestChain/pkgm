@@ -6,7 +6,7 @@ import { Debug, Warn, createTscLogger } from "../src/logger";
 import { watchSingle } from "../src/watcher";
 import { doDev } from "./dev.core";
 import { runTsc } from "./tsc/runner";
-import { writeBfspProjectConfig, watchBfspProjectConfig, watchDeps } from "../src";
+import { writeBfspProjectConfig, watchBfspProjectConfig, watchDeps, getTui } from "../src";
 import { helpOptions } from "./help.core";
 
 defineCommand(
@@ -17,7 +17,7 @@ defineCommand(
       { type: "string", name: "profiles", description: "bundle profiles, default is ['default']." },
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
-    description: helpOptions.dev
+    description: helpOptions.dev,
   } as const,
   async (params, args) => {
     const warn = Warn("bfsp:bin/dev");
@@ -63,6 +63,16 @@ defineCommand(
       subStreams,
     });
     const { abortable } = task;
+    const bundlePanel = getTui().getPanel("Bundle");
+    task.onSuccess(() => {
+      bundlePanel.updateStatus("success");
+    });
+    task.onError(() => {
+      bundlePanel.updateStatus("error");
+    });
+    task.onStart(() => {
+      bundlePanel.updateStatus("loading");
+    });
     /// 开始监听并触发编译
     subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
     subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));

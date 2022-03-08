@@ -23,6 +23,7 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     }
     this._status = s;
     this.onStatusChange?.(s, this);
+    this._render();
   }
   private _render() {
     if (this._status === "loading") {

@@ -364,7 +364,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
         bundlePanel.updateStatus("loading");
         runningDevTasks.addNew(task);
 
-        task.onDone((name) => {
+        task.onSuccess((name) => {
           log(`vite rollup ${name} watcher end!`);
           taskSignal.resolve();
           if (pendingTasks.hasRemaining() === false) {

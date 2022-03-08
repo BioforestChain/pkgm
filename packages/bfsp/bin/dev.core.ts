@@ -10,6 +10,8 @@ import type { RollupWatcher } from "./shim";
 import { buildBfsp } from "./shim";
 import { ViteConfigFactory } from "./vite/configFactory";
 
+type DevEventCallback = (name: string) => BFChainUtil.PromiseMaybe<void>;
+
 export const doDev = async (options: {
   root?: string;
   format?: Bfsp.Format;
@@ -27,7 +29,9 @@ export const doDev = async (options: {
   /// 监听项目变动
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
 
-  let doneCb: (name: string) => BFChainUtil.PromiseMaybe<void>;
+  let startCb: DevEventCallback;
+  let successCb: DevEventCallback;
+  let errorCb: DevEventCallback;
   let abortable: ReturnType<typeof Closeable>;
 
   abortable = Closeable<string, string>("bin:dev", async (reasons) => {
@@ -92,14 +96,21 @@ export const doDev = async (options: {
       dev.on("event", async (event) => {
         const name = userConfig.userConfig.name;
         log(`package ${name}: ${event.code}`);
-        // bundle结束，关闭watch
-        if (event.code === "END") {
-          viteLogger.info(`${chalk.green("√")} package ${name} build complete`);
-          doneCb && (await doneCb(name));
+        if (event.code === "START") {
+          startCb && (await startCb(name));
+          return;
         }
+        // bundle结束，关闭watch
         if (event.code === "BUNDLE_END") {
           // close as https://www.rollupjs.org/guide/en/#rollupwatch suggests
           event.result.close();
+          viteLogger.info(`${chalk.green("√")} package ${name} build complete`);
+          successCb && (await successCb(name));
+          return;
+        }
+        if (event.code === "ERROR") {
+          errorCb && (await errorCb(name));
+          return;
         }
       });
     })();
@@ -111,8 +122,14 @@ export const doDev = async (options: {
 
   return {
     abortable: abortable!,
-    onDone: (cb: (name: string) => BFChainUtil.PromiseMaybe<void>) => {
-      doneCb = cb;
+    onStart: (cb: DevEventCallback) => {
+      startCb = cb;
+    },
+    onSuccess: (cb: DevEventCallback) => {
+      successCb = cb;
+    },
+    onError: (cb: DevEventCallback) => {
+      errorCb = cb;
     },
   };
 };

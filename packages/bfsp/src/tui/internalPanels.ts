@@ -2,7 +2,7 @@ import chalk from "chalk";
 import type { RollupError } from "rollup";
 import type { LogErrorOptions, LogLevel, LogType } from "vite";
 import { LogLevels } from "./const";
-import { Panel } from "./Panel";
+import { Panel, PanelStatus } from "./Panel";
 
 export class TscPanel extends Panel<"Tsc"> {
   write(text: string) {
