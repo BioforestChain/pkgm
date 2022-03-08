@@ -1,11 +1,9 @@
-import { createRequire } from "node:module";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
-import url from "node:url";
-export const fixNodeModules = async () => {
-  const __filename = url.fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
 
+export const fixNodeModules = async (__dirname: string) => {
+  console.log("dirname", __dirname);
   let pkgDirname = __dirname;
   let pkgFilename: string;
   do {
@@ -21,10 +19,10 @@ export const fixNodeModules = async () => {
     }
     pkgDirname = upPkgFilename;
   } while (true);
-  const require = createRequire(import.meta.url);
+  const require = createRequire(__dirname);
 
   const pkgJson = JSON.parse(fs.readFileSync(pkgFilename, "utf8"));
-  const bfchainDeps = Object.keys(pkgJson.dependencies).filter((depName) => depName.startsWith("@bfchain/"));
+  const bfchainDeps = Object.keys(pkgJson.dependencies).filter((depName) => depName.startsWith("@bfchain/util"));
   if (bfchainDeps.length === 0) {
     return;
   }
@@ -46,8 +44,10 @@ export const fixNodeModules = async () => {
         },
       };
       fs.writeFileSync(packageJsonFilepath, JSON.stringify(packageJson, null, 2));
+      console.log("fixed\t%s", packageJson.name);
+    } else {
+      console.log("checked\t%s", packageJson.name);
     }
-    console.log("fixed %s", packageJson.name);
   }
   console.groupEnd();
 };
