@@ -1,6 +1,9 @@
 {
   "name": "@bfchain/watchman-binary-darwin-x64",
   "version": "2021.08.23",
+  "publishConfig": {
+    "access": "public"
+  },
   "repository": {
     "url": "https://github.com/BioforestChain/pkgm"
   },

@@ -80,6 +80,9 @@
     "@types/fb-watchman": "^2.0.1",
     "@types/node": "^16.0.0",
     "@types/prettier": "^2.4.2",
+    "@bfchain/watchman-binary-darwin-x64": "link:../../watchman-binary/darwin/x64",
+    "@bfchain/watchman-binary-linux-x64": "link:../../watchman-binary/linux/x64",
+    "@bfchain/watchman-binary-win23-x64": "link:../../watchman-binary/win23/x64",
     "zx": "^5.2.0"
   },
   "engines": {
