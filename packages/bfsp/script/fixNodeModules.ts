@@ -27,7 +27,7 @@ export const fixNodeModules = async (__dirname: string) => {
     return;
   }
 
-  const nmBfchainDirname = path.dirname(path.dirname(require.resolve(path.join(bfchainDeps[0]!, "/package.json"))));
+  const nmBfchainDirname = require.resolve(bfchainDeps[0]!);
   console.group("fixing " + nmBfchainDirname);
   for (const pkgName of fs.readdirSync(nmBfchainDirname)) {
     const packageJsonFilepath = path.join(nmBfchainDirname, pkgName, "package.json");
