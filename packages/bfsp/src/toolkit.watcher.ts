@@ -23,11 +23,15 @@ if (localWatchmanVersion === undefined) {
     console.error(err);
   }
   if (watchmanBinaryPath) {
-    watchmanBinaryPath = path.join(
-      path.dirname(require.resolve("@bfchain/pkgm-bfsp/package.json")),
-      "assets/watchman",
-      watchmanBinaryPath
-    );
+    if (platform() !== "win32") {
+      const libPath = path.join(path.dirname(watchmanBinaryPath), "../lib");
+      const LD_LIBRARY_PATH = process.env["LD_LIBRARY_PATH"];
+      if (LD_LIBRARY_PATH === undefined || LD_LIBRARY_PATH === "") {
+        process.env["LD_LIBRARY_PATH"] = `${libPath}}`;
+      } else {
+        process.env["LD_LIBRARY_PATH"] = `${LD_LIBRARY_PATH};${libPath}}`;
+      }
+    }
   } else {
     /**
      * @Todo 不支持watchman，应该使用其它库进行替代

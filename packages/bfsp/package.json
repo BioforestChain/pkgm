@@ -71,7 +71,7 @@
   },
   "optionalDependencies": {
     "@bfchain/watchman-binary-darwin-x64": "2021.08.23",
-    "@bfchain/watchman-binary-linux-x64": "2022.02.28",
+    "@bfchain/watchman-binary-linux-x64": "2022.02.28-1",
     "@bfchain/watchman-binary-win32-x64": "2021.01.10"
   },
   "devDependencies": {
