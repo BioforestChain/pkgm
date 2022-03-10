@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/watchman-binary-linux-x64",
-  "version": "2022.02.28",
+  "version": "2022.02.28-1",
   "publishConfig": {
     "access": "public"
   },
@@ -13,7 +13,7 @@
   },
   "exports": {
     "./binary": {
-      "node": "./watchman-v2022.02.28.00-linux/bin/watchman.exe"
+      "node": "./watchman-v2022.02.28.00-linux/bin/watchman"
     }
   },
   "os": [
