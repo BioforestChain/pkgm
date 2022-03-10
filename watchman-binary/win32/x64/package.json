@@ -1,5 +1,5 @@
 {
-  "name": "@bfchain/watchman-binary-win23-x64",
+  "name": "@bfchain/watchman-binary-win32-x64",
   "version": "2021.01.10",
   "publishConfig": {
     "access": "public"
