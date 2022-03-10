@@ -364,6 +364,9 @@ export const generateTsConfig = async (
       esModuleInterop: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
+      emitDecoratorMetadata: true,
+      experimentalDecorators: true,
+      ...(bfspUserConfig.userConfig.tsConfig?.compilerOptions ?? {}),
     },
     references: [
       {

@@ -10,13 +10,25 @@ declare namespace Bfsp {
     build?: Partial<Omit<UserConfig, "build">>[];
     deps?: string[];
     packageJson?: {
+      name?: string;
       version?: string;
-      deps?: {
-        [name: string]: string;
+      dependencies?: Dependencies;
+      devDependencies?: Dependencies;
+      peerDependencies?: Dependencies;
+      optionalDependencies?: Dependencies;
+      [name: string]: unknown;
+    };
+    tsConfig?: {
+      compilerOptions?: {
+        [name: string]: unknown;
       };
     };
     internal?: Iterable<string> | InternalPredict;
   }
+  type Dependencies = {
+    [name: string]: string;
+  };
+
   type JsFormat = "cjs" | "esm" | "iife";
   type JsExtension = ".cjs" | ".mjs" | ".js";
   type Format = JsFormat | { format: JsFormat; ext: JsExtension };
