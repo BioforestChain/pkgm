@@ -57,10 +57,10 @@
   },
   "devDependencies": {
     "@bfchain/pkgm-bfsp": "link:../bfsp",
-    "@bfchain/pkgm-bfsw": "link:./"
+    "@bfchain/pkgm-bfsw": "^2.5.9"
   },
   "engines": {
     "node": ">=16.0.0"
   },
-  "gitHead": "30f08935ba4d9b7db7b81a56cdff411e32ab36cf"
+  "gitHead": "267acc5c93d2a220dcdccf65074c92c4152b22e7"
 }
