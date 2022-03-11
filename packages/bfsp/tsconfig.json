@@ -50,6 +50,8 @@
     "bin/dev.core.ts",
     "bin/build.bin.ts",
     "bin/build.core.ts",
+    "bin/npm.bin.ts",
+    "bin/npm.core.ts",
     "bin/fmt.core.ts",
     "bin/fmt.bin.ts",
     "bin/init.bin.ts",

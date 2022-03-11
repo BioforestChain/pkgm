@@ -3,7 +3,7 @@ import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import ignore from "ignore";
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, statSync } from "node:fs";
-import { readdir, readFile, unlink, writeFile } from "node:fs/promises";
+import { copyFile, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 //#endregion
@@ -711,3 +711,15 @@ export const isEqualSet = <T>(set1: Set<T>, set2?: Set<T>) => {
   }
   return true;
 };
+/**
+ * 批量复制文件（夹）
+ * @param src
+ * @param dest
+ */
+export async function cpr(src: string, dest: string) {
+  for await (const filepath of walkFiles(src, { refreshCache: true })) {
+    const destFilepath = path.join(dest, path.relative(src, filepath));
+    await folderIO.tryInit(path.dirname(destFilepath));
+    await copyFile(filepath, destFilepath);
+  }
+}

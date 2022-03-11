@@ -1,9 +1,10 @@
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
-import { BuildService, Loopable, walkFiles } from "@bfchain/pkgm-bfsp";
+import { BuildService, cpr, Loopable, walkFiles } from "@bfchain/pkgm-bfsp";
 import { symlink, unlink, stat, mkdir } from "node:fs/promises";
 import { getRoot, isFileBelongs, states, watchMulti } from "./watcher";
+import { consts } from "./consts";
 
 export async function createSymlink(root: string, name: string, outDir: string) {
   const symlinkType = os.platform() === "win32" ? "junction" : "dir";
@@ -18,7 +19,9 @@ export async function createSymlink(root: string, name: string, outDir: string) 
   }
   await symlink(outDir, symlinkTarget, symlinkType);
 }
-export function getBfswBuildService(watcher: Bfsp.AppWatcher): BuildService {
+let isNpmMode = false;
+export function getBfswBuildService(watcher: Bfsp.AppWatcher, _isNpmMode: boolean): BuildService {
+  isNpmMode = _isNpmMode;
   return {
     watcher,
     walkFiles(
@@ -55,6 +58,10 @@ export function getBfswBuildService(watcher: Bfsp.AppWatcher): BuildService {
     async afterSingleBuild(options: { buildOutDir: string; config: Bfsp.UserConfig }) {
       const root = getRoot();
       await createSymlink(root, options.config.name, options.buildOutDir);
+      if (isNpmMode) {
+        const npmPath = path.join(root, consts.NpmRootPath, options.config.name);
+        await cpr(options.buildOutDir, npmPath);
+      }
     },
     rollup: {
       isExternal(source: string, importer: string, isResolved: boolean) {

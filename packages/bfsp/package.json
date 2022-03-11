@@ -55,7 +55,6 @@
   "dependencies": {
     "@bfchain/util-extends-map": "^0.0.1-alpha.4",
     "@bfchain/util-extends-promise-out": "^0.0.1-alpha.4",
-    "ava": "^4.0.1",
     "blessed": "^0.1.81",
     "chalk": "^5.0.0",
     "debug": "^4.3.2",

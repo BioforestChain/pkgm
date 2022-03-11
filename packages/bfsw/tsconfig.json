@@ -32,6 +32,7 @@
     "postinstall.ts",
     "bin/bfsw.cmd.ts",
     "bin/build.bin.ts",
+    "bin/npm.bin.ts",
     "bin/dev.bin.ts",
     "bin/init.bin.ts",
     "bin/init.core.ts",
