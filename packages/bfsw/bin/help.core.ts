@@ -5,5 +5,6 @@ export const helpOptions = {
   "init": "install dependencies for bfsw project.",
   "dev": "enable bfsw project developmer mode, monitor code modifications in real-time.",
   "build": "bundle multiple profiles code.",
+  "npm": "bundle multiple profiles code for npm publish.",
   "version": "get bfsw version and dependencies."
 };

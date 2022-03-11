@@ -10,9 +10,9 @@ const libFormat = (process.argv.find((arg) => arg.startsWith("--format="))?.spli
 export const defaultInput: InputOption = {
   index: "src/index.ts",
   "bfsp.bin": "bin/bfsp.cmd.ts",
-  "config.test": "tests/config.test.ts",
-  "build.test": "tests/build.test.ts",
-  "util.test": "tests/util.test.ts",
+  // "config.test": "tests/config.test.ts",
+  // "build.test": "tests/build.test.ts",
+  // "util.test": "tests/util.test.ts",
   tsc_worker: "bin/tsc/worker.ts",
   terser_worker: "bin/terser/worker.ts",
   test: "test.ts",

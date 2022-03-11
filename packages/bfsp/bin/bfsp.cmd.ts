@@ -6,4 +6,5 @@ import "./test.bin";
 import "./version.bin";
 import "./create.bin";
 import "./help.bin";
+import "./npm.bin";
 

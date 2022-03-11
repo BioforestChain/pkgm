@@ -187,10 +187,10 @@ export const readUserConfig = async (
     if (filename === "#bfsp.ts" || filename === "#bfsp.mts" || filename === "#bfsp.mtsx") {
       const cache_filename = `#bfsp-${createHash("md5").update(`${Date.now()}`).digest("hex")}.mjs`;
       const bfspDir = resolve(dirname, consts.ShadowRootPath);
-      if(!existsSync(bfspDir)) {
+      if (!existsSync(bfspDir)) {
         mkdirSync(bfspDir);
       }
-      const cache_filepath = resolve(dirname, cache_filename);
+      const cache_filepath = resolve(bfspDir, cache_filename);
       try {
         log("complie #bfsp");
         await build({

@@ -366,7 +366,6 @@ export const doBuild = async (options: {
         cacheBuildOutDir,
         stateReporter: singleReporter,
       });
-      await buildService.afterSingleBuild({ buildOutDir, config: x });
 
       const tscOutRoot = TSC_OUT_ROOT;
       for await (const filepath of walkFiles(tscOutRoot, { refreshCache: true })) {
@@ -381,6 +380,7 @@ export const doBuild = async (options: {
           );
         }
       }
+      await buildService.afterSingleBuild({ buildOutDir, config: x });
 
       buildOutDirs.add(buildOutDir);
     }

@@ -334,11 +334,11 @@ class RunningDevTasks {
   }
 }
 
-export async function workspaceInit(options: { root: string; mode: "dev" | "build"; watcherLimit?: number }) {
+export async function workspaceInit(options: { root: string; mode: "dev" | "build" | "npm"; watcherLimit?: number }) {
   root = options.root;
 
   appWatcher = watchWorkspace({ root });
-  bfswBuildService = getBfswBuildService(await appWatcher);
+  bfswBuildService = getBfswBuildService(await appWatcher, options.mode === "npm");
 
   if (options.mode === "dev") {
     registerAllUserConfigEvent((args) => handleBfspWatcherEvent(args));
