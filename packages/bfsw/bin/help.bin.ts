@@ -11,6 +11,7 @@ defineCommand("--help", {}, async (params, args) => {
   console.log(`   init [options]\t\t\t${helpOptions.init}\r`);
   console.log(`   dev [options] <path>\t\t\t${helpOptions.dev}\r`);
   console.log(`   build [options] <path>\t\t${helpOptions.build}\r`);
+  console.log(`   npm [options] <path>\t\t\t${helpOptions.npm}\r`);
   console.log(`   version\t\t\t\t${helpOptions.version}\r\n`);
 
   process.exit(0);
