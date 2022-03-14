@@ -2,7 +2,7 @@ import { PromiseOut } from "@bfchain/util-extends-promise-out";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { fileIO } from "../src";
+import { fileIO, require } from "../src";
 
 export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) => void) {
   if (items.length < numContainer) {
@@ -232,6 +232,12 @@ export const getBfswPackageJson = () => {
 };
 export const getBfswVersion = () => {
   return getBfswPackageJson().version;
+};
+
+export const getYarnPath = async () => {
+  const packageJsonFile = require.resolve("yarn/package.json");
+  const packageJson = JSON.parse((await fileIO.get(packageJsonFile, true)).toString());
+  return path.join(path.dirname(packageJsonFile), packageJson.bin.yarn);
 };
 
 type OrderMap<T> = Map<T, { has: boolean }>;

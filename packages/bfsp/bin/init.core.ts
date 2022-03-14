@@ -1,13 +1,14 @@
 import cp from "node:child_process";
-import type { Bfsp } from "../bin";
+import { getYarnPath } from "../src";
 
 export const doInit = async (options: { root: string }, logger: PKGM.ConsoleLogger = console) => {
   const { root } = options;
 
   logger.info("linking dependencies");
+  const yarnPath = await getYarnPath();
 
   return new Promise((resolve) => {
-    const proc = cp.exec("corepack yarn", { cwd: root });
+    const proc = cp.spawn("node", [yarnPath], { cwd: root });
     if (logger.isSuperLogger) {
       proc.stdout && logger.warn.pipeFrom!(proc.stdout);
       proc.stderr && logger.error.pipeFrom!(proc.stderr);
