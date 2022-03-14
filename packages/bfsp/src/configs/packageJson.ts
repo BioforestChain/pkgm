@@ -14,6 +14,7 @@ import {
   SharedFollower,
   toPosixPath,
 } from "../toolkit";
+import { require } from "../toolkit.require";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
 const log = Debug("bfsp:config/package.json");
@@ -125,8 +126,10 @@ export const generatePackageJson = async (
 
   // 依赖
 
-  // packageJson.dependencies["@bfchain/pkgm-bfsp"] = `${PKGM_VERSION}`;
-  packageJson.devDependencies["@bfchain/pkgm-bfsp"] = `${PKGM_VERSION}`;
+  // packageJson.devDependencies["@bfchain/pkgm-bfsp"] = `${PKGM_VERSION}`;
+  packageJson.devDependencies["@bfchain/pkgm-bfsp"] = `link:${path.dirname(
+    require.resolve("@bfchain/pkgm-bfsp/package.json")
+  )}`;
 
   // 提取自己以及build子项的依赖
   let deps = Object.assign(
@@ -139,6 +142,20 @@ export const generatePackageJson = async (
   if (deps) {
     // @fixme: 不知道为啥yarn不会自动安装DevDependencies里的内容
     packageJson.dependencies = Object.assign({}, packageJson.dependencies, deps);
+    packageJson.devDependencies = Object.assign(
+      packageJson.devDependencies,
+      bfspUserConfig.userConfig.packageJson?.devDependencies
+    );
+    packageJson.optionalDependencies = Object.assign(
+      {},
+      packageJson.optionalDependencies,
+      bfspUserConfig.userConfig.packageJson?.optionalDependencies
+    );
+    packageJson.peerDependencies = Object.assign(
+      {},
+      packageJson.peerDependencies,
+      bfspUserConfig.userConfig.packageJson?.peerDependencies
+    );
   }
 
   return packageJson as typeof import("../../assets/package.template.json");

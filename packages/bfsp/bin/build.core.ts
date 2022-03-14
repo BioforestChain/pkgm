@@ -242,14 +242,14 @@ export const doBuild = async (options: {
 
     /// 将package.json的types路径进行修改
     const packageJson = jsonClone({
-      ...(thePackageJson as Partial<typeof thePackageJson>),
+      ...thePackageJson /* as Partial<typeof thePackageJson> */,
       files: ["dist", "source"],
       scripts: undefined,
       devDependencies: undefined,
       ...userConfigBuild.packageJson,
       name: userConfigBuild.name,
     });
-    delete packageJson.dependencies;
+    Reflect.deleteProperty(packageJson, "dependencies");
     {
       const repathTypePath = (typePath: string) => {
         // const typesPathInfo = path.parse(typePath);
