@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm-bfsp",
-  "version": "2.5.14",
+  "version": "2.5.15",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",
