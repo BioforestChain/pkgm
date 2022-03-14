@@ -33,6 +33,10 @@ export const fixNodeModules = async (__dirname: string) => {
   for (const pkgName of fs.readdirSync(nmBfchainDirname)) {
     const packageJsonFilepath = path.join(nmBfchainDirname, pkgName, "package.json");
     const packageJson = JSON.parse(fs.readFileSync(packageJsonFilepath, "utf-8"));
+    if (!packageJson.name.startsWith("@bfchain/util")) {
+      // 修复util包
+      continue;
+    }
     if (packageJson.type !== "module" && packageJson.exports === undefined) {
       if (!packageJson.types) {
         packageJson.types = packageJson.type;
