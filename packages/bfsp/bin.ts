@@ -1,6 +1,10 @@
 /// <reference path="./typings/index.d.ts"/>
 const ARGV = process.argv.slice(2);
 
+import "./src/bin/@bin.types";
+import { ArgvParser, formatTypedValue } from "./src/bin/ArgvParser";
+import { CommandContext } from "./src/bin/CommandContext";
+
 export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
   funName: string,
   config: T,
@@ -10,357 +14,265 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
     ctx: CommandContext
   ) => unknown
 ) => {
-  const binRunner = (argv: string[]) => {
-    const hanlderParams = {} as any;
-    const hanlderArgs = [] as any;
-    const options = JSON.parse(JSON.stringify(argv));
-    let paramOptions: string = "";
-    let argName: string = "";
-    let argOptions: string = "";
+  const binRunner = async (argv: string[]) => {
+    const ctx = new CommandContext({
+      prefix: funName,
+      stderr: process.stderr,
+      stdout: process.stdout,
+    });
+    try {
+      const hanlderParams = {} as any;
+      const hanlderArgs = [] as any;
+      const options = [...argv];
+      let paramOptions: string = "";
+      let argName: string = "";
+      let argOptions: string = "";
 
-    /// params
-    if (config.params !== undefined) {
-      for (const paramConfig of config.params as Bfsp.Bin.CommandConfig.ParamInput[]) {
-        if (paramConfig.type === "rest") {
-          if (config.params[config.params.length - 1] !== paramConfig) {
-            throw `SCHEMA_ERR: type 'rest' must be latest param`;
-          }
-          const rest = {} as any;
-          for (const arg of argv) {
-            const parsedArg = arg.match(/\-{1,2}(.+)\=([\w\W]*?)/);
-            if (parsedArg !== null) {
-              rest[parsedArg[1]] = parsedArg[2];
+      const argsParser = new ArgvParser(argv);
+
+      /// params
+      if (config.params !== undefined) {
+        for (const paramConfig of config.params as Bfsp.Bin.CommandConfig.ParamInput[]) {
+          if (paramConfig.type === "rest") {
+            if (config.params[config.params.length - 1] !== paramConfig) {
+              throw `SCHEMA_ERR: type 'rest' must be latest param`;
             }
-          }
-          hanlderParams[paramConfig.name] = rest;
-          // argv.filter((arg) => /\-{1,2}(.+)\=/.test(arg));
-        } else {
-          paramOptions += `   --${paramConfig.name}=\t\t${paramConfig.description}\n`;
-          const found = getArg(argv, paramConfig.name);
-          if (found !== undefined) {
-            const value = formatTypedValue(found.value, paramConfig.type);
-            if (value === undefined) {
-              throw `SYNTAX_ERR: '${funName}' got invalid param: '${found.arg}'`;
+            const rest = {} as any;
+            for (const arg of argv) {
+              const parsedArg = arg.match(/\-{1,2}(.+)\=([\w\W]*?)/);
+              if (parsedArg !== null) {
+                rest[parsedArg[1]] = parsedArg[2];
+              }
             }
-            argv.splice(argv.indexOf(found.arg), 1);
-            hanlderParams[paramConfig.name] = value;
-          } else if (paramConfig.require) {
-            throw `NO_FOUND_ERR: '${funName}' require param: '${paramConfig.name}'`;
-          }
-        }
-      }
-    }
-
-    const args = argv.filter((arg) => !/\-{1,2}.+\=/.test(arg));
-
-    /// args
-    if (config.args !== undefined) {
-      const configArgsSchemas: Bfsp.Bin.CommandConfig.ArgInput[][] =
-        Array.isArray(config.args) && Array.isArray(config.args[0]) ? config.args : [config.args];
-
-      let schemaMatched = false;
-      for (const configArgs of configArgsSchemas) {
-        if (configArgs.filter((c) => c.type !== "rest").length > args.length && !options.includes("--help")) {
-          continue;
-        }
-        schemaMatched = true;
-        for (const [i, configArg] of configArgs.entries()) {
-          if (configArg.type === "rest") {
-            if (i !== configArgs.length - 1) {
-              throw `SCHEMA_ERR: type 'rest' must be latest arg`;
-            }
-            hanlderArgs[i] = args.slice(i);
+            hanlderParams[paramConfig.name] = rest;
           } else {
-            argName = ` <${configArg.name}>`;
-            argOptions += `<${configArg.name}>\t\t\t${configArg.description}\n`;
-            const value = formatTypedValue(args[i], configArg.type);
-            if (value === undefined) {
-              schemaMatched = false;
-              break;
+            paramOptions += `   --${paramConfig.name}=\t\t${paramConfig.description}\n`;
+            const found = argsParser.getParamInfo(paramConfig.name);
+            if (found !== undefined) {
+              const value = formatTypedValue(found.value, paramConfig.type);
+              if (value === undefined) {
+                throw `SYNTAX_ERR: '${funName}' got invalid param '${found.name}' with value: '${found.value}'`;
+              }
+              hanlderParams[paramConfig.name] = value;
+              argsParser.getParamInfo(paramConfig.name);
+            } else if (paramConfig.require) {
+              throw `NO_FOUND_ERR: '${funName}' require param: '${paramConfig.name}'`;
             }
-            hanlderArgs[i] = value;
           }
         }
-        if (schemaMatched) {
-          break;
+      }
+
+      const args = argsParser.getArgs();
+
+      /// args
+      if (config.args !== undefined) {
+        const configArgsSchemas: Bfsp.Bin.CommandConfig.ArgInput[][] =
+          Array.isArray(config.args) && Array.isArray(config.args[0]) ? config.args : [config.args];
+
+        let schemaMatched = false;
+        for (const configArgs of configArgsSchemas) {
+          if (configArgs.filter((c) => c.type !== "rest").length > args.length && !options.includes("--help")) {
+            continue;
+          }
+          schemaMatched = true;
+          for (const [i, configArg] of configArgs.entries()) {
+            if (configArg.type === "rest") {
+              if (i !== configArgs.length - 1) {
+                throw `SCHEMA_ERR: type 'rest' must be latest arg`;
+              }
+              hanlderArgs[i] = args.slice(i);
+            } else {
+              argName = ` <${configArg.name}>`;
+              argOptions += `<${configArg.name}>\t\t\t${configArg.description}\n`;
+              const value = formatTypedValue(args[i], configArg.type);
+              if (value === undefined) {
+                schemaMatched = false;
+                break;
+              }
+              hanlderArgs[i] = value;
+            }
+          }
+          if (schemaMatched) {
+            break;
+          }
+        }
+
+        if (schemaMatched === false) {
+          throw (
+            `SYNTAX_ERR: '${funName}' got invalid arguments. like:\n` +
+            configArgsSchemas
+              .map(
+                (configArgs) =>
+                  `  ${funName}(${configArgs
+                    .map((arg) => `${arg.name || "anonymous"}: ${arg.type || "string"}`)
+                    .join(", ")})`
+              )
+              .join("\n")
+          );
         }
       }
 
-      if (schemaMatched === false) {
-        throw (
-          `SYNTAX_ERR: '${funName}' got invalid arguments. like:\n` +
-          configArgsSchemas
-            .map(
-              (configArgs) =>
-                `  ${funName}(${configArgs
-                  .map((arg) => `${arg.name || "anonymous"}: ${arg.type || "string"}`)
-                  .join(", ")})`
-            )
-            .join("\n")
-        );
+      // bfsp/bfsw help
+      if (options.includes("--help")) {
+        const commandName = process.argv[1];
+        const isSingle = commandName.includes("bfsp") ? true : false;
+        console.log(`Usage: ${isSingle ? "bfsp" : "bfsw"} ${funName} ${paramOptions ? "[options]" : ""}${argName}\n`);
+        console.log(config.description ? `${config.description}\n` : "");
+        console.log(paramOptions ? "Options:" : "");
+        console.log(paramOptions);
+        console.log(argOptions);
+        process.exit(0);
       }
-    }
 
-    // bfsp/bfsw help
-    if (options.includes("--help")) {
-      const commandName = process.argv[1];
-      const isSingle = commandName.includes("bfsp") ? true : false;
-      console.log(`Usage: ${isSingle ? "bfsp" : "bfsw"} ${funName} ${paramOptions ? "[options]" : ""}${argName}\n`);
-      console.log(config.description ? `${config.description}\n` : "");
-      console.log(paramOptions ? "Options:" : "");
-      console.log(paramOptions);
-      console.log(argOptions);
-      process.exit(0);
+      await hanlder(hanlderParams, hanlderArgs, ctx);
+    } catch (err) {debugger
+      ctx.logger.error(err);
+      process.exit(1);
     }
-
-    return hanlder(
-      hanlderParams,
-      hanlderArgs,
-      new CommandContext({
-        // prompt: chalk.cyan(funName) + ": ",
-        prefix: funName,
-        stderr: process.stderr,
-        stdout: process.stdout,
-      })
-    );
   };
   if (ARGV[0] === funName || config.alias?.includes(ARGV[0])) {
-    (async () => {
-      try {
-        await binRunner(ARGV.slice(1));
-        // process.exit(0);
-      } catch (err) {
-        console.error(err);
-        process.exit(1);
-      }
-    })();
+    binRunner(ARGV.slice(1));
   }
-  return binRunner;
+  return {
+    name: funName,
+    config,
+    runner: binRunner,
+  };
 };
 
-const getArg = <T extends string>(argv: string[], name: string, aliases?: string[]) => {
-  let foundArg = argv.find((arg) => arg.startsWith(`--${name}=`) || arg.startsWith(`-${name}=`));
-  if (foundArg === undefined && aliases !== undefined) {
-    for (const alias of aliases) {
-      foundArg = argv.find((arg) => arg.startsWith(`--${alias}=`) || arg.startsWith(`-${alias}=`));
-      if (foundArg !== undefined) {
-        break;
-      }
-    }
-  }
+// import { EasyMap } from "@bfchain/util-extends-map";
 
-  if (foundArg) {
-    const index = foundArg.indexOf("=");
-    return { value: foundArg.slice(index + 1) as unknown as T, arg: foundArg };
-  }
-};
-const formatTypedValue = (value: string, type?: Bfsp.Bin.CommandConfig.InputType) => {
-  switch (type) {
-    case "boolean":
-      value = value.toLowerCase();
-      if (value === "true" || value === "yes") {
-        return true;
-      }
-      if (value === "false" || value === "no" || value === "") {
-        return false;
-      }
-      break;
-    case "number":
-      const num = parseFloat(value);
-      if (Number.isFinite(num)) {
-        return num;
-      }
-      break;
-    case "string":
-    default:
-      return value;
-  }
-};
+// /**
+//  * 将有关联的参数聚合在一起
+//  * 这里宽松地解析参数，不区分类型。
+//  * 我们会在所有的params解析完成后，去除掉那些有意义的params，将剩下交给args进行进一步解析
+//  */
+// const argsMapCache = EasyMap.from({
+//   creater: (argv: string[]) => {
+//     const argsMap = EasyMap.from({
+//       creater: (_argName: string) => {
+//         return [] as string[];
+//       },
+//     });
+//     let curArgName = ""; // = { name: "", rawValues: [] as string[] };
+//     // argsMap.set(curArg.name, curArg.rawValues);
 
-class CommandContext {
-  constructor(
-    private options: {
-      prefix: string;
-      stdout: NodeJS.WritableStream;
-      stderr: NodeJS.WritableStream;
-    }
-  ) {}
-  async question<R = string>(
-    query: string,
-    options: {
-      map?: (answer: string) => R;
-      filter?: (answer: R) => BFChainUtil.PromiseMaybe<boolean>;
-      stringify?: (result: R) => string;
-      printOutput?: boolean;
-      trimLines?: boolean;
-      stdout?: NodeJS.WritableStream;
-      stdin?: NodeJS.ReadableStream;
-      prompt?: string;
-    } = {}
-  ) {
-    const rl = createInterface({
-      input: options.stdin ?? process.stdin,
-      output: options.stdout ?? this.options.stdout ?? process.stdout,
-      prompt: options.prompt ?? chalk.cyan(this.options.prefix) + ": ",
-    });
-    const {
-      map = (answer) => answer.trim(),
-      filter = (result) => Boolean(result),
-      stringify = (result) => String(result),
-      printOutput = true,
-      trimLines = true,
-    } = options;
+//     for (const arg of argv) {
+//       const matchArgPrefix = arg.match(/-+?(\w+?)\=?/);
+//       if (matchArgPrefix !== null) {
+//         const [argPrefix, argName] = matchArgPrefix;
+//         let rawValue: undefined | string;
+//         if (argPrefix.endsWith("=")) {
+//           rawValue = arg.slice(argPrefix.length);
+//         }
 
-    if (trimLines) {
-      query = query
-        .trim()
-        .split("\n")
-        .map((line) => rl.getPrompt() + line.trim())
-        .join("\n");
-    } else {
-      query = query.replace(/\n/g, "\n" + rl.getPrompt());
-    }
+//         /// forceGet，确保创建出空数组，以代表字段过
+//         const rawValues = argsMap.forceGet(argName);
+//         /// 保存值
+//         if (typeof rawValue === "string") {
+//           rawValues.push(rawValue);
+//         }
+//       } else {
+//         argsMap.forceGet(curArgName).push(arg);
+//       }
+//     }
+//     return argsMap;
+//   },
+// });
+// const freeArgs = (argv: string[], name: string) => {
+//   const argsMap = argsMapCache.forceGet(argv);
+//   const argRawValues = argsMap.get(name);
+//   if (argRawValues === undefined) {
+//     return;
+//   }
+//   argsMap.forceGet("").push(...argRawValues);
+//   argRawValues.length = 0;
+// };
 
-    do {
-      const res = map(
-        await new Promise<string>((resolve) => {
-          rl.prompt();
-          rl.question(query, resolve);
-        })
-      ) as R;
-      if (await filter(res)) {
-        if (printOutput) {
-          rl.prompt();
-          rl.write(stringify(res) + "\n");
-        }
-        rl.close();
-        return res;
-      }
-    } while (true);
-  }
-  private _logger?: PKGM.Logger;
-  get logger() {
-    if (this._logger === undefined) {
-      const Print = (linePrefix: string, stream: NodeJS.WritableStream, line: boolean) => {
-        linePrefix += ": ";
-        return (format?: any, ...param: any[]) => {
-          const out = linePrefix + util.format(format, ...param).replace(/\n/g, "\n" + linePrefix) + (line ? "\n" : "");
-          stream.write(out);
-        };
-      };
-      const PipeFrom = (stream: NodeJS.WritableStream, printLine: PKGM.Print) => {
-        return (input: Readable) => {
-          let hasOutput = false;
-          const onData = (chunk: any) => {
-            hasOutput = true;
-            printLine(String(chunk));
-          };
-          input.on("data", onData);
-          input.once("end", () => {
-            if (hasOutput) {
-              stream.write("\n");
-            }
-            input.off("data", onData);
-          });
-        };
-      };
-      const SuperPrinter = (linePrefix: string, stream: NodeJS.WritableStream) => {
-        const print = Print(linePrefix, stream, true);
-        const line = Print(linePrefix, stream, false);
-        const pipeFrom = PipeFrom(stream, line);
-        return Object.assign(print, { line, pipeFrom });
-      };
-      const { prefix, stderr, stdout } = this.options;
-      this._logger = {
-        isSuperLogger: true,
-        log: SuperPrinter(chalk.cyan(prefix), stdout),
-        info: SuperPrinter(chalk.blue(prefix), stdout),
-        warn: SuperPrinter(chalk.yellow(prefix), stderr),
-        success: SuperPrinter(chalk.green(prefix), stdout),
-        error: SuperPrinter(chalk.red(prefix), stderr),
-      };
-    }
-    return this._logger;
-  }
-}
+// const findArgByName = (argv: string[], name: string, type: Bfsp.Bin.CommandConfig.InputType) => {
+//   const argsMap = argsMapCache.forceGet(argv);
+//   const argRawValues = argsMap.get(name);
+//   if (argRawValues === undefined) {
+//     return undefined;
+//   }
 
-import chalk from "chalk";
-import { createInterface } from "node:readline";
-import type { Readable } from "node:stream";
-import util from "node:util";
-export declare namespace Bfsp {
-  namespace Bin {
-    interface CommandConfig<
-      P extends readonly CommandConfig.ParamInput[] = any,
-      R extends readonly CommandConfig.ArgInput[] | readonly (readonly CommandConfig.ArgInput[])[] = any
-    > {
-      readonly params?: P;
-      readonly args?: R;
-      alias?: string[];
-      description?: string;
-    }
-    namespace CommandConfig {
-      type InputType = "number" | "string" | "boolean" | "rest";
+//   /**
+//    * 尝试根据类型获取所需的参数
+//    * 有符合规则的才会拿出来，不符合规则的会被保留
+//    */
+//   switch (type) {
+//     case "boolean": {
+//       const maybeBoolRawValue = argRawValues[0];
+//       if (typeof maybeBoolRawValue === "string") {
+//         const boolValue = maybeBoolRawValue.toLowerCase();
+//         if (
+//           boolValue === "n" ||
+//           boolValue === "no" ||
+//           boolValue === "f" ||
+//           boolValue === "false" ||
+//           boolValue === "y" ||
+//           boolValue === "yes" ||
+//           boolValue === "t" ||
+//           boolValue === "true"
+//         ) {
+//           return argRawValues.shift();
+//         }
+//       } else {
+//         return "yes";
+//       }
+//     }
+//     case "number": {
+//       const maybeNumberRawValue = argRawValues[0];
+//       if (typeof maybeNumberRawValue === "string") {
+//         const numValue = Number.parseFloat(maybeNumberRawValue);
+//         if (Number.isFinite(numValue)) {
+//           return argRawValues.shift();
+//         }
+//       }
+//       break;
+//     }
+//     case "string":
+//     default: {
+//       return (argRawValues.shift() ?? "").toLowerCase();
+//     }
+//   }
+// };
 
-      interface ArgInput<NAME extends string = string, TYPE extends InputType = InputType> {
-        readonly name: NAME;
-        readonly type?: TYPE;
-        readonly description?: string;
-      }
-
-      interface ParamInput<
-        NAME extends string = string,
-        TYPE extends InputType = InputType,
-        R extends boolean = boolean
-      > extends ArgInput<NAME, TYPE> {
-        readonly require?: R;
-      }
-
-      type FromArgInputType<T> = T extends "number"
-        ? number
-        : T extends "boolean"
-        ? boolean
-        : T extends "rest"
-        ? string[]
-        : string;
-      type FromParamInputType<T> = T extends "number"
-        ? number
-        : T extends "boolean"
-        ? boolean
-        : T extends "rest"
-        ? { [key: string]: string }
-        : string;
-    }
-
-    type GetParamsInputType<T> = T extends CommandConfig<infer P, infer _> ? P : never;
-    type ToParamType<T> = T extends CommandConfig.ParamInput<infer Name, infer Type, infer Req>
-      ? boolean extends Req
-        ? {
-            [key in Name]?: CommandConfig.FromParamInputType<Type>;
-          }
-        : true extends Req
-        ? {
-            [key in Name]: CommandConfig.FromParamInputType<Type>;
-          }
-        : {
-            [key in Name]?: CommandConfig.FromParamInputType<Type>;
-          }
-      : {};
-    type ToParamsType<T> = T extends readonly [infer R, ...infer Args] ? ToParamType<R> & ToParamsType<Args> : {};
-
-    type GetArgsInputType<T> = T extends CommandConfig<infer _, infer R>
-      ? R extends readonly CommandConfig.ArgInput[]
-        ? readonly [R]
-        : R
-      : never;
-    type ToArgType<T> = T extends CommandConfig.ArgInput<infer _, infer Type>
-      ? CommandConfig.FromArgInputType<Type>
-      : unknown;
-    type ToArgsType<T> = T extends readonly [infer R, ...infer Args]
-      ? [argv: ToArgType<R>, ..._: ToArgsType<Args>]
-      : [];
-    type ToArgsTupleType<T> = T extends readonly [infer R, ...infer Args]
-      ? ToArgsType<R> | ToArgsTupleType<Args>
-      : never;
-  }
-}
+// const getArg = (
+//   argv: string[],
+//   name: string,
+//   aliases?: string[],
+//   type: Bfsp.Bin.CommandConfig.InputType = "string"
+// ) => {
+//   let foundArg = findArgByName(argv, name, type);
+//   if (foundArg !== undefined) {
+//     return { argName: name, value: foundArg };
+//   }
+//   if (aliases !== undefined) {
+//     for (const alias of aliases) {
+//       foundArg = findArgByName(argv, alias, type);
+//       if (foundArg !== undefined) {
+//         return { argName: alias, value: foundArg };
+//       }
+//     }
+//   }
+// };
+// const formatTypedValue = (value: string, type?: Bfsp.Bin.CommandConfig.InputType) => {
+//   switch (type) {
+//     case "boolean":
+//       value = value.toLowerCase();
+//       if (value === "f" || value === "false" || value === "n" || value === "no") {
+//         return false;
+//       }
+//       return true; //(value === "true" || value === "yes" || value === "")
+//     case "number":
+//       const num = parseFloat(value);
+//       if (Number.isFinite(num)) {
+//         return num;
+//       }
+//       break;
+//     case "string":
+//     default:
+//       return value;
+//   }
+// };
