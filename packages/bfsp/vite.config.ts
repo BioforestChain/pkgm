@@ -115,7 +115,16 @@ export const getExternalOption = (currentPkgName?: string) => {
     "worker_threads",
     "zlib",
   ]);
-  const depsInfo = JSON.parse(execSync("yarn list --prod --json").toString());
+  const yarnList = execSync("yarn list --prod --json")
+    .toString()
+    .split("\n")
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {}
+    })
+    .filter(Boolean);
+  const depsInfo = yarnList.find((info) => info.type === "tree");
   if (currentPkgName === undefined) {
     currentPkgName = JSON.parse(readFileSync(path.resolve(__dirname, "package.json"), "utf-8")).name;
   }
