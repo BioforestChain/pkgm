@@ -5,7 +5,7 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import chalk from "chalk";
 
-defineCommand(
+export const initCommand = defineCommand(
   "init",
   {
     params: [{ type: "string", name: "path", description: "project path, default is cwd()", require: false }],

@@ -4,7 +4,7 @@ import { doCreate } from "./create.core";
 import { helpOptions } from "./help.core";
 import chalk from "chalk";
 
-defineCommand(
+export const createCommand = defineCommand(
   "create",
   {
     params: [

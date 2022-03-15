@@ -3,20 +3,24 @@ import { getBfspPackageJson } from "./util";
 import { helpOptions } from "./help.core";
 import chalk from "chalk";
 
-defineCommand("version", { description: helpOptions.version }, async (params, args, ctx) => {
-  const console = ctx.logger;
-  process.noDeprecation = true;
+export const versionCommand = defineCommand(
+  "version",
+  { description: helpOptions.version },
+  async (params, args, ctx) => {
+    const console = ctx.logger;
+    process.noDeprecation = true;
 
-  const pkgm = getBfspPackageJson();
+    const pkgm = getBfspPackageJson();
 
-  console.log(chalk.bold(`${chalk.green(pkgm.name)}: ${pkgm.version}`));
-  console.group(chalk.gray("Dependencies:"));
+    console.log(chalk.bold(`${chalk.green(pkgm.name)}: ${pkgm.version}`));
+    console.group(chalk.gray("Dependencies:"));
 
-  const dependencies = pkgm.dependencies;
+    const dependencies = pkgm.dependencies;
 
-  for (const name in dependencies) {
-    console.log(`${chalk.cyan(name)}: ${dependencies[name]}`);
+    for (const name in dependencies) {
+      console.log(`${chalk.cyan(name)}: ${dependencies[name]}`);
+    }
+    console.groupEnd();
+    process.exit(0);
   }
-  console.groupEnd();
-  process.exit(0);
-});
+);

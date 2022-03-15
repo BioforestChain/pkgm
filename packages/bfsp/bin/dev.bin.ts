@@ -9,7 +9,7 @@ import { runTsc } from "./tsc/runner";
 import { writeBfspProjectConfig, watchBfspProjectConfig, watchDeps, getTui } from "../src";
 import { helpOptions } from "./help.core";
 
-defineCommand(
+export const devCommand = defineCommand(
   "dev",
   {
     params: [

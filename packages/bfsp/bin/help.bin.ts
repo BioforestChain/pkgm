@@ -1,19 +1,17 @@
-import { defineCommand } from "../bin";
+import { defineCommand, defineDefaultCommand, CommandInfo } from "../bin";
 import { helpOptions } from "./help.core";
-
-defineCommand("help", { alias: ["--help"] }, async (params, args, ctx) => {
-  const console = ctx.logger;
-  console.log("Usage: bfsp <command> [options]\n");
-  console.log(`${helpOptions.bfsp}\n`);
-  console.log("Options:");
-  console.log("   --help\t\t\t\tdisplay help for command\n");
-  console.log("Commands:");
-  console.log(`   create\t\t${helpOptions.create}`);
-  console.log(`   init\t\t${helpOptions.init}`);
-  console.log(`   dev\t\t${helpOptions.dev}`);
-  console.log(`   build\t\t${helpOptions.build}`);
-  console.log(`   npm\t\t${helpOptions.npm}`);
-  console.log(`   version\t${helpOptions.version}`);
-
-  process.exit(0);
-});
+export const defineHelpCommand = (commandInfoList: readonly CommandInfo[]) => {
+  const helpCommand = defineCommand("help", { alias: ["--help"] }, async (params, args, ctx) => {
+    const { chalk, logger: console } = ctx;
+    console.log("Usage: bfsp <command> [options]\n");
+    console.log(`${helpOptions.bfsp}\n`);
+    console.log("Options:");
+    console.log("   --help\t\t\t\tdisplay help for command\n");
+    console.group("Commands:");
+    for (const info of commandInfoList) {
+      console.log(`${chalk.blue(info.name)}\t\t${chalk.gray(info.config.description ?? "")}`);
+    }
+    console.groupEnd();
+  });
+  defineDefaultCommand(helpCommand);
+};

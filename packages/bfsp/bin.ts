@@ -154,20 +154,44 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
   return info;
 };
 
+/** 执行过的程序 */
+let _runnedCommand: CommandInfo | undefined;
 const commandName = ARGV[0];
-const tryRunCommand = async (info: CommandInfo) => {
+/**尝试根据 argv 的输入进行执行 */
+const tryRunCommand = (info: CommandInfo) => {
   if (commandName === info.name || info.config.alias?.includes(commandName)) {
-    const ctx = new CommandContext({
-      prefix: info.name,
-      stderr: process.stderr,
-      stdout: process.stdout,
-    });
-    try {
-      await info.runner(ARGV.slice(1), ctx);
-    } catch (err) {
-      ctx.logger.error(err);
-    }
+    return runCommand(info);
+  }
+};
+/**执行指定程序 */
+const runCommand = async (info: CommandInfo) => {
+  const ctx = new CommandContext({
+    prefix: info.name,
+    stderr: process.stderr,
+    stdout: process.stdout,
+  });
+  try {
+    _runnedCommand = info;
+    await info.runner(ARGV.slice(1), ctx);
+  } catch (err) {
+    ctx.logger.error(err);
   }
 };
 
-type CommandInfo = ReturnType<typeof defineCommand>;
+export type CommandInfo = ReturnType<typeof defineCommand>;
+
+let _defaultCommand: CommandInfo | undefined;
+/**如果程序退出之前发现没有执行任何程序，那么会触发执行默认程序
+ * 默认程序不可重复注册
+ */
+export const defineDefaultCommand = (info: CommandInfo) => {
+  if (_defaultCommand !== undefined) {
+    throw new Error(`already define default command: ${info.name}`);
+  }
+  _defaultCommand = info;
+  process.once("beforeExit", async () => {
+    if (_runnedCommand === undefined) {
+      runCommand(info);
+    }
+  });
+};

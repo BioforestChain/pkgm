@@ -4,7 +4,7 @@ import { defineCommand } from "../bin";
 import { doNpm } from "./npm.core";
 import { helpOptions } from "./help.core";
 
-defineCommand(
+export const npmCommand = defineCommand(
   "npm",
   {
     params: [
@@ -12,7 +12,7 @@ defineCommand(
       { type: "string", name: "profiles", description: "bundle profiles, default is ['default']." },
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
-    description: helpOptions.npm
+    description: helpOptions.npm,
   } as const,
   async (params, args) => {
     const profiles = params?.profiles?.split(",") || [];
@@ -24,7 +24,7 @@ defineCommand(
     let maybeRoot = args[0];
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
-    }    
+    }
     doNpm({ root });
     // closeable?.start();
   }

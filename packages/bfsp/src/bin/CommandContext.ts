@@ -63,6 +63,7 @@ export class CommandContext {
       }
     } while (true);
   }
+  readonly chalk = chalk;
   private _logger?: PKGM.Logger;
   get logger() {
     if (this._logger === undefined) {
@@ -130,7 +131,7 @@ export class CommandContext {
         groupPrefix += "\t";
       };
       const groupEnd = () => {
-        groupPrefix = groupPrefix.slice(0,-1)
+        groupPrefix = groupPrefix.slice(0, -1);
       };
       this._logger = {
         isSuperLogger: true,
@@ -140,7 +141,6 @@ export class CommandContext {
         success,
         error,
         group,
-        groupCollapsed: group,
         groupEnd,
       };
     }

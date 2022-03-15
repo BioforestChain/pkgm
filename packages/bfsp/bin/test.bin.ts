@@ -5,7 +5,7 @@ import { Debug } from "../src/logger";
 import { doTest } from "./test";
 import inspector from "node:inspector";
 
-defineCommand(
+export const testCommand = defineCommand(
   "test",
   {
     args: [{ type: "rest", name: "tests", description: "test names" }],

@@ -6,7 +6,7 @@ import { watchSingle } from "../src/watcher";
 import { doBuild, installBuildDeps, runBuildTsc, writeBuildConfigs } from "./build.core";
 import { helpOptions } from "./help.core";
 
-defineCommand(
+export const buildCommand = defineCommand(
   "build",
   {
     params: [
@@ -14,7 +14,7 @@ defineCommand(
       { type: "string", name: "profiles", description: "bundle profiles, default is ['default']." },
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
-    description: helpOptions.build
+    description: helpOptions.build,
   } as const,
   async (params, args) => {
     const warn = Warn("bfsp:bin/build");
