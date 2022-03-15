@@ -1,5 +1,5 @@
 import { PromiseOut } from "@bfchain/util-extends-promise-out";
-import { defineTest } from "@bfchain/pkgm-bfsp/test";
+import { defineTest } from "../test";
 import { Tasks, Tree } from "../bin/util";
 import { Closeable } from "../src/toolkit";
 

@@ -1,9 +1,9 @@
 declare namespace NodeJS {
   interface Process {
     noDeprecation: boolean;
-    env:{
-      LD_LIBRARY_PATH:string;
-    }
+    env: {
+      LD_LIBRARY_PATH: string;
+    } & ProcessEnv;
   }
 }
 

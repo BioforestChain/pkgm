@@ -1,5 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import test from "ava";
+import { defineTest } from "../test";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -39,7 +39,7 @@ const demoProjectPath = resolve(pkgmProjectPath, "demo");
 //   await timeout;
 // });
 
-test("get gitignore rules", async (t) => {
+defineTest("get gitignore rules", async (t) => {
   const rules = await gitignoreListCache.get(__dirname);
   t.log(pkgmProjectPath);
   t.deepEqual(rules, [{ basedir: pkgmProjectPath, rules: ["node_modules", "dist"] }]);
