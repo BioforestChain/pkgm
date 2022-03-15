@@ -20,11 +20,12 @@ const argsMapCache = EasyMap.from({
       const matchArgPrefix = arg.match(/-+?(\w+)\=?/);
       if (matchArgPrefix !== null) {
         const [argPrefix, argName] = matchArgPrefix;
+        curArgName = argName;
         let rawValue: undefined | string;
         if (argPrefix.endsWith("=")) {
           rawValue = arg.slice(argPrefix.length);
         } else {
-          curArgName = argName;
+          continue;
         }
 
         /// forceGet，确保创建出空数组，以代表字段过
@@ -35,7 +36,6 @@ const argsMapCache = EasyMap.from({
         }
       } else {
         argsMap.forceGet(curArgName).push(arg);
-        curArgName = "";
       }
     }
     return argsMap;
