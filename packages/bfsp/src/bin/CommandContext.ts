@@ -79,7 +79,7 @@ export class CommandContext {
 
           // 结尾换行符会导致打印多个linePrefix
           let out: string = "";
-          if(content.endsWith("\n")) {
+          if (content.endsWith("\n")) {
             out = linePrefix + content.replace(/\n$/, "").replace(/\n/g, "\n" + linePrefix) + "\n";
           } else {
             out = linePrefix + content.replace(/\n/g, "\n" + linePrefix);
@@ -115,7 +115,7 @@ export class CommandContext {
         const print = Print(linePrefix, stream, false);
         const line = Print(linePrefix, stream, true);
         const pipeFrom = PipeFrom(stream, print);
-        return Object.assign(print, { line, pipeFrom });
+        return Object.assign(line, { write: print, pipeFrom });
       };
       const { prefix, stderr, stdout } = this.options;
       this._logger = {

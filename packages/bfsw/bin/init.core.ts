@@ -7,14 +7,14 @@ export const doInit = async (options: { root: string }, consoleLogger: PKGM.Cons
   return new Promise((resolve) => {
     const proc = cp.spawn("node", [yarnPath], { cwd: root });
 
-    if(consoleLogger.isSuperLogger) {
+    if (consoleLogger.isSuperLogger) {
       const logger = consoleLogger as PKGM.Logger;
       proc.stdout.on("data", (chunk) => {
         const log = String(chunk).trim();
-        if(log.startsWith("success")) {
-          logger.success.line(log);
+        if (log.startsWith("success")) {
+          logger.success(log);
         } else {
-          logger.info.line(log);
+          logger.info(log);
         }
       });
     } else {

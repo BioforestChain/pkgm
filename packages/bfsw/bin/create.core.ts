@@ -84,7 +84,7 @@ export const doCreate = async (
   logger.log(`workspace inited, run the following commands to start dev\n`);
   const relative_path = path.relative(process.cwd(), root);
   if (relative_path) {
-    logger.log.line!(chalk.blue(`cd ${relative_path}`));
+    logger.log!(chalk.blue(`cd ${relative_path}`));
   }
   logger.log(chalk.blue(`bfsw dev`));
   process.exit(0);

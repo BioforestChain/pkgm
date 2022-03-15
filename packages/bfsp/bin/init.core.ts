@@ -14,17 +14,17 @@ export const doInit = async (options: { root: string }, consoleLogger: PKGM.Cons
       proc.stdout?.on("data", (chunk) => {
         const log = String(chunk).trim();
         if (log.startsWith("success")) {
-          logger.success.line(log);
+          logger.success(log);
         } else {
-          logger.info.line(log);
+          logger.info(log);
         }
       });
       proc.stderr?.on("data", (chunk) => {
         const log = String(chunk).trim();
         if (log.startsWith("warning")) {
-          logger.warn.line(log);
+          logger.warn(log);
         } else {
-          logger.error.line(log);
+          logger.error(log);
         }
       });
     } else {
