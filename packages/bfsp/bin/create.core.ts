@@ -7,7 +7,6 @@ import { defaultIgnores } from "../src/configs/commonIgnore";
 import { ts } from "./fmt.core";
 import { writeJsonConfig } from "./util";
 import { doInit } from "./init.core";
-import type { Bfsp } from "../bin";
 
 export const doCreate = async (
   options: { root: string; name: string; license?: string },
@@ -57,7 +56,7 @@ export const doCreate = async (
   logger.log(`project inited, run the following commands to start dev\n`);
   const relative_path = path.relative(process.cwd(), root);
   if (relative_path) {
-    logger.log(chalk.blue(`cd ${relative_path}`));
+    logger.log.line!(chalk.blue(`cd ${relative_path}`));
   }
   logger.log(chalk.blue(`bfsp dev`));
   process.exit(0);

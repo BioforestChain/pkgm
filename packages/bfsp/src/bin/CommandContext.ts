@@ -76,7 +76,14 @@ export class CommandContext {
             preLinePrefix = "";
           }
           const content = util.format(format, ...param);
-          let out = linePrefix + content.replace(/\n/g, "\n" + linePrefix);
+
+          // 结尾换行符会导致打印多个linePrefix
+          let out: string = "";
+          if(content.endsWith("\n")) {
+            out = linePrefix + content.replace(/\n$/, "").replace(/\n/g, "\n" + linePrefix) + "\n";
+          } else {
+            out = linePrefix + content.replace(/\n/g, "\n" + linePrefix);
+          }
 
           // 写入回车
           if (line) {

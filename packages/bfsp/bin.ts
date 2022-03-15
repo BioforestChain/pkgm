@@ -46,7 +46,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
             }
             hanlderParams[paramConfig.name] = rest;
           } else {
-            paramOptions += `   --${paramConfig.name}=\t\t${paramConfig.description}\n`;
+            paramOptions += `   --${paramConfig.name} \t\t${paramConfig.description}\n`;
             const found = argsParser.getParamInfo(paramConfig.name);
             if (found !== undefined) {
               const value = formatTypedValue(found.value, paramConfig.type);

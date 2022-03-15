@@ -8,7 +8,10 @@ import { ts } from "@bfchain/pkgm-bfsp";
 import { writeJsonConfig } from "@bfchain/pkgm-bfsp";
 import { doInit } from "./init.core";
 
-export const doCreate = async (options: { root: string; name: string; license?: string }) => {
+export const doCreate = async (
+  options: { root: string; name: string; license?: string },
+  logger: PKGM.ConsoleLogger = console
+) => {
   const { root, name, license = "MIT" } = options;
 
   folderIO.tryInit(root);
@@ -51,7 +54,7 @@ export const doCreate = async (options: { root: string; name: string; license?: 
       dev: "bfsw dev",
     },
   };
-  console.log(`creating files`);
+  logger.log(`creating files`);
   await writeJsonConfig(path.join(root, name, "package.json"), packageJson);
   const bfspTsFile = ts`
   import { defineConfig } from "@bfchain/pkgm-bfsp";
@@ -70,14 +73,19 @@ export const doCreate = async (options: { root: string; name: string; license?: 
   await writeFile(path.join(root, name, "#bfsp.ts"), bfspTsFile);
 
   const g = spawn("git", ["init"], { cwd: root });
-  g.stdout?.pipe(process.stdout);
-  g.stderr?.pipe(process.stderr);
-  await doInit({ root });
-  console.log(`workspace inited, run the following commands to start dev\n`);
+  if (logger.isSuperLogger) {
+    g.stdout && logger.warn.pipeFrom!(g.stdout);
+    g.stderr && logger.error.pipeFrom!(g.stderr);
+  } else {
+    g.stdout?.pipe(process.stdout);
+    g.stderr?.pipe(process.stderr);
+  }
+  await doInit({ root }, logger);
+  logger.log(`workspace inited, run the following commands to start dev\n`);
   const relative_path = path.relative(process.cwd(), root);
   if (relative_path) {
-    console.log(chalk.blue(`cd ${relative_path}`));
+    logger.log.line!(chalk.blue(`cd ${relative_path}`));
   }
-  console.log(chalk.blue(`bfsw dev`));
+  logger.log(chalk.blue(`bfsw dev`));
   process.exit(0);
 };

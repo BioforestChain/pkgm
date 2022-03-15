@@ -12,7 +12,7 @@ defineCommand(
     args: [],
     description: helpOptions.init
   } as const,
-  async (params, args) => {
+  async (params, args, ctx) => {
     const { path: projectPath } = params;
     let root = process.cwd();
 
@@ -24,7 +24,7 @@ defineCommand(
       }
     }
 
-    await doInit({ root });
+    await doInit({ root }, ctx.logger);
     process.exit(0);
   }
 );
