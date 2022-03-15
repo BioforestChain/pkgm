@@ -15,7 +15,6 @@ const argsMapCache = EasyMap.from({
     });
     let curArgName = ""; // = { name: "", rawValues: [] as string[] };
     // argsMap.set(curArg.name, curArg.rawValues);
-
     for (const arg of argv) {
       const matchArgPrefix = arg.match(/-+?(\w+)\=?/);
       if (matchArgPrefix !== null) {
@@ -24,8 +23,6 @@ const argsMapCache = EasyMap.from({
         let rawValue: undefined | string;
         if (argPrefix.endsWith("=")) {
           rawValue = arg.slice(argPrefix.length);
-        } else {
-          continue;
         }
 
         /// forceGet，确保创建出空数组，以代表字段过
@@ -60,7 +57,7 @@ export class ArgvParser {
       return;
     }
     this._argsMap.forceGet("").push(...argRawValues);
-    argRawValues.length = 0;
+    this._argsMap.delete(name);
   }
 
   private _findParamValue(name: string, type: Bfsp.Bin.CommandConfig.InputType) {
@@ -118,16 +115,14 @@ export class ArgvParser {
      * 这里需要把所有的alias全部解析一边，目的时把所有有含义的字段内容都
      * 根据优先级低到高解析，覆盖 result
      */
-    if (aliases !== undefined) {
-      for (const alias of [
-        // alias 要逆序, 定义越靠前优先级越高
-        ...(aliases ?? []).reverse(),
-        name,
-      ]) {
-        const foundArg = this._findParamValue(alias, type);
-        if (foundArg !== undefined) {
-          result = { name: alias, value: foundArg };
-        }
+    for (const alias of [
+      // alias 要逆序, 定义越靠前优先级越高
+      ...(aliases ?? []).reverse(),
+      name,
+    ]) {
+      const foundArg = this._findParamValue(alias, type);
+      if (foundArg !== undefined) {
+        result = { name: alias, value: foundArg };
       }
     }
 
@@ -136,6 +131,9 @@ export class ArgvParser {
 
   getArgs() {
     return this._argsMap.forceGet("");
+  }
+  argsEntries() {
+    return this._argsMap.entries();
   }
 }
 

@@ -47,14 +47,14 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
             hanlderParams[paramConfig.name] = rest;
           } else {
             paramOptions += `   --${paramConfig.name} \t\t${paramConfig.description}\n`;
-            const found = argsParser.getParamInfo(paramConfig.name);
+            const found = argsParser.getParamInfo(paramConfig.name, undefined, paramConfig.type);
             if (found !== undefined) {
               const value = formatTypedValue(found.value, paramConfig.type);
               if (value === undefined) {
                 throw `SYNTAX_ERR: '${funName}' got invalid param '${found.name}' with value: '${found.value}'`;
               }
               hanlderParams[paramConfig.name] = value;
-              argsParser.getParamInfo(paramConfig.name);
+              argsParser.freeParamInfo(paramConfig.name, undefined);
             } else if (paramConfig.require) {
               throw `NO_FOUND_ERR: '${funName}' require param: '${paramConfig.name}'`;
             }
@@ -62,6 +62,20 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
         }
       }
 
+      {
+        const argsMap = new Map(argsParser.argsEntries());
+        let hasError = false;
+        for (const [key, args] of argsMap) {
+          if (key === "") {
+            continue;
+          }
+          ctx.logger.error(`invalid param: ${key} = ${args.join(" ")}`);
+          hasError = true;
+        }
+        if (hasError) {
+          process.exit(1);
+        }
+      }
       const args = argsParser.getArgs();
 
       /// args
@@ -125,7 +139,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
       }
 
       await hanlder(hanlderParams, hanlderArgs, ctx);
-    } catch (err) {debugger
+    } catch (err) {
       ctx.logger.error(err);
       process.exit(1);
     }
