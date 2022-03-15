@@ -1,6 +1,6 @@
 import path, { resolve } from "node:path";
 import { createTsconfigForEsbuild, Debug, fileIO, folderIO, toPosixPath, _readFromMjs } from "@bfchain/pkgm-bfsp";
-import { Plugin, build } from "esbuild";
+import { Plugin, build, Loader } from "esbuild";
 import { existsSync, unlinkSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
 import bfswTsconfigContent from "../assets/tsconfig.bfsw.json?raw";
@@ -11,7 +11,6 @@ export const defineWorkspace = (cb: () => Bfsw.Workspace) => {
 };
 
 const bfswTsconfigFilepath = createTsconfigForEsbuild(bfswTsconfigContent);
-
 
 export const readWorkspaceConfig = async (
   dirname: string,
@@ -31,6 +30,18 @@ export const readWorkspaceConfig = async (
       });
     },
   };
+  const suffixAndLoaderList: {
+    suffix: string;
+    loader: Loader;
+  }[] = [
+    { suffix: ".ts", loader: "ts" },
+    { suffix: ".tsx", loader: "ts" },
+    { suffix: ".js", loader: "js" },
+    { suffix: ".mjs", loader: "js" },
+    { suffix: ".json", loader: "json" },
+    { suffix: ".cjs", loader: "js" },
+    { suffix: ".jsx", loader: "js" },
+  ];
   // 用来注入路径信息
   const bfspWrapper: Plugin = {
     name: "#bfsp-wrapper",
@@ -58,17 +69,13 @@ export const readWorkspaceConfig = async (
         async (args) => {
           if (path.basename(args.path) === "#bfsp#") {
             return {
-              contents: await fileIO.get(
-                path.join(path.dirname(args.path), "#bfsp.ts")
-              ),
+              contents: await fileIO.get(path.join(path.dirname(args.path), "#bfsp.ts")),
               loader: "ts",
             };
           }
 
           if (path.basename(args.path) === "#bfsp") {
-            const bfsp_ = JSON.stringify(
-              toPosixPath(path.join(path.dirname(args.path), "#bfsp#"))
-            );
+            const bfsp_ = JSON.stringify(toPosixPath(path.join(path.dirname(args.path), "#bfsp#")));
             const dirname = toPosixPath(path.dirname(args.path));
             return {
               contents: `
@@ -80,26 +87,34 @@ export const readWorkspaceConfig = async (
               loader: "ts",
             };
           }
-          if (path.basename(args.path) === "#bfsw") {
+
+          let filepath = args.path;
+          let loader: Loader = "ts";
+
+          if ((await fileIO.has(filepath)) === false) {
+            for (const sl of suffixAndLoaderList) {
+              const maybeFilepath = filepath + sl.suffix;
+              if (await fileIO.has(maybeFilepath)) {
+                filepath = maybeFilepath;
+                loader = sl.loader;
+                break;
+              }
+            }
             return {
               contents: await fileIO.get(`${args.path}.ts`),
               loader: "ts",
             };
           }
-          return { contents: await fileIO.get(args.path), loader: "ts" };
+          return { contents: await fileIO.get(filepath), loader };
         }
       );
     },
   };
   for (const filename of await folderIO.get(dirname)) {
-    if (
-      filename === "#bfsw.ts" ||
-      filename === "#bfsw.mts" ||
-      filename === "#bfsw.mtsx"
-    ) {
+    if (filename === "#bfsw.ts" || filename === "#bfsw.mts" || filename === "#bfsw.mtsx") {
       const cache_filename = `#bfsw-${createHash("md5").update(`${Date.now()}`).digest("hex")}.mjs`;
       const bfswDir = resolve(dirname, consts.ShadowRootPath);
-      if(!existsSync(bfswDir)) {
+      if (!existsSync(bfswDir)) {
         mkdirSync(bfswDir);
       }
       const cache_filepath = resolve(bfswDir, cache_filename);
@@ -116,10 +131,7 @@ export const readWorkspaceConfig = async (
           tsconfig: bfswTsconfigFilepath,
           plugins: [externalMarker, bfspWrapper],
         });
-        return await _readFromMjs<Bfsw.Workspace>(
-          cache_filepath,
-          options.refresh
-        );
+        return await _readFromMjs<Bfsw.Workspace>(cache_filepath, options.refresh);
       } finally {
         existsSync(cache_filepath) && unlinkSync(cache_filepath);
       }
@@ -129,9 +141,7 @@ export const readWorkspaceConfig = async (
     // }
     if (filename === "#bfsw.json") {
       return JSON.parse(
-        (
-          await fileIO.get(resolve(dirname, filename), options.refresh)
-        ).toString("utf-8")
+        (await fileIO.get(resolve(dirname, filename), options.refresh)).toString("utf-8")
       ) as Bfsw.Workspace;
     }
   }

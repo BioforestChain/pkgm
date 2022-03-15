@@ -13,8 +13,13 @@ const argsMapCache = EasyMap.from({
         return [] as string[];
       },
     });
-    let curArgName = ""; // = { name: "", rawValues: [] as string[] };
-    // argsMap.set(curArg.name, curArg.rawValues);
+    let curArgName = "";
+    /**
+     * 假设输入 --name a1 a2 a3
+     * 这里不知道 name 的类型，所以会默认把 a1 a2 a3 都归类给 name
+     * 之后再通过 getParamInfo 携带 type 来提取这些值（按需提取）
+     * 最后再通过 freeParamInfo 来将剩余的值归类到 args 中去
+     */
     for (const arg of argv) {
       const matchArgPrefix = arg.match(/-+?(\w+)\=?/);
       if (matchArgPrefix !== null) {
