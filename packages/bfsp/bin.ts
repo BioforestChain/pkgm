@@ -1,6 +1,9 @@
 /// <reference path="./typings/index.d.ts"/>
 const ARGV = process.argv.slice(2);
 
+import { EasyMap } from "@bfchain/util-extends-map";
+import { PromiseOut } from "@bfchain/util-extends-promise-out";
+import { setTimeout } from "node:timers/promises";
 import "./src/bin/@bin.types";
 import { ArgvParser, formatTypedValue } from "./src/bin/ArgvParser";
 import { CommandContext } from "./src/bin/CommandContext";
@@ -144,16 +147,34 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
       process.exit(1);
     }
   };
-  if (ARGV[0] === funName || config.alias?.includes(ARGV[0])) {
-    binRunner(ARGV.slice(1));
-  }
-  return {
+
+  const info = {
     name: funName,
     config,
     runner: binRunner,
   };
+  commandMap.forceGet(funName).resolve(info);
+
+  return info;
 };
 
+type CommandInfo = ReturnType<typeof defineCommand>;
+const commandMap = EasyMap.from<string, PromiseOut<CommandInfo>>({
+  creater: (funName: string) => {
+    const dealyRegPo = new PromiseOut<CommandInfo>();
+
+    setTimeout(1000).then(() => {
+      if (dealyRegPo.is_finished === false) {
+        dealyRegPo.reject(new Error(`Command "${funName}" not found.`)); // Did you mean "i"?
+      }
+    });
+    return dealyRegPo;
+  },
+});
+(async () => {
+  const info = await commandMap.forceGet(ARGV[0]).promise;
+  info.runner(ARGV.slice(1));
+})().catch(console.log);
 // import { EasyMap } from "@bfchain/util-extends-map";
 
 // /**
