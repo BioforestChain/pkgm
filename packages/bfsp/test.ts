@@ -2,6 +2,6 @@
 
 // // import {Api} from 'ava/lib/api'
 
-// export const defineTest = <Context = unknown>(title: string, implementation: Implementation<[], Context>) => {
-//   return (avaTest as TestFn<Context>)(title, implementation);
-// };
+export const defineTest = <Context = unknown>(title: string, implementation: (t: any) => unknown) => {
+  //   return (avaTest as TestFn<Context>)(title, implementation);
+};
