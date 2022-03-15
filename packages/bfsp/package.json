@@ -68,10 +68,8 @@
     "vite": "^2.8.6",
     "yarn": "^1.22.17"
   },
-  "optionalDependencies": {
-    "@bfchain/watchman-binary-darwin-x64": "2021.08.23",
-    "@bfchain/watchman-binary-linux-x64": "2022.02.28-1",
-    "@bfchain/watchman-binary-win32-x64": "2021.01.10"
+  "peerDependencies": {
+    "@bfchain/watchman-binarys": "^1.0.0"
   },
   "devDependencies": {
     "@types/blessed": "^0.1.19",

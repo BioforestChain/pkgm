@@ -7,10 +7,11 @@
   },
   "scripts": {
     "i": "lerna bootstrap",
+    "publ": "lerna publish",
     "dev:script": "lerna run dev:script --stream --parallel",
     "build:script": "lerna run build:script --stream --parallel",
     "dev:main": "lerna run dev:main --stream --parallel",
     "tsc": "lerna run tsc --stream --parallel",
-    "dev":"yarn run build:script && yarn run dev:main"
+    "dev": "yarn run build:script && yarn run dev:main"
   }
 }
