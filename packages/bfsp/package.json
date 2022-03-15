@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm-bfsp",
-  "version": "2.5.16",
+  "version": "2.5.16-watchman.0",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",
