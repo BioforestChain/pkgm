@@ -18,6 +18,9 @@ declare namespace PKGM {
     error: SuperPrinter;
     info: SuperPrinter;
     success: SuperPrinter;
+    group: Console["group"];
+    groupCollapsed: Console["groupCollapsed"];
+    groupEnd: Console["groupEnd"];
   };
   type NormalPrinter = Print & Partial<SuperPrinter>;
   type ConsoleLogger = {

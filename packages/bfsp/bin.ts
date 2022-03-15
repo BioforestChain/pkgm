@@ -17,12 +17,7 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
     ctx: CommandContext
   ) => unknown
 ) => {
-  const binRunner = async (argv: string[]) => {
-    const ctx = new CommandContext({
-      prefix: funName,
-      stderr: process.stderr,
-      stdout: process.stdout,
-    });
+  const binRunner = async (argv: string[], ctx: CommandContext) => {
     try {
       const hanlderParams = {} as any;
       const hanlderArgs = [] as any;
@@ -144,7 +139,6 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
       await hanlder(hanlderParams, hanlderArgs, ctx);
     } catch (err) {
       ctx.logger.error(err);
-      process.exit(1);
     }
   };
 
@@ -153,161 +147,27 @@ export const defineCommand = <T extends Bfsp.Bin.CommandConfig>(
     config,
     runner: binRunner,
   };
-  commandMap.forceGet(funName).resolve(info);
+
+  /// 尝试执行
+  tryRunCommand(info);
 
   return info;
 };
 
-type CommandInfo = ReturnType<typeof defineCommand>;
-const commandMap = EasyMap.from<string, PromiseOut<CommandInfo>>({
-  creater: (funName: string) => {
-    const dealyRegPo = new PromiseOut<CommandInfo>();
-
-    setTimeout(1000).then(() => {
-      if (dealyRegPo.is_finished === false) {
-        dealyRegPo.reject(new Error(`Command "${funName}" not found.`)); // Did you mean "i"?
-      }
+const commandName = ARGV[0];
+const tryRunCommand = async (info: CommandInfo) => {
+  if (commandName === info.name || info.config.alias?.includes(commandName)) {
+    const ctx = new CommandContext({
+      prefix: info.name,
+      stderr: process.stderr,
+      stdout: process.stdout,
     });
-    return dealyRegPo;
-  },
-});
-(async () => {
-  const info = await commandMap.forceGet(ARGV[0]).promise;
-  info.runner(ARGV.slice(1));
-})().catch(console.log);
-// import { EasyMap } from "@bfchain/util-extends-map";
+    try {
+      await info.runner(ARGV.slice(1), ctx);
+    } catch (err) {
+      ctx.logger.error(err);
+    }
+  }
+};
 
-// /**
-//  * 将有关联的参数聚合在一起
-//  * 这里宽松地解析参数，不区分类型。
-//  * 我们会在所有的params解析完成后，去除掉那些有意义的params，将剩下交给args进行进一步解析
-//  */
-// const argsMapCache = EasyMap.from({
-//   creater: (argv: string[]) => {
-//     const argsMap = EasyMap.from({
-//       creater: (_argName: string) => {
-//         return [] as string[];
-//       },
-//     });
-//     let curArgName = ""; // = { name: "", rawValues: [] as string[] };
-//     // argsMap.set(curArg.name, curArg.rawValues);
-
-//     for (const arg of argv) {
-//       const matchArgPrefix = arg.match(/-+?(\w+?)\=?/);
-//       if (matchArgPrefix !== null) {
-//         const [argPrefix, argName] = matchArgPrefix;
-//         let rawValue: undefined | string;
-//         if (argPrefix.endsWith("=")) {
-//           rawValue = arg.slice(argPrefix.length);
-//         }
-
-//         /// forceGet，确保创建出空数组，以代表字段过
-//         const rawValues = argsMap.forceGet(argName);
-//         /// 保存值
-//         if (typeof rawValue === "string") {
-//           rawValues.push(rawValue);
-//         }
-//       } else {
-//         argsMap.forceGet(curArgName).push(arg);
-//       }
-//     }
-//     return argsMap;
-//   },
-// });
-// const freeArgs = (argv: string[], name: string) => {
-//   const argsMap = argsMapCache.forceGet(argv);
-//   const argRawValues = argsMap.get(name);
-//   if (argRawValues === undefined) {
-//     return;
-//   }
-//   argsMap.forceGet("").push(...argRawValues);
-//   argRawValues.length = 0;
-// };
-
-// const findArgByName = (argv: string[], name: string, type: Bfsp.Bin.CommandConfig.InputType) => {
-//   const argsMap = argsMapCache.forceGet(argv);
-//   const argRawValues = argsMap.get(name);
-//   if (argRawValues === undefined) {
-//     return undefined;
-//   }
-
-//   /**
-//    * 尝试根据类型获取所需的参数
-//    * 有符合规则的才会拿出来，不符合规则的会被保留
-//    */
-//   switch (type) {
-//     case "boolean": {
-//       const maybeBoolRawValue = argRawValues[0];
-//       if (typeof maybeBoolRawValue === "string") {
-//         const boolValue = maybeBoolRawValue.toLowerCase();
-//         if (
-//           boolValue === "n" ||
-//           boolValue === "no" ||
-//           boolValue === "f" ||
-//           boolValue === "false" ||
-//           boolValue === "y" ||
-//           boolValue === "yes" ||
-//           boolValue === "t" ||
-//           boolValue === "true"
-//         ) {
-//           return argRawValues.shift();
-//         }
-//       } else {
-//         return "yes";
-//       }
-//     }
-//     case "number": {
-//       const maybeNumberRawValue = argRawValues[0];
-//       if (typeof maybeNumberRawValue === "string") {
-//         const numValue = Number.parseFloat(maybeNumberRawValue);
-//         if (Number.isFinite(numValue)) {
-//           return argRawValues.shift();
-//         }
-//       }
-//       break;
-//     }
-//     case "string":
-//     default: {
-//       return (argRawValues.shift() ?? "").toLowerCase();
-//     }
-//   }
-// };
-
-// const getArg = (
-//   argv: string[],
-//   name: string,
-//   aliases?: string[],
-//   type: Bfsp.Bin.CommandConfig.InputType = "string"
-// ) => {
-//   let foundArg = findArgByName(argv, name, type);
-//   if (foundArg !== undefined) {
-//     return { argName: name, value: foundArg };
-//   }
-//   if (aliases !== undefined) {
-//     for (const alias of aliases) {
-//       foundArg = findArgByName(argv, alias, type);
-//       if (foundArg !== undefined) {
-//         return { argName: alias, value: foundArg };
-//       }
-//     }
-//   }
-// };
-// const formatTypedValue = (value: string, type?: Bfsp.Bin.CommandConfig.InputType) => {
-//   switch (type) {
-//     case "boolean":
-//       value = value.toLowerCase();
-//       if (value === "f" || value === "false" || value === "n" || value === "no") {
-//         return false;
-//       }
-//       return true; //(value === "true" || value === "yes" || value === "")
-//     case "number":
-//       const num = parseFloat(value);
-//       if (Number.isFinite(num)) {
-//         return num;
-//       }
-//       break;
-//     case "string":
-//     default:
-//       return value;
-//   }
-// };
+type CommandInfo = ReturnType<typeof defineCommand>;

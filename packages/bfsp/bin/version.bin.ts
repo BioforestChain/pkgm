@@ -3,7 +3,8 @@ import { getBfspPackageJson } from "./util";
 import { helpOptions } from "./help.core";
 import chalk from "chalk";
 
-defineCommand("version", {description: helpOptions.version}, async (params, args) => {
+defineCommand("version", { description: helpOptions.version }, async (params, args, ctx) => {
+  const console = ctx.logger;
   process.noDeprecation = true;
 
   const pkgm = getBfspPackageJson();

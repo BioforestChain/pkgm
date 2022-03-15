@@ -1,18 +1,19 @@
 import { defineCommand } from "../bin";
 import { helpOptions } from "./help.core";
 
-defineCommand("--help", {}, async (params, args) => {
+defineCommand("help", { alias: ["--help"] }, async (params, args, ctx) => {
+  const console = ctx.logger;
   console.log("Usage: bfsp <command> [options]\n");
   console.log(`${helpOptions.bfsp}\n`);
   console.log("Options:");
   console.log("   --help\t\t\t\tdisplay help for command\n");
   console.log("Commands:");
-  console.log(`   create [options] <name>\t\t${helpOptions.create}\r`);
-  console.log(`   init [options]\t\t\t${helpOptions.init}\r`);
-  console.log(`   dev [options] <path>\t\t\t${helpOptions.dev}\r`);
-  console.log(`   build [options] <path>\t\t${helpOptions.build}\r`);
-  console.log(`   npm [options] <path>\t\t\t${helpOptions.npm}\r`);
-  console.log(`   version\t\t\t\t${helpOptions.version}\r\n`);
+  console.log(`   create\t\t${helpOptions.create}`);
+  console.log(`   init\t\t${helpOptions.init}`);
+  console.log(`   dev\t\t${helpOptions.dev}`);
+  console.log(`   build\t\t${helpOptions.build}`);
+  console.log(`   npm\t\t${helpOptions.npm}`);
+  console.log(`   version\t${helpOptions.version}`);
 
   process.exit(0);
 });

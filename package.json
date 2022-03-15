@@ -11,7 +11,7 @@
     "build:main": "lerna run build:main --stream --parallel",
     "build:bin": "lerna run build:main --stream --parallel",
     "build:script": "lerna run build:script --stream --parallel",
-    "build": "npm-run-all build:* --parallel",
+    "build": "concurrently \"npm:build:*\"",
     "dev:script": "lerna run dev:script --stream --parallel",
     "dev:bin": "lerna run dev:bin --stream --parallel",
     "dev:main": "lerna run dev:main --stream --parallel",

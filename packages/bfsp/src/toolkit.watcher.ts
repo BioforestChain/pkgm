@@ -43,16 +43,18 @@ const wm = new Client({
   watchmanBinaryPath,
 });
 
-const checkWatcher = new Promise<void>((resolve, reject) => {
-  wm.capabilityCheck({ optional: [], required: ["relative_root"] }, function (error: unknown, resp: unknown) {
-    if (error) {
-      reject(error);
-      wm.end();
-    } else {
-      resolve();
-    }
-  });
-});
+let watchManChecker: Promise<void> | undefined;
+const checkWatcher = () =>
+  (watchManChecker ??= new Promise<void>((resolve, reject) => {
+    wm.capabilityCheck({ optional: [], required: ["relative_root"] }, function (error: unknown, resp: unknown) {
+      if (error) {
+        reject(error);
+        wm.end();
+      } else {
+        resolve();
+      }
+    });
+  }));
 
 type WatchProjectResponse = {
   version: string;
@@ -81,7 +83,7 @@ type Watcher = WatchProjectResponse & {
 /// 目录监听器
 const watcherCache = EasyMap.from({
   async creater(root: string) {
-    await checkWatcher;
+    await checkWatcher();
     return new Promise<Watcher>(async (resolve, reject) => {
       wm.command(["watch-project", root], function (error: unknown, projectResp: WatchProjectResponse) {
         if (error) {

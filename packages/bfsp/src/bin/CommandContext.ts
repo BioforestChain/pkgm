@@ -66,6 +66,8 @@ export class CommandContext {
   private _logger?: PKGM.Logger;
   get logger() {
     if (this._logger === undefined) {
+      let groupPrefix = "";
+
       let preLinePrefix = "";
       const Print = (linePrefix: string, stream: NodeJS.WritableStream, line: boolean) => {
         linePrefix += ": ";
@@ -80,9 +82,9 @@ export class CommandContext {
           // 结尾换行符会导致打印多个linePrefix
           let out: string = "";
           if (content.endsWith("\n")) {
-            out = linePrefix + content.replace(/\n$/, "").replace(/\n/g, "\n" + linePrefix) + "\n";
+            out = linePrefix + groupPrefix + content.replace(/\n$/, "").replace(/\n/g, "\n" + linePrefix) + "\n";
           } else {
-            out = linePrefix + content.replace(/\n/g, "\n" + linePrefix);
+            out = linePrefix + groupPrefix + content.replace(/\n/g, "\n" + linePrefix);
           }
 
           // 写入回车
@@ -118,13 +120,28 @@ export class CommandContext {
         return Object.assign(line, { write: print, pipeFrom });
       };
       const { prefix, stderr, stdout } = this.options;
+      const log = SuperPrinter(chalk.cyan(prefix), stdout);
+      const info = SuperPrinter(chalk.blue(prefix), stdout);
+      const warn = SuperPrinter(chalk.yellow(prefix), stderr);
+      const success = SuperPrinter(chalk.green(prefix), stdout);
+      const error = SuperPrinter(chalk.red(prefix), stderr);
+      const group = (...labels: any[]) => {
+        log(...labels);
+        groupPrefix += "\t";
+      };
+      const groupEnd = () => {
+        groupPrefix = groupPrefix.slice(0,-1)
+      };
       this._logger = {
         isSuperLogger: true,
-        log: SuperPrinter(chalk.cyan(prefix), stdout),
-        info: SuperPrinter(chalk.blue(prefix), stdout),
-        warn: SuperPrinter(chalk.yellow(prefix), stderr),
-        success: SuperPrinter(chalk.green(prefix), stdout),
-        error: SuperPrinter(chalk.red(prefix), stderr),
+        log,
+        info,
+        warn,
+        success,
+        error,
+        group,
+        groupCollapsed: group,
+        groupEnd,
       };
     }
     return this._logger;

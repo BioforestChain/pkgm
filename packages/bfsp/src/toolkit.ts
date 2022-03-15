@@ -37,9 +37,10 @@ export abstract class CacheGetter<K, V> {
         }
       }
       /// 内存清理在10s~1s之间，残留越多，下一次清理的时间越快
-      setTimeout(doClear, 1e3 + 9e3 * (1 / (Math.sqrt(this._cache.size) + 1)));
+      const ti = setTimeout(doClear, 10000)//1e3 + 9e3 * (1 / (Math.sqrt(this._cache.size) + 1)));
+      ti.unref();
     };
-    setTimeout(doClear, 1e4);
+    doClear()
   }
   protected _cache = new Map<K, { time: number; value: V }>();
   cacheTime = 1e3; // 默认缓存1s
