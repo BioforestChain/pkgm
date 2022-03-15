@@ -16,12 +16,12 @@ export const defaultInput: InputOption = {
   tsc_worker: "bin/tsc/worker.ts",
   terser_worker: "bin/terser/worker.ts",
   test: "test.ts",
-  bin: "bin.ts",
 };
 // export const testInput: InputOption = {
 // };
-// export const binInput: InputOption = {
-// };
+export const binInput: InputOption = {
+  bin: "bin.ts",
+};
 export const scriptInput: InputOption = {
   postinstall: "postinstall.ts",
 };
@@ -204,6 +204,9 @@ export default defineConfig((info) => {
   if (mode === "script") {
     modeInput = scriptInput;
     modeOutDir = "script";
+  } else if (mode === "bin") {
+    modeInput = binInput;
+    modeOutDir = "bin";
   }
 
   return {

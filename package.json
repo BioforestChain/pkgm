@@ -3,16 +3,19 @@
   "private": true,
   "packageManager": "yarn@1.22.0",
   "devDependencies": {
+    "concurrently": "^7.0.0",
     "lerna": "^4.0.0"
   },
   "scripts": {
     "i": "lerna bootstrap",
-    "dev:script": "lerna run dev:script --stream --parallel",
-    "build:script": "lerna run build:script --stream --parallel",
     "build:main": "lerna run build:main --stream --parallel",
-    "build": "yarn build:script && yarn build:main",
-    "dev:main": "lerna run dev:main,dev:script --stream --parallel",
-    "tsc": "lerna run tsc --stream --parallel",
-    "dev":"yarn run dev:main"
+    "build:bin": "lerna run build:main --stream --parallel",
+    "build:script": "lerna run build:script --stream --parallel",
+    "build": "npm-run-all build:* --parallel",
+    "dev:script": "lerna run dev:script --stream --parallel",
+    "dev:bin": "lerna run dev:bin --stream --parallel",
+    "dev:main": "lerna run dev:main --stream --parallel",
+    "dev": "concurrently \"npm:dev:*\"",
+    "tsc": "lerna run tsc --stream --parallel"
   }
 }

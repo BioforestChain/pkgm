@@ -13,7 +13,7 @@
       "import": "./dist/main/index.mjs"
     },
     "./bin": {
-      "import": "./dist/main/bin.mjs"
+      "import": "./dist/bin/bin.mjs"
     },
     "./test": {
       "import": "./dist/main/test.mjs"
@@ -42,10 +42,12 @@
     "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",
     "dev:main": "vite build --watch --minify=false --sourcemap=true",
-    "dev:script": "yarn dev:main -- --mode=script",
+    "dev:bin": "yarn dev:main --mode=bin",
+    "dev:script": "yarn dev:main --mode=script",
     "dev": "yarn dev:main",
     "build:main": "vite build --minify=false --sourcemap=true",
-    "build:script": "yarn build:main -- --mode=script",
+    "build:bin": "yarn build:main --mode=bin",
+    "build:script": "yarn build:main --mode=script",
     "build": "yarn build:main & yarn build:script",
     "test": "ava"
   },
