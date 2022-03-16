@@ -18,6 +18,9 @@
     "./test": {
       "import": "./dist/main/test.mjs"
     },
+    "./bfsp": {
+      "import": "./dist/main/bfsp.bin.mjs"
+    },
     "./package.json": "./package.json"
   },
   "bin": {

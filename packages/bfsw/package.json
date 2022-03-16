@@ -15,6 +15,9 @@
     "./bin": {
       "import": "./dist/main/bin.mjs"
     },
+    "./bfsw": {
+      "import": "./dist/main/bfsw.bin.mjs"
+    },
     "./package.json": "./package.json"
   },
   "bin": {
