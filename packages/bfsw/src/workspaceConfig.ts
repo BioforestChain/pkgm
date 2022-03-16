@@ -1,8 +1,8 @@
-import path, { resolve } from "node:path";
+import { build, Loader, Plugin } from "@bfchain/pkgm-base/lib/esbuild";
 import { createTsconfigForEsbuild, Debug, fileIO, folderIO, toPosixPath, _readFromMjs } from "@bfchain/pkgm-bfsp";
-import { Plugin, build, Loader } from "@bfchain/pkgm-base/esbuild";
-import { existsSync, unlinkSync, mkdirSync } from "node:fs";
 import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, unlinkSync } from "node:fs";
+import path, { resolve } from "node:path";
 import bfswTsconfigContent from "../assets/tsconfig.bfsw.json?raw";
 import { consts } from "./consts";
 

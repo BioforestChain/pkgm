@@ -1,4 +1,4 @@
-import { blessed, Widgets } from "@bfchain/pkgm-base/blessed";
+import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { chalk, supportsColor } from "@bfchain/pkgm-base/lib/chalk";
 import crypto from "node:crypto";
 import "./@type";

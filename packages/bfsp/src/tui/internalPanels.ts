@@ -1,6 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import type { LogErrorOptions, LogLevel, LogType } from "@bfchain/pkgm-base/vite";
-import type { RollupError } from "rollup";
+import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
+import type { LogErrorOptions, LogLevel, LogType } from "@bfchain/pkgm-base/lib/vite";
 import { LogLevels } from "./const";
 import { Panel } from "./Panel";
 

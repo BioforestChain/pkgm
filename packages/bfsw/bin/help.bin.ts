@@ -1,7 +1,7 @@
-import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
+import { defineCommand, defineDefaultCommand } from "@bfchain/pkgm-bfsp/bin";
 import { helpOptions } from "./help.core";
 
-defineCommand("--help", {}, async (params, args) => {
+const helpCommand = defineCommand("help", { alias: ["--help"] }, async (params, args) => {
   console.log("Usage: bfsp <command> [options]\n");
   console.log(`${helpOptions.bfsw}\n`);
   console.log("Options:");
@@ -16,3 +16,4 @@ defineCommand("--help", {}, async (params, args) => {
 
   process.exit(0);
 });
+defineDefaultCommand(helpCommand);
