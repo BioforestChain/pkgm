@@ -1,5 +1,5 @@
-import { Widgets } from "blessed";
-import { LogLevel } from "vite";
+import type { Widgets } from "@bfchain/pkgm-base/lib/blessed";
+import type { LogLevel } from "@bfchain/pkgm-base/lib/vite";
 
 export const getBaseWidgetOptions = () =>
   ({

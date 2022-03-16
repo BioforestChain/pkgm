@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
-import chalk from "chalk";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
+import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { isDeepStrictEqual } from "node:util";
 import { watchBfspProjectConfig } from "../src/bfspConfig";
 import { BuildService } from "../src/buildService";

@@ -1,5 +1,4 @@
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
-import { setTimeout as sleep } from "node:timers/promises";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 
 export async function* ParallelRunner(max: number) {
   let waitter: PromiseOut<void> | undefined; // = new PromiseOut
@@ -20,13 +19,3 @@ export async function* ParallelRunner(max: number) {
     await waitter.promise;
   }
 }
-
-// (async () => {
-//   let i = 0;
-//   for await (const taskSignal of ParallelRunner(3)) {
-//     console.log("start ", i++);
-//     sleep(1000).then(() => {
-//       taskSignal.resolve();
-//     });
-//   }
-// })();

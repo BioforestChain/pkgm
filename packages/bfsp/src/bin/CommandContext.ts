@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
 import util from "node:util";

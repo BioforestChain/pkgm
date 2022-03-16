@@ -1,5 +1,5 @@
 import "./@bin.types";
-import { EasyMap } from "@bfchain/util-extends-map";
+import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
 
 /**
  * 将有关联的参数聚合在一起

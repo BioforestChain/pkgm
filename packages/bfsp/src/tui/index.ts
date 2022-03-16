@@ -1,5 +1,5 @@
-import blessed, { Widgets } from "blessed";
-import chalk, { supportsColor } from "chalk";
+import { blessed, Widgets } from "@bfchain/pkgm-base/blessed";
+import { chalk, supportsColor } from "@bfchain/pkgm-base/lib/chalk";
 import crypto from "node:crypto";
 import "./@type";
 import { afm } from "./animtion";
@@ -104,7 +104,7 @@ class Tui {
     this._panels.set(bundle.name, bundle);
 
     const deps = new DepsPanel(this, 3, "Deps");
-    deps.updateStatus('success');
+    deps.updateStatus("success");
     this._panels.set(deps.name, deps);
 
     const sorted = [...this._panels.values()];

@@ -1,6 +1,6 @@
 import cp from "node:child_process";
-import { getYarnPath } from "../util";
-import {} from "@bfchain/util-extends-promise-out";
+import { getYarnPath } from "@bfchain/pkgm-base/lib/yarn";
+import {} from "@bfchain/pkgm-base/util/extends_promise_out";
 export interface RunYarnOption {
   root: string;
   onExit?: () => void;

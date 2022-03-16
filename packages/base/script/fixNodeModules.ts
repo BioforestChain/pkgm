@@ -22,7 +22,9 @@ export const fixNodeModules = async (__dirname: string) => {
   const require = createRequire(__dirname);
 
   const pkgJson = JSON.parse(fs.readFileSync(pkgFilename, "utf8"));
-  const bfchainDeps = Object.keys(pkgJson.dependencies).filter((depName) => depName.startsWith("@bfchain/util"));
+  const bfchainDeps = Object.keys(Object.assign({}, pkgJson.dependencies, pkgJson.devDependencies)).filter((depName) =>
+    depName.startsWith("@bfchain/util")
+  );
   if (bfchainDeps.length === 0) {
     return;
   }

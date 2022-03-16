@@ -1,4 +1,4 @@
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -232,12 +232,6 @@ export const getBfswPackageJson = () => {
 };
 export const getBfswVersion = () => {
   return getBfswPackageJson().version;
-};
-
-export const getYarnPath = async () => {
-  const packageJsonFile = require.resolve("yarn/package.json");
-  const packageJson = JSON.parse((await fileIO.get(packageJsonFile, true)).toString());
-  return path.join(path.dirname(packageJsonFile), packageJson.bin.yarn);
 };
 
 type OrderMap<T> = Map<T, { has: boolean }>;

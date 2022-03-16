@@ -1,8 +1,8 @@
 import fs, { existsSync, statSync } from "node:fs";
 import { inspect } from "node:util";
 import path from "node:path";
-import typescript from "typescript";
-import type { InlineConfig } from "vite";
+import { typescript, TsNamespace } from "@bfchain/pkgm-base/lib/typescript";
+import type { InlineConfig } from "@bfchain/pkgm-base/lib/vite";
 import { $TsConfig } from "../../src/configs/tsConfig";
 import type { $ViteConfig } from "../../src/configs/viteConfig";
 import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
@@ -102,7 +102,7 @@ export const ViteConfigFactory = (options: {
     },
     plugins: [
       (() => {
-        const parsedTsConfig: typescript.TranspileOptions = JSON.parse(JSON.stringify(options.tsConfig.json));
+        const parsedTsConfig: TsNamespace.TranspileOptions = JSON.parse(JSON.stringify(options.tsConfig.json));
         const compilerOptions = (parsedTsConfig.compilerOptions ||= {});
         compilerOptions.emitDeclarationOnly = false;
         compilerOptions.noEmit = false;

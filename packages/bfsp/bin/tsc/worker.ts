@@ -1,11 +1,12 @@
+import { getTscPath, ts } from "@bfchain/pkgm-base/lib/typescript";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createContext, runInContext, Script } from "node:vm";
 import { isMainThread, parentPort } from "node:worker_threads";
-import { require, tryRequireResolve } from "../../src/toolkit";
+import { require } from "../../src/toolkit";
 
 export function doTsc() {
-  const tscPath = path.resolve(tryRequireResolve(require, "typescript"), "../tsc.js");
+  const tscPath = getTscPath();
   const tscDirname = path.dirname(tscPath);
   const context = createContext({
     require,
@@ -22,7 +23,7 @@ export function doTsc() {
       .replace(`ts.executeCommandLine(ts.sys, ts.noop, ts.sys.args);`, "")
   );
   tscScript.runInContext(context);
-  const ts = context.ts as typeof import("typescript");
+  const ts = context.ts as typeof ts;
 
   if (parentPort) {
     ts.sys.clearScreen = () => {
@@ -38,7 +39,7 @@ export function doTsc() {
   }
 
   return {
-    ts,
+    // ts,
     start() {
       runInContext(`ts.executeCommandLine(ts.sys, ts.noop, ts.sys.args)`, context);
     },

@@ -1,4 +1,4 @@
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import { defineTest } from "../test";
 import { Tasks, Tree } from "../bin/util";
 import { Closeable } from "../src/toolkit";

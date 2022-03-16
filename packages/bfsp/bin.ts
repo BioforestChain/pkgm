@@ -1,9 +1,6 @@
 /// <reference path="./typings/index.d.ts"/>
 const ARGV = process.argv.slice(2);
 
-import { EasyMap } from "@bfchain/util-extends-map";
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
-import { setTimeout } from "node:timers/promises";
 import "./src/bin/@bin.types";
 import { ArgvParser, formatTypedValue } from "./src/bin/ArgvParser";
 import { CommandContext } from "./src/bin/CommandContext";

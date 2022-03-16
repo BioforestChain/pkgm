@@ -1,7 +1,7 @@
 import { defineCommand } from "../bin";
 import { getBfspPackageJson } from "./util";
 import { helpOptions } from "./help.core";
-import chalk from "chalk";
+import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
 
 export const versionCommand = defineCommand(
   "version",

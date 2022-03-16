@@ -1,4 +1,4 @@
-import { minify } from "terser";
+import { minify } from "@bfchain/pkgm-base/lib/terser";
 import { isMainThread, parentPort } from "node:worker_threads";
 import { readFileSync, writeFileSync } from "node:fs";
 

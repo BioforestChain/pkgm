@@ -1,4 +1,4 @@
-import { Widgets } from "blessed";
+import type { Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { afm } from "./animtion";
 import { FRAMES } from "./const";
 

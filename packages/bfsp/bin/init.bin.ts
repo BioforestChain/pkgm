@@ -3,7 +3,7 @@ import { doInit } from "./init.core";
 import { helpOptions } from "./help.core";
 import path from "node:path";
 import { existsSync } from "node:fs";
-import chalk from "chalk";
+import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
 
 export const initCommand = defineCommand(
   "init",

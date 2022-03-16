@@ -1,8 +1,8 @@
-import chalk from "chalk";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import type { LogErrorOptions, LogLevel, LogType } from "@bfchain/pkgm-base/vite";
 import type { RollupError } from "rollup";
-import type { LogErrorOptions, LogLevel, LogType } from "vite";
 import { LogLevels } from "./const";
-import { Panel, PanelStatus } from "./Panel";
+import { Panel } from "./Panel";
 
 export class TscPanel extends Panel<"Tsc"> {
   write(text: string) {

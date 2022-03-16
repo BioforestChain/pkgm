@@ -1,8 +1,8 @@
-import chalk from "chalk";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { existsSync, renameSync } from "node:fs";
 import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { build as buildBfsp } from "vite";
+import { build as buildBfsp } from "@bfchain/pkgm-base/lib/vite";
 import { getBfspUserConfig, parseExports, parseFormats } from "../src";
 import { writeBfspProjectConfig } from "../src/bfspConfig";
 import { BuildService } from "../src/buildService";

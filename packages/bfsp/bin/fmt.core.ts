@@ -1,4 +1,4 @@
-import prettier, { BuiltInParserName } from "prettier";
+import { prettier, BuiltInParserName } from "@bfchain/pkgm-base/lib/prettier";
 
 export const doFormat = async (options: { root: string }) => {
   prettier.format;

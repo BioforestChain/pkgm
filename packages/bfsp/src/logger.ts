@@ -1,9 +1,9 @@
-import chalk from "chalk";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { debug as D } from "@bfchain/pkgm-base/lib/debug";
+import type { Logger, LoggerOptions, LogLevel } from "@bfchain/pkgm-base/lib/vite";
 import util from "node:util";
 import type { RollupError } from "rollup";
-import type { Logger, LoggerOptions, LogLevel } from "vite";
-import { require } from "./toolkit.require";
-import { PanelStatus, getTui } from "./tui/index";
+import { getTui, PanelStatus } from "./tui/index";
 
 export const LogLevels: Record<LogLevel, number> = {
   silent: 0,
@@ -106,9 +106,6 @@ function createDevTui() {
     createTscLogger,
   };
 }
-
-// import D from "debug";
-const D = require("debug") as typeof import("debug");
 
 export function Debug(label: string) {
   const d = D(label);

@@ -2,7 +2,7 @@ import { defineCommand } from "../bin";
 import path from "node:path";
 import { doCreate } from "./create.core";
 import { helpOptions } from "./help.core";
-import chalk from "chalk";
+import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
 
 export const createCommand = defineCommand(
   "create",

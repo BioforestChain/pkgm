@@ -1,5 +1,5 @@
-import chalk from "chalk";
-import blessed, { Widgets } from "blessed";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { afm } from "./animtion";
 import { FRAMES, getBaseWidgetOptions, H_LOG, H_NAV, W_MAIN } from "./const";
 

@@ -1,6 +1,6 @@
 import { setTimeout as sleep } from "node:timers/promises";
-import { PromiseOut } from "@bfchain/util-extends-promise-out";
-import ignore from "ignore";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
+import { ignore } from "@bfchain/pkgm-base/lib/ignore";
 import { EventEmitter } from "node:events";
 import { existsSync, mkdirSync, statSync } from "node:fs";
 import { copyFile, readdir, readFile, unlink, writeFile } from "node:fs/promises";
@@ -12,16 +12,6 @@ import { Debug } from "./logger";
 export * from "./toolkit.require";
 export * from "./toolkit.watcher";
 const log = Debug("toolkit");
-
-// const requireRoot = fileURLToPath(new URL("../", import.meta.url).href);
-// console.log("requireRoot", requireRoot);
-
-export const tryRequireResolve = (require: NodeRequire, nm: string) => {
-  try {
-    return require.resolve(`@bfchain/pkgm-bfsp/${nm}`);
-  } catch {}
-  return require.resolve(nm);
-};
 
 /**
  * 一个通用的基于时间的缓存器
@@ -37,10 +27,10 @@ export abstract class CacheGetter<K, V> {
         }
       }
       /// 内存清理在10s~1s之间，残留越多，下一次清理的时间越快
-      const ti = setTimeout(doClear, 10000)//1e3 + 9e3 * (1 / (Math.sqrt(this._cache.size) + 1)));
+      const ti = setTimeout(doClear, 10000); //1e3 + 9e3 * (1 / (Math.sqrt(this._cache.size) + 1)));
       ti.unref();
     };
-    doClear()
+    doClear();
   }
   protected _cache = new Map<K, { time: number; value: V }>();
   cacheTime = 1e3; // 默认缓存1s

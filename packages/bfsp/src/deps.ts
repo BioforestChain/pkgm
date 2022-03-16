@@ -1,8 +1,8 @@
-import { Debug } from "./logger";
-import { Loopable, SharedAsyncIterable, SharedFollower } from "./toolkit";
-import { $PackageJson } from "./configs/packageJson";
 import { isDeepStrictEqual } from "node:util";
 import { runYarn } from "../bin/yarn/runner";
+import { $PackageJson } from "./configs/packageJson";
+import { Debug } from "./logger";
+import { Loopable, SharedAsyncIterable, SharedFollower } from "./toolkit";
 import { getTui } from "./tui";
 
 const log = Debug("bfsp:deps");

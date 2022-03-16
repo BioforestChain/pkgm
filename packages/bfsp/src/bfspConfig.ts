@@ -1,10 +1,10 @@
+import { BuildService } from "./buildService";
 import { getBfspUserConfig, watchBfspUserConfig } from "./configs/bfspUserConfig";
 import { $GitIgnore, generateGitIgnore, watchGitIgnore, writeGitIgnore } from "./configs/gitIgnore";
 import { $NpmIgnore, generateNpmIgnore, watchNpmIgnore, writeNpmIgnore } from "./configs/npmIgnore";
 import { $PackageJson, generatePackageJson, watchPackageJson, writePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig, watchTsConfig, writeTsConfig } from "./configs/tsConfig";
-import { $ViteConfig, generateViteConfig, watchViteConfig } from "./configs/viteConfig";
-import { BuildService } from "./buildService";
+import { generateViteConfig, watchViteConfig } from "./configs/viteConfig";
 
 export const getBfspProjectConfig = async (dirname = process.cwd()) => {
   const bfspUserConfig = await getBfspUserConfig(dirname);

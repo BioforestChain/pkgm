@@ -18,9 +18,6 @@
     "./test": {
       "import": "./dist/main/test.mjs"
     },
-    "./postinstall": {
-      "import": "./dist/script/postinstall.mjs"
-    },
     "./package.json": "./package.json"
   },
   "bin": {
@@ -37,51 +34,30 @@
   ],
   "scripts": {
     "lsdeps": "yarn list --json --prod > .d.json",
-    "postinstall": "node ./postinstall.mjs",
     "up": "yarn upgrade-interactive",
     "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",
     "dev:main": "vite build --watch --minify=false --sourcemap=true",
     "dev:bin": "yarn dev:main --mode=bin",
-    "dev:script": "yarn dev:main --mode=script",
     "dev": "yarn dev:main",
     "build:main": "vite build --minify=false --sourcemap=true",
     "build:bin": "yarn build:main --mode=bin",
-    "build:script": "yarn build:main --mode=script",
-    "build": "yarn build:main & yarn build:script",
+    "build": "yarn build:main",
     "test": "ava"
   },
   "keywords": [],
   "author": "bnqkl",
   "license": "MIT",
   "dependencies": {
-    "@bfchain/util-extends-map": "^0.0.1-alpha.4",
-    "@bfchain/util-extends-promise-out": "^0.0.1-alpha.4",
-    "blessed": "^0.1.81",
-    "chalk": "^5.0.0",
-    "debug": "^4.3.2",
-    "fb-watchman": "^2.0.1",
-    "ignore": "^5.2.0",
-    "prettier": "^2.5.1",
-    "source-map-support": "^0.5.20",
-    "terser": "^5.9.0",
-    "tslib": "^2.3.1",
-    "typescript": "^4.6.2",
-    "vite": "^2.8.6",
-    "yarn": "^1.22.17"
+    "@bfchain/pkgm-base": "^2.5.17"
   },
-  "optionalDependencies": {
-    "@bfchain/watchman-binary-darwin-x64": "2021.08.23",
-    "@bfchain/watchman-binary-linux-x64": "2022.02.28-1",
-    "@bfchain/watchman-binary-win32-x64": "2021.01.10"
+  "peerDependencies": {
+    "tslib": "^2.3.1",
+    "@bfchain/pkgm-base": "^2.5.17"
   },
   "devDependencies": {
-    "@types/blessed": "^0.1.19",
-    "@types/debug": "^4.1.7",
-    "@types/fb-watchman": "^2.0.1",
-    "@types/node": "^16.0.0",
-    "@types/prettier": "^2.4.2",
-    "zx": "^5.2.0"
+    "@bfchain/pkgm-base": "link:../base",
+    "vite": "^2.8.6"
   },
   "engines": {
     "node": ">=14.19.0"

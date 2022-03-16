@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import cp, { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
