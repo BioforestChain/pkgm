@@ -1,9 +1,8 @@
-import path from "node:path";
 import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
+import path from "node:path";
 import { workspaceInit } from "./workspace";
-import { helpOptions } from "./help.core";
 
-defineCommand(
+export const npmCommand = defineCommand(
   "npm",
   {
     params: [
@@ -11,7 +10,7 @@ defineCommand(
       { type: "string", name: "profiles", description: "bundle profiles, default is ['default']." },
     ],
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
-    description: helpOptions.npm,
+    description: "bundle multiple profiles code for npm publish.",
   } as const,
   async (params, args) => {
     const profiles = params?.profiles?.split(",") || [];

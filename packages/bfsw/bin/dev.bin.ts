@@ -1,11 +1,9 @@
-import path from "node:path";
+import { ALLOW_FORMATS, Debug, Warn } from "@bfchain/pkgm-bfsp";
 import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
-import { ALLOW_FORMATS } from "@bfchain/pkgm-bfsp";
-import { Debug, Warn } from "@bfchain/pkgm-bfsp";
+import path from "node:path";
 import { workspaceInit } from "./workspace";
-import { helpOptions } from "./help.core";
 
-defineCommand(
+export const devCommand = defineCommand(
   "dev",
   {
     params: [
@@ -22,8 +20,7 @@ defineCommand(
       {
         type: "number",
         name: "limit",
-        description:
-          "rollup watch quatity limit, default is number of cpu cores substract 1.",
+        description: "rollup watch quatity limit, default is number of cpu cores substract 1.",
       },
     ],
     args: [
@@ -36,7 +33,7 @@ defineCommand(
       ],
       [],
     ],
-    description: helpOptions.dev
+    description: "enable bfsw project developmer mode, monitor code modifications in real-time.",
   } as const,
   (params, args) => {
     const warn = Warn("bfsp:bin/dev");

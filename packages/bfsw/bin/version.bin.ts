@@ -1,20 +1,25 @@
-import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
 import { getBfswPackageJson } from "@bfchain/pkgm-bfsp";
+import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
 import chalk from "chalk";
-import { helpOptions } from "./help.core";
 
-defineCommand("version", {description: helpOptions.version}, async (params, args) => {
-  process.noDeprecation = true;
-  const pkgm = getBfswPackageJson();
+export const versionCommand = defineCommand(
+  "version",
+  {
+    description: "get bfsw version and dependencies.",
+  },
+  async (params, args) => {
+    process.noDeprecation = true;
+    const pkgm = getBfswPackageJson();
 
-  console.log(chalk.bold(`${chalk.green(pkgm.name)}: ${pkgm.version}`));
-  console.group(chalk.gray("Dependencies:"));
+    console.log(chalk.bold(`${chalk.green(pkgm.name)}: ${pkgm.version}`));
+    console.group(chalk.gray("Dependencies:"));
 
-  const dependencies = pkgm.dependencies;
+    const dependencies = pkgm.dependencies;
 
-  for (const name in dependencies) {
-    console.log(`${chalk.cyan(name)}: ${dependencies[name]}`);
+    for (const name in dependencies) {
+      console.log(`${chalk.cyan(name)}: ${dependencies[name]}`);
+    }
+    console.groupEnd();
+    process.exit(0);
   }
-  console.groupEnd();
-  process.exit(0);
-});
+);

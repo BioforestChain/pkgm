@@ -1,4 +1,4 @@
-import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
 import util from "node:util";
@@ -67,33 +67,38 @@ export class CommandContext {
   private _logger?: PKGM.Logger;
   get logger() {
     if (this._logger === undefined) {
+      /**
+       * 在 line  模式意思是：下一次打印从新的一行开始。
+       * 而 write 模式的意思是：直接连续输出内容。
+       * 在 write 模式下：
+       *     1. 如果我们切换了模式，那么需要需要自行另起一行
+       *     1. 如果没有切换模式，那么要注意不要在头部输出
+       *
+       * 所以 curLinePrefix 的作用是，判断 curLinePrefix 与目前要输出内容的 linePrefix 是否一致。
+       * 1. 如果一致。那么不需要在头部加任何额外的输出。
+       *    这适用于 write 模式，可以连续地在一个模式内的一行内，持续写入
+       * 1. 如果不一致，那么久需要在头部加特定的输出
+       *    line 模式，那么每次输出后的末尾加上 '\n' ，那么 curLinePrefix 也就变成了 ''。这跟当前行总是不一致，那么 linePrefix 就会被打印出来
+       *    write 模式，那么每次输出后，curLinePrefix 的值就变成了 linePrefix。
+       */
+      let curLinePrefix: string | undefined;
       let groupPrefix = "";
-
-      let preLinePrefix = "";
-      const Print = (linePrefix: string, stream: NodeJS.WritableStream, line: boolean) => {
+      const Print = (linePrefix: string, stream: NodeJS.WritableStream, lineMode: boolean) => {
         linePrefix += ": ";
         return (format?: any, ...param: any[]) => {
-          // 如果前缀改变了，那么强制换行
-          if (preLinePrefix !== "" && linePrefix !== preLinePrefix) {
-            stream.write("\n");
-            preLinePrefix = "";
-          }
-          const content = util.format(format, ...param);
-
-          // 结尾换行符会导致打印多个linePrefix
           let out: string = "";
-          if (content.endsWith("\n")) {
-            out = linePrefix + groupPrefix + content.replace(/\n$/, "").replace(/\n/g, "\n" + linePrefix) + "\n";
-          } else {
-            out = linePrefix + groupPrefix + content.replace(/\n/g, "\n" + linePrefix);
+          // 如果前缀改变了，那么强制换行
+          if (linePrefix !== curLinePrefix) {
+            out += linePrefix + groupPrefix;
+            curLinePrefix = linePrefix;
           }
+
+          out += util.format(format, ...param).replace(/\n/g, "\n" + linePrefix + groupPrefix);
 
           // 写入回车
-          if (line) {
+          if (lineMode) {
             out += "\n";
-            preLinePrefix = "";
-          } else {
-            preLinePrefix = linePrefix;
+            curLinePrefix = "";
           }
           stream.write(out);
         };

@@ -6,7 +6,7 @@ declare namespace Bfsp {
     > {
       readonly params?: P;
       readonly args?: R;
-      alias?: string[];
+      alias?: readonly string[];
       description?: string;
     }
     namespace CommandConfig {

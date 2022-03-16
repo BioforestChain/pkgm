@@ -1,10 +1,9 @@
 import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
 import path from "node:path";
 import { doCreate } from "./create.core";
-import { helpOptions } from "./help.core";
 import chalk from "chalk";
 
-defineCommand(
+export const createCommand = defineCommand(
   "create",
   {
     params: [
@@ -12,7 +11,7 @@ defineCommand(
       { type: "string", name: "name", description: "project name, default is dirname", require: false },
     ],
     args: [[{ type: "string", name: "name", description: "project name, default is dirname" }], []],
-    description: helpOptions.create
+    description: `create a new bfsw project`,
   } as const,
   async (params, args, ctx) => {
     const projectRoot = path.resolve(process.cwd(), args[0] ?? ".");
