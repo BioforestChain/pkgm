@@ -27,7 +27,7 @@ export class BundlePanel extends Panel<"Bundle"> {
   private _sameCount = 0;
   private _lastContent = "";
   private _boxContent = "";
-  private _isInited = false;
+  private _isInited?: string;
   private _thresh = LogLevels.info;
 
   setLevel(l: LogLevel) {
@@ -37,19 +37,21 @@ export class BundlePanel extends Panel<"Bundle"> {
     return this._loggedErrors.has(error);
   }
   write(type: LogType, text: string, options: LogErrorOptions = {}) {
-    if (!this._isInited) {
+    if (this._isInited === undefined) {
       if (text.includes("vite")) {
         const blankMsg = text.replace(
           /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
           ""
         );
-        const viteVersion = blankMsg.match(/vite v[\d\.]+/);
+        const viteVersion = blankMsg.match(/^vite v[\d\.]+/);
         if (viteVersion) {
-          this._isInited = true;
+          this._isInited = text;
           this._ctx.debug(text);
           return;
         }
       }
+    } else if (this._isInited === text) {
+      return;
     }
     if (this._thresh >= LogLevels[type]) {
       const format = () => {

@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { consts } from "..";
+import * as consts from "../consts";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { getBfspVersion, writeJsonConfig } from "../../bin/util";
 import { Debug } from "../logger";
@@ -131,33 +131,25 @@ export const generatePackageJson = async (
     require.resolve("@bfchain/pkgm-bfsp/package.json")
   )}`;
 
-  // 提取自己以及build子项的依赖
-  let deps = Object.assign(
+  packageJson.dependencies = Object.assign(
     {},
-    bfspUserConfig.userConfig.packageJson?.dependencies,
-    // 将build里头的依赖也加上来？
-    ...(bfspUserConfig.userConfig.build ?? []).map((x) => x.packageJson?.dependencies)
+    packageJson.dependencies,
+    bfspUserConfig.userConfig.packageJson?.dependencies
   );
-
-  if (deps) {
-    // @fixme: 不知道为啥yarn不会自动安装DevDependencies里的内容
-    packageJson.dependencies = Object.assign({}, packageJson.dependencies, deps);
-    packageJson.devDependencies = Object.assign(
-      packageJson.devDependencies,
-      bfspUserConfig.userConfig.packageJson?.devDependencies
-    );
-    packageJson.optionalDependencies = Object.assign(
-      {},
-      packageJson.optionalDependencies,
-      bfspUserConfig.userConfig.packageJson?.optionalDependencies
-    );
-    packageJson.peerDependencies = Object.assign(
-      {},
-      packageJson.peerDependencies,
-      bfspUserConfig.userConfig.packageJson?.peerDependencies
-    );
-  }
-
+  packageJson.devDependencies = Object.assign(
+    bfspUserConfig.userConfig.packageJson?.devDependencies,
+    packageJson.devDependencies
+  );
+  packageJson.optionalDependencies = Object.assign(
+    {},
+    bfspUserConfig.userConfig.packageJson?.optionalDependencies,
+    packageJson.optionalDependencies
+  );
+  packageJson.peerDependencies = Object.assign(
+    {},
+    bfspUserConfig.userConfig.packageJson?.peerDependencies,
+    packageJson.peerDependencies
+  );
   return packageJson as typeof import("../../assets/package.template.json");
 };
 

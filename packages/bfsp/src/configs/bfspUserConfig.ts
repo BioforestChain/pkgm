@@ -8,7 +8,7 @@ import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
 import { BuildService } from "../buildService";
 import { Debug } from "../logger";
-import { consts } from "../consts";
+import * as consts from "../consts";
 import {
   fileIO,
   folderIO,

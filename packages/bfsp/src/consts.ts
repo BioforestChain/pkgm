@@ -1,9 +1,6 @@
 import path from "node:path";
-class Consts {
-  readonly ShadowRootPath = "./.bfsp";
-  readonly TscOutRootPath = path.join(this.ShadowRootPath, "tsc");
-  readonly NpmRootPath = path.join(this.ShadowRootPath, "npm");
-  readonly BuildOutRootPath = "./build";
-  readonly CacheBuildOutRootPath = path.join(this.ShadowRootPath, "build");
-}
-export const consts = new Consts();
+export const ShadowRootPath = "./.bfsp";
+export const TscOutRootPath = path.join(ShadowRootPath, "tsc");
+export const NpmRootPath = path.join(ShadowRootPath, "npm");
+export const BuildOutRootPath = "./build";
+export const CacheBuildOutRootPath = path.join(ShadowRootPath, "build");

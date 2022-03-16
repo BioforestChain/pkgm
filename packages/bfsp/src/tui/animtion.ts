@@ -43,6 +43,7 @@ export class AnimationFrameManager {
     const id = this._cb_id_acc[0]++;
     this._funs.set(id, cb);
     this._startLoop();
+    return id;
   }
   cancelAnimationFrame(id: number) {
     this._funs.delete(id);

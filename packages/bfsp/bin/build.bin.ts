@@ -24,7 +24,6 @@ export const buildCommand = defineCommand(
     if (profiles.length === 0) {
       profiles.push("default");
     }
-    console.log(args);
     let root = process.cwd();
     let maybeRoot = args[0];
     if (maybeRoot !== undefined) {
@@ -34,7 +33,7 @@ export const buildCommand = defineCommand(
     const buildService = getBfspBuildService(watchSingle());
     const cfgs = await writeBuildConfigs({ root, buildService });
     await installBuildDeps({ root });
-    await runBuildTsc({ root, tscLogger: createTscLogger() });
+    // await runBuildTsc({ root, tscLogger: createTscLogger() });
 
     doBuild({ root, buildService, cfgs });
     // closeable?.start();

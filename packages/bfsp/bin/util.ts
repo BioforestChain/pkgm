@@ -2,7 +2,7 @@ import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { fileIO, require } from "../src";
+import { fileIO, folderIO, require } from "../src";
 
 export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) => void) {
   if (items.length < numContainer) {
@@ -21,8 +21,9 @@ export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) 
   }
 }
 
-export async function writeJsonConfig(path: string, config: any) {
-  await fileIO.set(path, Buffer.from(JSON.stringify(config, null, 2)));
+export async function writeJsonConfig(filepath: string, config: any) {
+  await folderIO.tryInit(path.dirname(filepath));
+  await fileIO.set(filepath, Buffer.from(JSON.stringify(config, null, 2)));
 }
 export interface TreeNode<T> {
   data: T;

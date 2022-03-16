@@ -1,9 +1,10 @@
 import path from "node:path";
-import { consts, cpr, folderIO, getTui, walkFiles } from "../src";
+import { cpr, getTui } from "../src";
 import { getBfspBuildService } from "../src/buildService";
-import { createTscLogger, Debug, Warn } from "../src/logger";
+import * as consts from "../src/consts";
+import { createTscLogger } from "../src/logger";
 import { watchSingle } from "../src/watcher";
-import { writeBuildConfigs, installBuildDeps, runBuildTsc, doBuild } from "./build.core";
+import { doBuild, installBuildDeps, runBuildTsc, writeBuildConfigs } from "./build.core";
 export const doNpm = async (options: { root: string }) => {
   const b = getTui().getPanel("Bundle");
   const root = options.root;

@@ -1,4 +1,4 @@
-import { getTscPath, ts } from "@bfchain/pkgm-base/lib/typescript";
+import { getTscPath, typescript } from "@bfchain/pkgm-base/lib/typescript";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createContext, runInContext, Script } from "node:vm";
@@ -23,7 +23,7 @@ export function doTsc() {
       .replace(`ts.executeCommandLine(ts.sys, ts.noop, ts.sys.args);`, "")
   );
   tscScript.runInContext(context);
-  const ts = context.ts as typeof ts;
+  const ts = context.ts as typeof typescript;
 
   if (parentPort) {
     ts.sys.clearScreen = () => {

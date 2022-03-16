@@ -9,6 +9,7 @@ import {
 } from "./vite-config-helper";
 import path from "node:path";
 import fs from "node:fs";
+
 defineInputConfig({
   outDir: "main",
   input: {
@@ -24,6 +25,7 @@ defineInputConfig({
   },
   default: true,
 });
+
 defineInputConfig({
   outDir: "script",
   input: {

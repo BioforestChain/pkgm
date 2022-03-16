@@ -25,13 +25,22 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     this.onStatusChange?.(s, this);
     this._render();
   }
+  private _ani_pid?: number;
   private _render() {
     if (this._status === "loading") {
       this._loadingFrameId++;
-      afm.requestAnimationFrame(() => this._render());
+      if (this._ani_pid === undefined) {
+        this._ani_pid = afm.requestAnimationFrame(() => {
+          this._ani_pid = undefined;
+          this._render();
+        });
+      }
     } else {
       this._loadingFrameId = 0;
-      afm.requestAnimationFrame(() => {});
+      if (this._ani_pid !== undefined) {
+        afm.cancelAnimationFrame(this._ani_pid);
+        this._ani_pid = undefined;
+      }
     }
     this.elMenu.content = this._buildMenuContent();
   }

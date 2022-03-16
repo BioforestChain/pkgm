@@ -1,12 +1,11 @@
 import {
+  defineInputConfig,
   extension,
+  findInputConfig,
   getExternalOption,
   getShebangPlugin,
   libFormat,
-  defineInputConfig,
-  findInputConfig,
 } from "@bfchain/pkgm-base/vite-config-helper";
-import type { InputOption } from "rollup";
 import { defineConfig } from "vite";
 
 defineInputConfig({
@@ -29,16 +28,7 @@ defineInputConfig({
     bin: "bin.ts",
   },
 });
-// defineInputConfig({
-//   outDir: "script",
-//   input: {
-//     postinstall: "postinstall.ts",
-//   },
-// });
 
-export const scriptInput: InputOption = {
-  postinstall: "postinstall.ts",
-};
 export default defineConfig((info) => {
   const inputConfig = findInputConfig(info.mode);
   if (inputConfig === undefined) {

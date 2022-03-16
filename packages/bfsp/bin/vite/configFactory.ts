@@ -1,14 +1,15 @@
-import fs, { existsSync, statSync } from "node:fs";
-import { inspect } from "node:util";
-import path from "node:path";
-import { typescript, TsNamespace } from "@bfchain/pkgm-base/lib/typescript";
+import { typescript } from "@bfchain/pkgm-base/lib/typescript";
 import type { InlineConfig } from "@bfchain/pkgm-base/lib/vite";
+import { getExternalOption } from "@bfchain/pkgm-base/vite-config-helper";
+import fs from "node:fs";
+import path from "node:path";
+import { inspect } from "node:util";
+import { BuildService } from "../../src/buildService";
+import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
 import { $TsConfig } from "../../src/configs/tsConfig";
 import type { $ViteConfig } from "../../src/configs/viteConfig";
-import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
 import { Debug } from "../../src/logger";
 import { parseExtensionAndFormat } from "../../src/toolkit";
-import { BuildService } from "../../src/buildService";
 const log = Debug("bfsp:config/vite");
 
 export const ViteConfigFactory = (options: {
@@ -20,13 +21,14 @@ export const ViteConfigFactory = (options: {
   format?: Bfsp.Format;
   profiles?: string[];
   outDir?: string;
+  outRoot?: string;
 }) => {
-  const { projectDirpath, viteConfig } = options;
+  const { userConfig, tsConfig, projectDirpath, viteConfig } = options;
 
   const fe = parseExtensionAndFormat(options.format ?? "esm");
   const format = ALLOW_FORMATS.has(fe.format as any) ? (fe.format as Bfsp.JsFormat) : "esm";
   const extension = fe.extension;
-  const outDir = options.outDir || (format ? `dist/${format}` : undefined);
+  const outDir = path.resolve(options.outRoot ?? projectDirpath, options.outDir ?? `dist/${format}`);
 
   const viteBuildConfig: Readonly<InlineConfig> = {
     root: projectDirpath,
@@ -35,8 +37,9 @@ export const ViteConfigFactory = (options: {
     envPrefix: ["BFSP_", "VITE_"],
     clearScreen: !log.enabled,
     build: {
-      target: ["chrome74", "node16"],
+      target: userConfig.target ?? tsConfig.json.compilerOptions.target,
       outDir: outDir,
+      minify: false,
       watch: {
         chokidar: { cwd: projectDirpath },
         clearScreen: !log.enabled,
@@ -53,7 +56,8 @@ export const ViteConfigFactory = (options: {
                   return true;
                 }
               }
-            : (source, importer, isResolved) => {
+            : getExternalOption(projectDirpath, userConfig.name),
+        /*    (source, importer, isResolved) => {
                 log("external", source);
                 if (source.startsWith("#")) {
                   // profile
@@ -91,7 +95,7 @@ export const ViteConfigFactory = (options: {
                   return true;
                 }
                 return false;
-              },
+              } */
         input: viteConfig.viteInput,
         output: {
           entryFileNames: `[name]${extension}`,
@@ -102,7 +106,7 @@ export const ViteConfigFactory = (options: {
     },
     plugins: [
       (() => {
-        const parsedTsConfig: TsNamespace.TranspileOptions = JSON.parse(JSON.stringify(options.tsConfig.json));
+        const parsedTsConfig: typescript.TranspileOptions = JSON.parse(JSON.stringify(options.tsConfig.json));
         const compilerOptions = (parsedTsConfig.compilerOptions ||= {});
         compilerOptions.emitDeclarationOnly = false;
         compilerOptions.noEmit = false;

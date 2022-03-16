@@ -18,7 +18,7 @@ export const runTsc = (opts: RunTscOption) => {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = dirname(__filename);
   let workerMjsPath = path.join(getBfspWorkerDir(), "tsc_worker.mjs");
-  if(!existsSync(workerMjsPath)) {
+  if (!existsSync(workerMjsPath)) {
     workerMjsPath = path.join(getBfspWorkerDir(), "../tsc_worker.mjs");
   }
   const tscWorker = new Worker(workerMjsPath, {
@@ -54,8 +54,10 @@ export const runTsc = (opts: RunTscOption) => {
     } else if (cmd === "exit") {
       resolve();
       ret.stop();
-      opts.onExit?.();
     }
+  });
+  tscWorker.on("exit", () => {
+    opts.onExit?.();
   });
   return ret;
 };

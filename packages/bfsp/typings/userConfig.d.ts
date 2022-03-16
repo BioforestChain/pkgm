@@ -5,6 +5,12 @@ declare namespace Bfsp {
     exports: {
       [path in `.` | `./${string}`]: string;
     };
+    /**
+     * 1. ["chrome74", "node16"]
+     * 1. "es2019"
+     * 1. default is follow tsConfig.compilerOptions.target
+     */
+    target?: string | string[];
     formats?: Format[];
     profiles?: string[];
     build?: Partial<Omit<UserConfig, "build">>[];

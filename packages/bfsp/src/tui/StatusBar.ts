@@ -5,32 +5,18 @@ import { FRAMES } from "./const";
 export class StatusBar {
   private _el!: Widgets.BoxElement;
   private _currentMsg = "";
-  private _nextMsgTi?: NodeJS.Timeout;
   private _loadingFrameId = 0;
   private _loadingEnabled = false;
-  private _msgQ = [] as string[];
   constructor(el: Widgets.BoxElement) {
     this._el = el;
-    this._nextMsgTi = setInterval(() => {
-      this._nextMsg();
-    }, 1000);
   }
   private _buildContent() {
     let c = "";
     if (this._loadingEnabled) {
-      c += FRAMES[this._loadingFrameId % FRAMES.length];
+      c += " " + FRAMES[this._loadingFrameId % FRAMES.length];
     }
-    c += " ".repeat(2);
-    c += this._currentMsg;
+    c += " " + this._currentMsg;
     return c;
-  }
-  private _nextMsg() {
-    if (this._msgQ.length > 0) {
-      const msg = this._msgQ.shift();
-      if (msg) {
-        this._currentMsg = msg;
-      }
-    }
   }
   enableLoading() {
     if (this._loadingEnabled) {
@@ -41,21 +27,36 @@ export class StatusBar {
   }
   disableLoading() {
     this._loadingEnabled = false;
+    this._render();
   }
+
+  private _ani_sid?: number;
   private _render() {
     if (this._loadingEnabled) {
       this._loadingFrameId++;
-      afm.requestAnimationFrame(() => this._render());
+      if (this._ani_sid === undefined) {
+        this._ani_sid = afm.requestAnimationFrame(() => {
+          debugger;
+          this._ani_sid = undefined;
+          this._render();
+        });
+      }
     } else {
       this._loadingFrameId = 0;
-      afm.requestAnimationFrame(() => {});
+      if (this._ani_sid) {
+        afm.cancelAnimationFrame(this._ani_sid);
+        this._ani_sid = undefined;
+      }
     }
     this._el.content = this._buildContent();
   }
-  sendMsg(msg: string) {
-    this._msgQ.unshift(msg); // 或者直接显示？
-  }
-  postMsg(msg: string) {
-    this._msgQ.push(msg);
+
+  setMsg(msg: string, loading = false) {
+    this._currentMsg = msg;
+    if (loading) {
+      this.enableLoading();
+    } else {
+      this.disableLoading();
+    }
   }
 }

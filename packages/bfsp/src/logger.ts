@@ -31,7 +31,7 @@ function createDevTui() {
         };
       },
       createViteLogger: () => {
-        const warnedMessages = new Set<string>();
+        const warnedMessages = new Set<unknown>();
         const loggedErrors = new WeakSet<Error | RollupError>();
         const logger: Logger = {
           hasWarned: false,
@@ -52,7 +52,7 @@ function createDevTui() {
             logger.hasWarned = true;
             console.log(msg);
           },
-          clearScreen(type) {},
+          clearScreen() {},
           hasErrorLogged(error) {
             return loggedErrors.has(error);
           },
@@ -63,29 +63,36 @@ function createDevTui() {
   }
 
   function createViteLogger(level: LogLevel = "info", options: LoggerOptions = {}): Logger {
-    const warnedMessages = new Set<string>();
+    const warnedMessages = new Set<unknown>();
 
     const bundlePanel = getTui().getPanel("Bundle");
+    const msgStringify = (msg: unknown) => {
+      if (typeof msg === "string") {
+        return msg;
+      }
+      debugger;
+      return util.inspect(msg, { colors: true });
+    };
     const logger: Logger = {
       hasWarned: false,
       info(msg, opts) {
-        bundlePanel.write("info", msg, opts);
+        bundlePanel.write("info", msgStringify(msg), opts);
       },
       warn(msg, opts) {
         logger.hasWarned = true;
-        bundlePanel.write("warn", msg, opts);
+        bundlePanel.write("warn", msgStringify(msg), opts);
       },
       warnOnce(msg, opts) {
         if (warnedMessages.has(msg)) return;
         logger.hasWarned = true;
-        bundlePanel.write("warn", msg, opts);
+        bundlePanel.write("warn", msgStringify(msg), opts);
         warnedMessages.add(msg);
       },
       error(msg, opts) {
         logger.hasWarned = true;
-        bundlePanel.write("error", msg, opts);
+        bundlePanel.write("error", msgStringify(msg), opts);
       },
-      clearScreen(type) {
+      clearScreen() {
         bundlePanel.clear();
       },
       hasErrorLogged(error) {
@@ -131,6 +138,7 @@ export function Debug(label: string) {
     { enabled: d.enabled }
   );
 }
+export type $Logger = ReturnType<typeof Debug>;
 
 export function Warn(label: string) {
   const d = D(label);

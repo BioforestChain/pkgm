@@ -1,81 +1,28 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { existsSync, renameSync } from "node:fs";
+import { build as buildBfsp } from "@bfchain/pkgm-base/lib/vite";
+import { existsSync } from "node:fs";
 import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { build as buildBfsp } from "@bfchain/pkgm-base/lib/vite";
+import { inspect } from "node:util";
 import { getBfspUserConfig, parseExports, parseFormats } from "../src";
 import { writeBfspProjectConfig } from "../src/bfspConfig";
 import { BuildService } from "../src/buildService";
 import { $PackageJson } from "../src/configs/packageJson";
-import { $TsConfig, generateTsConfig, isTestFile, writeTsConfig } from "../src/configs/tsConfig";
+import { generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
-import { consts } from "../src/consts";
+import * as consts from "../src/consts";
 import { createTscLogger, createViteLogger, Debug } from "../src/logger";
 import { folderIO, toPosixPath, walkFiles } from "../src/toolkit";
-import { getTui } from "../src/tui/index";
+import { getTui, PanelStatus } from "../src/tui/index";
 import { runTerser } from "./terser/runner";
 import { runTsc } from "./tsc/runner";
 import { writeJsonConfig } from "./util";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
 const jsonClone = <T>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;
-// 任务：生成阶段2的tsconfig，用于es2020到es2019
-const taskWriteTsConfigStage2 = async (bundlePath: string, outDir: string, tsConfig: $TsConfig, files: string[]) => {
-  const tsconfigJson = jsonClone(tsConfig.json) as typeof tsConfig["json"];
-
-  tsconfigJson.compilerOptions = {
-    ...tsconfigJson.compilerOptions,
-    composite: false,
-    noEmit: false,
-    target: "es2019",
-    outDir: outDir,
-    declaration: false,
-  };
-
-  Reflect.deleteProperty(tsconfigJson, "references");
-
-  tsconfigJson.files = files;
-  await writeJsonConfig(path.resolve(path.join(bundlePath, "tsconfig.json")), tsconfigJson);
-
-  return tsconfigJson;
-};
-
-const taskRenameJsToTs = async (root: string) => {
-  const renameFileMap = new Map<string, string>();
-  for await (const filepath of walkFiles(root, { refreshCache: true })) {
-    if (/\.[mc]?js[x]?$/.test(filepath)) {
-      const newFilepath = filepath.replace(/(.*)\.[mc]?js[x]?$/, "$1.ts");
-      if (isTestFile("", newFilepath)) {
-        continue;
-      }
-      renameSync(filepath, newFilepath);
-      renameFileMap.set(path.relative(root, filepath), path.relative(root, newFilepath));
-    }
-  }
-  return renameFileMap;
-};
-const taskViteBuild = async (viteBuildConfig: ReturnType<typeof ViteConfigFactory>, opts: { name: string }) => {
-  const viteLogger = createViteLogger("info", {});
-  await buildBfsp({
-    ...viteBuildConfig,
-    build: {
-      ...viteBuildConfig.build,
-      minify: false,
-      watch: null,
-      rollupOptions: {
-        ...viteBuildConfig.build?.rollupOptions,
-        onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
-      },
-    },
-    logLevel: "warn", // 防止vite干扰tui界面， @todo: 劫持console或者process
-    mode: "production",
-    customLogger: viteLogger,
-  });
-  viteLogger.info(`${chalk.green("√")} package ${opts.name} build complete`);
-};
+const debug = Debug("bfsp:bin/build");
 
 export const writeBuildConfigs = async (options: { root?: string; buildService: BuildService }) => {
-  const log = Debug("bfsp:bin/build");
   const { root = process.cwd(), buildService } = options;
   const bfspUserConfig = await getBfspUserConfig(root);
   const projectConfig = { projectDirpath: root, bfspUserConfig };
@@ -154,237 +101,312 @@ const rePathProfileImports = async (tsConfigPaths: any, baseDir: string, file: s
       })
   );
 };
+
+type StringLogger = (msg: string) => void;
+type SimpleLogger = (msg: unknown) => void;
+
+/**
+ * 执行编译
+ * 流程如下：
+ *
+ * 1. 生成新的 package.json ，并安装依赖
+ * 1. 执行 typescript 编译
+ */
+const buildSingle = async (options: {
+  root: string;
+  buildLogger: BuildLogger;
+  buildService: BuildService;
+  buildConfig: Omit<Bfsp.UserConfig, "build">;
+  thePackageJson: $PackageJson;
+  buildOutDir: string;
+}) => {
+  const tscLogger = createTscLogger();
+  const viteLogger = createViteLogger();
+  const {
+    //
+    root,
+    buildService,
+    buildConfig,
+    thePackageJson,
+    buildOutDir,
+  } = options;
+  const { debug, flag, success, info, warn, error } = options.buildLogger;
+
+  const userConfig1 = {
+    userConfig: buildConfig,
+    exportsDetail: parseExports(buildConfig.exports),
+    formatExts: parseFormats(buildConfig.formats),
+  };
+  flag(`generating tsconfig.json`);
+  const tsConfig1 = await generateTsConfig(root, userConfig1, buildService);
+  tsConfig1.isolatedJson.compilerOptions.emitDeclarationOnly = true;
+  flag(`setting tsconfig.json`);
+  await writeTsConfig(root, userConfig1, tsConfig1);
+  success(`set tsconfig.json`);
+
+  //#region 生成 package.json
+
+  flag(`generating package.json`);
+  /// 将 package.json 的 types 路径进行修改
+  const packageJson = jsonClone(thePackageJson);
+  Reflect.deleteProperty(thePackageJson, "scripts");
+  Reflect.deleteProperty(packageJson, "private");
+  Object.assign(
+    packageJson,
+    {
+      name: buildConfig.name,
+      files: ["dist", "source"],
+    },
+    buildConfig.packageJson
+  );
+  {
+    const repathTypePath = (typePath: string) => {
+      // const typesPathInfo = path.parse(typePath);
+      return typePath.replace(".bfsp/tsc", "source");
+      // return toPosixPath(path.join("source/isolated", typePath));
+    };
+    for (const exportConfig of Object.values(packageJson.exports)) {
+      exportConfig.types = repathTypePath(exportConfig.types);
+    }
+    packageJson.types = repathTypePath(packageJson.types);
+  }
+  /// 写入package.json
+  flag(`writing package.json`);
+  await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
+  await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
+  success(`writed package.json`);
+  //#endregion
+
+  //#region 安装依赖
+  flag(`installing dependencies`);
+  await installBuildDeps({ root });
+  success(`installed dependencies`);
+
+  //#endregion
+
+  //#region 编译typescript，生成 typings
+  {
+    flag(`compiling typescript codes`);
+    const generateTypings = new Promise<void>((resolve) => {
+      const tsc = runTsc({
+        tsconfigPath: path.resolve(path.join(root, "tsconfig.isolated.json")),
+        projectMode: true,
+        onMessage: (x) => {
+          tscLogger.write(x);
+        },
+        onClear: () => tscLogger.clear(),
+        onExit: resolve,
+        watch: true,
+        onErrorFound: (count) => {
+          warn(`please fix the ${count} errors. then build will continue.`);
+        },
+        onSuccess: () => {
+          tsc.stop();
+        },
+      });
+    });
+    await generateTypings;
+    success(`compiled typescript codes`);
+
+    /// 按需拷贝 typings 文件
+    const tscSafeRoot = path.resolve(buildOutDir, "source");
+    // 一个项目的类型文件只需要生成一次，也只支持一套类型文件
+    if (folderIO.has(tscSafeRoot) === false) {
+      flag("copying typescript declaration files");
+      const tscOutRoot = tsConfig1.json.compilerOptions.outDir;
+      for await (const filepath of walkFiles(tscOutRoot, { refreshCache: true })) {
+        if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
+          const destFilepath = path.resolve(buildOutDir, "source", path.relative(tscOutRoot, filepath));
+          await folderIO.tryInit(path.dirname(destFilepath));
+          await copyFile(filepath, destFilepath);
+          await rePathProfileImports(
+            tsConfig1.json.compilerOptions.paths,
+            path.join(buildOutDir, "source/isolated"),
+            destFilepath
+          );
+        }
+      }
+      success(`copying typescript declaration files`);
+    }
+  }
+  //#endregion
+
+  //#region 使用 vite(rollup+typescript+esbuild) 编译打包代码
+  flag(`generating bundle config`);
+  const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
+  const jsBundleConfig = ViteConfigFactory({
+    buildService,
+    userConfig: buildConfig,
+    projectDirpath: root,
+    viteConfig: viteConfig1,
+    tsConfig: tsConfig1,
+    outRoot: buildOutDir,
+  });
+  const distDir = jsBundleConfig.build!.outDir!;
+
+  /// vite 打包
+  flag(`bundling javascript codes`);
+  await buildBfsp({
+    ...jsBundleConfig,
+    build: {
+      ...jsBundleConfig.build,
+      minify: false,
+      watch: null,
+      rollupOptions: {
+        ...jsBundleConfig.build?.rollupOptions,
+        onwarn: (err) => warn(err),
+      },
+    },
+    logLevel: "warn", // 防止vite干扰tui界面， @todo: 劫持console或者process
+    mode: "production",
+    customLogger: viteLogger,
+  });
+  success(`bundled javascript codes`);
+
+  //#endregion
+
+  /// 执行代码压缩
+  flag(`minifying javascript codes`);
+  await runTerser({ sourceDir: distDir, logError: error }); // 压缩
+  success(`minified javascript codes`);
+
+  return tsConfig1;
+};
+
+/**
+ * 整理出要执行 build 的配置
+ * 这是一个递归的过程
+ */
+const collectBuildConfigs = (rootConfig: Bfsp.UserConfig, configList: Omit<Bfsp.UserConfig, "build">[] = []) => {
+  if (rootConfig.build?.length) {
+    for (const buildPartial of rootConfig.build) {
+      let buildConfig = {
+        ...rootConfig,
+      };
+      delete buildConfig.build;
+      buildConfig = {
+        ...buildConfig,
+        ...buildPartial,
+      };
+      collectBuildConfigs(buildConfig, configList);
+    }
+  } else if (rootConfig.formats !== undefined && rootConfig.formats.length > 1) {
+    for (const format of rootConfig.formats) {
+      const buildConfig = {
+        ...rootConfig,
+        formats: [format],
+      };
+      collectBuildConfigs(buildConfig, configList);
+    }
+  } else {
+    configList.push(rootConfig);
+  }
+  return configList;
+};
+
+const msgStringify = (msg: unknown) => {
+  if (typeof msg === "string") {
+    return msg;
+  }
+  return inspect(msg, { colors: true });
+};
+
+class BuildLogger {
+  constructor(
+    public prompts: string[] = [],
+    private readonly bundlePanel = getTui().getPanel("Bundle"),
+    private readonly statusBar = getTui().status
+  ) {}
+
+  private get _prompt() {
+    return this.prompts[this.prompts.length - 1] || "";
+  }
+  success = (msg: unknown) => {
+    this.bundlePanel.write("info", `${this._prompt} ${chalk.green("✔")} ${msgStringify(msg)}`);
+  };
+  info = (msg: unknown) => {
+    this.bundlePanel.write("info", `${this._prompt} ${msgStringify(msg)}`);
+  };
+  warn = (msg: unknown) => {
+    this.bundlePanel.write("warn", `${this._prompt} ${chalk.yellow("!")} ${msgStringify(msg)}`);
+  };
+  error = (msg: unknown) => {
+    this.bundlePanel.write("error", `${this._prompt} ${chalk.red("❌")} ${msgStringify(msg)}`);
+  };
+  flag = (msg: string, loading = true) => {
+    this.statusBar.setMsg(`${this._prompt} ${msg}`, loading);
+  };
+  debug = (msg: string) => {
+    debug(`${this._prompt} ${msg}`);
+  };
+  updateStatus = (status: PanelStatus) => {
+    this.bundlePanel.updateStatus(status);
+  };
+}
+
 export const doBuild = async (options: {
   root?: string;
   format?: Bfsp.Format;
   buildService: BuildService;
   cfgs: Awaited<ReturnType<typeof writeBuildConfigs>>;
 }) => {
-  const log = Debug("bfsp:bin/build");
-  const bundlePanel = getTui().getPanel("Bundle");
-
-  // const cwd = process.cwd();
-  // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
   const { root = process.cwd(), format, buildService, cfgs } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
   const { subConfigs, bfspUserConfig } = cfgs;
-  log("root", root);
-  const stateReporter = (s: string) => {
-    getTui().status.postMsg(s);
-  };
-  const tscLogger = createTscLogger();
-  const viteLogger = createViteLogger();
-  const CACHE_BUILD_OUT_ROOT = path.resolve(path.join(root, consts.CacheBuildOutRootPath));
+  const buildLogger = new BuildLogger([bfspUserConfig.userConfig.name]);
+
+  buildLogger.debug(`root: ${root}`);
+
+  /**统一的 build 文件夹 */
   const BUILD_OUT_ROOT = path.resolve(path.join(root, consts.BuildOutRootPath));
-  const TSC_OUT_ROOT = path.resolve(path.join(root, consts.TscOutRootPath));
 
-  /**已经清理过的文件夹目录，避免重复清理 */
-  const rmDirs = new Set<string>();
-
-  const buildSingle = async (options: {
-    userConfigBuild: Omit<Bfsp.UserConfig, "build">;
-    thePackageJson: $PackageJson;
-    buildOutDir: string;
-    cacheBuildOutDir: string;
-    stateReporter: (s: string) => void;
-  }) => {
-    const report = options.stateReporter;
-    const { userConfigBuild, thePackageJson, buildOutDir, cacheBuildOutDir } = options;
-    if (rmDirs.has(buildOutDir) === false) {
-      rmDirs.add(buildOutDir);
-      existsSync(buildOutDir) && (await rm(buildOutDir, { recursive: true, force: true }));
-    }
-
-    const userConfig1 = {
-      userConfig: userConfigBuild,
-      exportsDetail: parseExports(userConfigBuild.exports),
-      formatExts: parseFormats(userConfigBuild.formats),
-    };
-    log(`generate TsConfig\n`);
-    const tsConfig1 = await generateTsConfig(root, userConfig1, buildService);
-    tsConfig1.isolatedJson.compilerOptions.emitDeclarationOnly = true;
-    await writeTsConfig(root, userConfig1, tsConfig1);
-
-    // 生成类型
-
-    report("tsc emit typings");
-    const generateTypings = new Promise((resolve) => {
-      runTsc({
-        tsconfigPath: path.resolve(path.join(root, "tsconfig.isolated.json")),
-        projectMode: true,
-        onMessage: (x) => {},
-        onClear: () => tscLogger.clear(),
-        onExit: () => resolve(null),
-      });
-    });
-    await generateTypings;
-
-    log(`generate ViteConfig\n`);
-    const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
-
-    const format = userConfigBuild.formats?.[0] ?? "esm";
-    const c = ViteConfigFactory({
-      buildService,
-      userConfig: userConfigBuild,
-      projectDirpath: root,
-      viteConfig: viteConfig1,
-      tsConfig: tsConfig1,
-      format,
-      // outDir: bundlePath,
-    });
-    const defaultOurDir = c.build!.outDir!;
-    c.build!.outDir = cacheBuildOutDir;
-    report("vite build");
-    await taskViteBuild({ ...c, mode: "development" }, { name: userConfigBuild.name }); // vite 打包
-
-    log(`prepare es2020 files for complie to es2019\n`);
-    report("prepare es2019");
-    const renameFileMap = await taskRenameJsToTs(cacheBuildOutDir); // 改打包出来的文件后缀 js=>ts
-
-    /// 将package.json的types路径进行修改
-    const packageJson = jsonClone({
-      ...thePackageJson /* as Partial<typeof thePackageJson> */,
-      files: ["dist", "source"],
-      scripts: undefined,
-      devDependencies: undefined,
-      ...userConfigBuild.packageJson,
-      name: userConfigBuild.name,
-    });
-    Reflect.deleteProperty(packageJson, "dependencies");
-    {
-      const repathTypePath = (typePath: string) => {
-        // const typesPathInfo = path.parse(typePath);
-        return typePath.replace(".bfsp/tsc", "source");
-        // return toPosixPath(path.join("source/isolated", typePath));
-      };
-      for (const exportConfig of Object.values(packageJson.exports)) {
-        exportConfig.types = repathTypePath(exportConfig.types);
-      }
-      packageJson.types = repathTypePath(packageJson.types);
-    }
-
-    report("compile to es2019");
-    log(`complile to es2019\n`);
-    // 在打包出来的目录生成tsconfig，主要是为了es2020->es2019
-
-    /**dev默认输出的dist文件夹 */
-    const distDir = path.join(buildOutDir, defaultOurDir);
-    const files = [...renameFileMap.values()];
-    if (files.length === 0) {
-      // no files for compilation
-      log(`[${userConfigBuild.name}] no files for tsc compilation`);
-      return;
-    }
-    await taskWriteTsConfigStage2(cacheBuildOutDir, distDir, tsConfig1, files);
-
-    // 打包目录执行tsc
-
-    report("tsc compile");
-    const buildStage2 = new Promise((resolve) => {
-      runTsc({
-        tsconfigPath: path.resolve(path.join(cacheBuildOutDir, "tsconfig.json")),
-        projectMode: true,
-        onMessage: (x) => {},
-        onClear: () => tscLogger.clear(),
-        onExit: () => resolve(null),
-      });
-    });
-    await buildStage2;
-
-    log(`writing package.json\n`);
-
-    /// 写入package.json
-    await writeJsonConfig(path.join(buildOutDir, "package.json"), packageJson);
-
-    /// 执行代码压缩
-    report("minify");
-    log(`minify ${chalk.cyan(userConfigBuild.name)}\n`);
-    await runTerser({ sourceDir: distDir, logError: (s) => tscLogger.write(s) }); // 压缩
-    // tscLogger.write(`built ${chalk.cyan(userConfigBuild.name)} [${format}] at ${chalk.blue(buildOutDir)}\n`);
-
-    report("rename");
-    /// 最后再将js文件的后缀换回去
-    for (const [jsFilename, tsFilename] of renameFileMap) {
-      renameSync(path.join(distDir, tsFilename.slice(0, -2) + "js"), path.join(distDir, jsFilename));
-    }
-    log("rename done\n");
-
-    report("done");
-    /// 修改样式
-    tscLogger.updateStatus("success");
-    bundlePanel.updateStatus("success");
-    return tsConfig1;
-  };
-
-  const reporter = stateReporter;
-  const userConfig = bfspUserConfig;
+  /**基本的 package.json */
   const thePackageJson = subConfigs.packageJson;
-  log("running bfsp build!");
 
+  buildLogger.debug("running bfsp build!");
   try {
-    /// tsc验证没问题，开始执行vite打包
+    /**拆分出一个个独立的 build 作业 */
+    const buildUserConfigList = collectBuildConfigs(bfspUserConfig.userConfig);
 
-    const buildUserConfigs = userConfig.userConfig.build
-      ? userConfig.userConfig.build.map((build) => {
-          const ret = {
-            ...userConfig.userConfig,
-            ...build,
-          };
-          Reflect.deleteProperty(ret, "build");
-          return ret;
-        })
-      : [userConfig.userConfig];
-    for (const buildConfig of buildUserConfigs.slice()) {
-      if (buildConfig.formats !== undefined && buildConfig.formats.length > 1) {
-        const singleFormatConfigs = buildConfig.formats.map((format) => ({
-          ...buildConfig,
-          formats: [format],
-        }));
-        buildUserConfigs.splice(buildUserConfigs.indexOf(buildConfig), 1, ...singleFormatConfigs);
-      }
-    }
+    buildLogger.updateStatus("loading");
 
-    const buildOutDirs = new Set<string>();
-    let i = 0;
-    for (const x of buildUserConfigs) {
-      i++;
+    /**已经清理过的文件夹目录，避免重复清理 */
+    const rmDirs = new Set<string>();
+    for (const [index, buildConfig] of buildUserConfigList.entries()) {
+      const buildTitle = chalk.gray(`${buildConfig.name}::${buildConfig.formats?.[0] ?? "esm"}`);
+      buildLogger.prompts.push(buildTitle);
+      const startTime = Date.now();
+      const taskTitle = `build task: (${index + 1}/${buildUserConfigList.length})`;
+      buildLogger.info(`${chalk.blue(">>>")} start ${taskTitle}`);
 
-      log(`start build task: ${i}/${buildUserConfigs.length}\n`);
-      log(`removing bundleOutRoot: ${CACHE_BUILD_OUT_ROOT}\n`);
-      const userConfigBuild = x;
+      {
+        /**要输出的文件夹根路径 */
+        const buildOutDir = path.resolve(BUILD_OUT_ROOT, buildConfig.name);
 
-      const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfigBuild.name);
-      const cacheBuildOutDir = path.resolve(CACHE_BUILD_OUT_ROOT, userConfigBuild.name);
-      // 状态报告给外层，由外层组装后写入状态栏
-      const singleReporter = (s: string) => {
-        reporter(`${x.name} > ${s}`);
-      };
-      bundlePanel.updateStatus("loading");
-      const tsConfig = await buildSingle({
-        userConfigBuild,
-        thePackageJson,
-        buildOutDir,
-        cacheBuildOutDir,
-        stateReporter: singleReporter,
-      });
-
-      const tscOutRoot = TSC_OUT_ROOT;
-      for await (const filepath of walkFiles(tscOutRoot, { refreshCache: true })) {
-        if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
-          const destFilepath = path.join(buildOutDir, "source", path.relative(tscOutRoot, filepath));
-          await folderIO.tryInit(path.dirname(destFilepath));
-          await copyFile(filepath, destFilepath);
-          await rePathProfileImports(
-            tsConfig?.json.compilerOptions.paths,
-            path.join(buildOutDir, "source/isolated"),
-            destFilepath
-          );
+        /// 按需移除 build 文件夹
+        if (rmDirs.has(buildOutDir) === false) {
+          rmDirs.add(buildOutDir);
+          existsSync(buildOutDir) && (await rm(buildOutDir, { recursive: true, force: true }));
         }
-      }
-      await buildService.afterSingleBuild({ buildOutDir, config: x });
+        /// 开始执行编译
+        await buildSingle({
+          root,
+          buildLogger,
+          buildService,
+          buildConfig,
+          thePackageJson,
+          buildOutDir,
+        });
 
-      buildOutDirs.add(buildOutDir);
+        await buildService.afterSingleBuild({ buildOutDir, config: buildConfig });
+      }
+
+      const buildTimeSpan = chalk.cyan("+" + (Date.now() - startTime) + "ms");
+      buildLogger.info(`${chalk.green(">>>")} finished ${taskTitle} ${buildTimeSpan}`);
+      buildLogger.prompts.pop();
     }
+    buildLogger.flag("build finished", false);
+    buildLogger.updateStatus("success");
   } catch (e) {
-    viteLogger.error(e as any);
+    buildLogger.error(e);
   }
 };
