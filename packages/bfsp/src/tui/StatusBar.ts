@@ -5,6 +5,7 @@ import { FRAMES } from "./const";
 export class StatusBar {
   private _el!: Widgets.BoxElement;
   private _currentMsg = "";
+  private _loadingMsg = "";
   private _loadingFrameId = 0;
   private _loadingEnabled = false;
   constructor(el: Widgets.BoxElement) {
@@ -14,6 +15,9 @@ export class StatusBar {
     let c = "";
     if (this._loadingEnabled) {
       c += " " + FRAMES[this._loadingFrameId % FRAMES.length];
+    }
+    if (this._loadingMsg) {
+      c += " " + this._loadingMsg;
     }
     c += " " + this._currentMsg;
     return c;
@@ -36,7 +40,6 @@ export class StatusBar {
       this._loadingFrameId++;
       if (this._ani_sid === undefined) {
         this._ani_sid = afm.requestAnimationFrame(() => {
-          debugger;
           this._ani_sid = undefined;
           this._render();
         });
@@ -51,12 +54,17 @@ export class StatusBar {
     this._el.content = this._buildContent();
   }
 
-  setMsg(msg: string, loading = false) {
+  setMsg(msg: string, loading?: boolean | number) {
     this._currentMsg = msg;
-    if (loading) {
-      this.enableLoading();
-    } else {
+    if (loading === false || loading === undefined) {
       this.disableLoading();
+    } else {
+      if (typeof loading === "number") {
+        this._loadingMsg = (loading * 100).toFixed(2) + "%";
+      } else {
+        this._loadingMsg = "";
+      }
+      this.enableLoading();
     }
   }
 }

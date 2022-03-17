@@ -25,13 +25,19 @@ export const watchDeps = (
     if (options?.runYarn) {
       log(`deps changed: ${projectDirpath}`);
       depsPanel.updateStatus("loading");
-      stoppable = runYarn({
+      const yarnTask = runYarn({
         root: projectDirpath,
-        onMessage: (s) => depsPanel.write(s),
-        onExit: () => {
-          follower.push(true);
+        onMessage: (s) => {
+          depsPanel.log(s);
+        },
+        onFlag: (s, loading) => {
+          depsPanel.line("...." + s);
         },
       });
+      stoppable = yarnTask;
+      const isSuccess = await yarnTask.afterDone;
+      follower.push(isSuccess);
+      depsPanel.updateStatus(isSuccess ? "success" : "error");
     } else {
       follower.push(true);
     }

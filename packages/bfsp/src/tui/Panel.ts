@@ -12,6 +12,9 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     this.updateStatus(this._status);
   }
   private _status: PanelStatus = "loading";
+  get status() {
+    return this._status;
+  }
   private _loadingFrameId = 0;
   private _isActive = true;
   readonly elLog = blessed.log(logWidgetOptions);

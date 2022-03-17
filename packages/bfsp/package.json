@@ -52,12 +52,13 @@
   "author": "bnqkl",
   "license": "MIT",
   "dependencies": {
-    "@bfchain/pkgm-base": "^2.5.17"
+    "@bfchain/pkgm-base": "^2.5.17",
+    "yarn": "^1.22.17"
   },
   "peerDependencies": {
-    "tslib": "^2.3.1",
-    "@bfchain/pkgm-base": "^2.5.17"
+    "tslib": "^2.3.1"
   },
+  "@bfchain/pkgm-base": "^2.5.17",
   "devDependencies": {
     "@bfchain/pkgm-base": "link:../base",
     "vite": "^2.8.6"

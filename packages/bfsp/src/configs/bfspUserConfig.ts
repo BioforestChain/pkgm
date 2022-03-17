@@ -1,4 +1,4 @@
-import { build } from "esbuild";
+import { build } from "@bfchain/pkgm-base/lib/esbuild";
 import { createHash } from "node:crypto";
 import { existsSync, unlinkSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";

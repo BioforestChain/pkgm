@@ -48,6 +48,9 @@
     "./util/extends_promise_out": {
       "import": "./dist/main/util/extends_promise_out.mjs"
     },
+    "./util/typings": {
+      "import": "./dist/main/util/typings.mjs"
+    },
     "./vite-config-helper": {
       "import": "./dist/main/vite-config-helper.mjs"
     }

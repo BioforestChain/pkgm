@@ -1,20 +1,11 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import * as consts from "../consts";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { getBfspVersion, writeJsonConfig } from "../../bin/util";
+import * as consts from "../consts";
 import { Debug } from "../logger";
-import {
-  fileIO,
-  parseExtensionAndFormat,
-  getExtname,
-  Loopable,
-  SharedAsyncIterable,
-  SharedFollower,
-  toPosixPath,
-} from "../toolkit";
-import { require } from "../toolkit.require";
+import { Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
 const log = Debug("bfsp:config/package.json");
@@ -24,7 +15,10 @@ let PKGM_VERSION: string;
 export const generatePackageJson = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
-  tsConfig: $TsConfig
+  tsConfig: $TsConfig,
+  options: {
+    customTypesRoot?: string;
+  } = {}
 ) => {
   if (!PKGM_VERSION) {
     PKGM_VERSION = getBfspVersion();
@@ -72,7 +66,12 @@ export const generatePackageJson = async (
     packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
       import: getDistFilepath("esm", output),
-      types: `./${toPosixPath(path.join(consts.TscOutRootPath, "isolated", input.replace(/\.ts$/, ".d.ts")))}`,
+      types: toPosixPath(
+        path.join(
+          options.customTypesRoot ?? tsConfig.isolatedJson.compilerOptions.outDir,
+          input.replace(/\.ts$/, ".d.ts")
+        )
+      ),
       // types: `./${toPosixPath(path.join("./", input.replace(/\.ts$/, ".d.ts")))}`,
     };
   }
@@ -119,36 +118,40 @@ export const generatePackageJson = async (
   //#endregion
 
   // 版本
-  const version = bfspUserConfig.userConfig.packageJson?.version;
-  if (version) {
-    packageJson.version = version;
+  const userConfigPackageJson = bfspUserConfig.userConfig.packageJson ?? {};
+  if (userConfigPackageJson.version) {
+    packageJson.version = userConfigPackageJson.version;
   }
 
   // 依赖
 
   // packageJson.devDependencies["@bfchain/pkgm-bfsp"] = `${PKGM_VERSION}`;
-  packageJson.devDependencies["@bfchain/pkgm-bfsp"] = `link:${path.dirname(
-    require.resolve("@bfchain/pkgm-bfsp/package.json")
-  )}`;
+  // packageJson.devDependencies["@bfchain/pkgm-bfsp"] = `link:${path.dirname(
+  //   require.resolve("@bfchain/pkgm-bfsp/package.json")
+  // )}`;
+  // packageJson.scripts.postinstall = require.resolve("@bfchain/pkgm-bfsp");
 
   packageJson.dependencies = Object.assign(
+    //
     {},
     packageJson.dependencies,
-    bfspUserConfig.userConfig.packageJson?.dependencies
+    userConfigPackageJson.dependencies
   );
   packageJson.devDependencies = Object.assign(
-    bfspUserConfig.userConfig.packageJson?.devDependencies,
-    packageJson.devDependencies
+    //
+    {},
+    packageJson.devDependencies,
+    userConfigPackageJson.devDependencies
   );
   packageJson.optionalDependencies = Object.assign(
     {},
-    bfspUserConfig.userConfig.packageJson?.optionalDependencies,
-    packageJson.optionalDependencies
+    packageJson.optionalDependencies,
+    userConfigPackageJson.optionalDependencies
   );
   packageJson.peerDependencies = Object.assign(
     {},
-    bfspUserConfig.userConfig.packageJson?.peerDependencies,
-    packageJson.peerDependencies
+    packageJson.peerDependencies,
+    userConfigPackageJson.peerDependencies
   );
   return packageJson as typeof import("../../assets/package.template.json");
 };

@@ -92,12 +92,23 @@ export class BundlePanel extends Panel<"Bundle"> {
 }
 export class DepsPanel extends Panel<"Deps"> {
   write(text: string) {
-    this.elLog.log(text);
-    if (/Visit https/.test(text)) {
-      this.updateStatus("error");
+    this.elLog.setContent(this.elLog.getContent() + text);
+    // if (/Visit https/.test(text)) {
+    //   this.updateStatus("error");
+    // } else if (/Done in (\d+\.\d+)/.test(text)) {
+    //   this.updateStatus("success");
+    // }
+  }
+  private _inLine = -1;
+  log(text: string) {
+    this._inLine = -1;
+    this.elLog.pushLine(text);
+  }
+  line(text: string) {
+    if (this._inLine === -1) {
+      const index = this.elLog.getLines().length;
+      this._inLine = index;
     }
-    if (/Done in (\d+\.\d+)/.test(text)) {
-      this.updateStatus("success");
-    }
+    this.elLog.setLine(this._inLine, text);
   }
 }

@@ -1,4 +1,4 @@
-import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import cp, { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -52,11 +52,17 @@ export const doCreate = async (
     g.stdout?.pipe(process.stdout);
     g.stderr?.pipe(process.stderr);
   }
-  await doInit({ root }, logger);
+  const initSuccessed = await doInit({ root }, logger);
+  if (initSuccessed === false) {
+    logger.warn(`dependencies install failed, check your network.`);
+  }
   logger.log(`project inited, run the following commands to start dev\n`);
   const relative_path = path.relative(process.cwd(), root);
   if (relative_path) {
     logger.log(chalk.blue(`cd ${relative_path}`));
+  }
+  if (initSuccessed === false) {
+    logger.log(chalk.blue(`bfsp init`));
   }
   logger.log(chalk.blue(`bfsp dev`));
   process.exit(0);

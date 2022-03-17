@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { writeJsonConfig } from "../../bin/util";
 import { BuildService } from "../buildService";
+import { TscIsolatedOutRootPath, TscOutRootPath, TscTypingsOutRootPath } from "../consts";
 import { Debug, Warn } from "../logger";
 import {
   $PathInfo,
@@ -26,8 +27,6 @@ const warn = Warn("bfsp:config/tsconfig");
 // export const getFilename = (somepath: string) => {
 //   return somepath.match(/([^\\\/]+)\.[^\\\/]+$/)?.[1] ?? "";
 // };
-
-export const TSC_OUT_ROOT = `./.bfsp/tsc`;
 
 export const isTsFile = (filepathInfo: $PathInfo) => {
   const { relative } = filepathInfo;
@@ -310,7 +309,8 @@ export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<s
 export const generateTsConfig = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
-  buildService: BuildService
+  buildService: BuildService,
+  options: { outDirRoot?: string; outDirName?: string } = {}
 ) => {
   const allTsFileList = await buildService
     .walkFiles(projectDirpath, {
@@ -344,7 +344,7 @@ export const generateTsConfig = async (
       target: "es2020",
       module: "es2020",
       lib: ["ES2020"],
-      outDir: path.resolve(path.join(projectDirpath, TSC_OUT_ROOT)),
+      outDir: TscOutRootPath(options.outDirRoot, options.outDirName),
       importHelpers: true,
       isolatedModules: false,
       strict: true,
@@ -385,7 +385,7 @@ export const generateTsConfig = async (
     extends: "./tsconfig.json",
     compilerOptions: {
       isolatedModules: true,
-      outDir: `${TSC_OUT_ROOT}/isolated`,
+      outDir: TscIsolatedOutRootPath(options.outDirRoot, options.outDirName),
       noEmit: false,
       emitDeclarationOnly: false,
     },
@@ -402,7 +402,7 @@ export const generateTsConfig = async (
     extends: "./tsconfig.json",
     compilerOptions: {
       isolatedModules: false,
-      outDir: `${TSC_OUT_ROOT}/typings`,
+      outDir: TscTypingsOutRootPath(options.outDirRoot, options.outDirName),
       noEmit: false,
     },
     files: tsFilesLists.typeFiles.toArray(),

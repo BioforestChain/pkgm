@@ -3,16 +3,17 @@ import { build as buildBfsp } from "@bfchain/pkgm-base/lib/vite";
 import { existsSync } from "node:fs";
 import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { setTimeout } from "node:timers/promises";
 import { inspect } from "node:util";
-import { getBfspUserConfig, parseExports, parseFormats } from "../src";
+import { $BfspUserConfig, getBfspUserConfig, parseExports, parseFormats } from "../src";
 import { writeBfspProjectConfig } from "../src/bfspConfig";
 import { BuildService } from "../src/buildService";
-import { $PackageJson } from "../src/configs/packageJson";
+import { $PackageJson, generatePackageJson } from "../src/configs/packageJson";
 import { generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import * as consts from "../src/consts";
 import { createTscLogger, createViteLogger, Debug } from "../src/logger";
-import { folderIO, toPosixPath, walkFiles } from "../src/toolkit";
+import { fileIO, folderIO, toPosixPath, walkFiles } from "../src/toolkit";
 import { getTui, PanelStatus } from "../src/tui/index";
 import { runTerser } from "./terser/runner";
 import { runTsc } from "./tsc/runner";
@@ -33,17 +34,19 @@ export const installBuildDeps = async (options: { root: string }) => {
   const { root } = options;
   const depsPanel = getTui().getPanel("Deps");
   depsPanel.updateStatus("loading");
-  const installation = new Promise<boolean>(async (resolve) => {
-    runYarn({
-      root,
-      onMessage: (s) => depsPanel.write(s),
-      onExit: () => {
-        depsPanel.updateStatus("success");
-        resolve(true);
-      },
-    });
-  });
-  return await installation;
+  const isSuccess = await runYarn({
+    root,
+    onMessage: (s) => depsPanel.log(s),
+    onFlag: (s, loading) => {
+      if (typeof loading === "number") {
+        s = (loading * 100).toFixed(2) + "% " + s;
+      } else {
+        s = "... " + s;
+      }
+      depsPanel.line(s);
+    },
+  }).afterDone;
+  depsPanel.updateStatus(isSuccess ? "success" : "error");
 };
 
 export const runBuildTsc = async (options: { root: string; tscLogger: ReturnType<typeof createTscLogger> }) => {
@@ -74,13 +77,13 @@ export const runBuildTsc = async (options: { root: string; tscLogger: ReturnType
  * @param baseDir typings根路径
  * @param file 需要修改路径的文件
  */
-const rePathProfileImports = async (tsConfigPaths: any, baseDir: string, file: string) => {
+const rePathProfileImports = async (tsConfigPaths: { [path: string]: string[] }, baseDir: string, file: string) => {
   const getRealPath = (key: string) => {
     const path1 = path.relative(baseDir, file);
     /**
      * @TODO 这里的import要根据实际的profile来resolve
      */
-    const path2 = tsConfigPaths[`#${key}`][0] as string; // 实际指向的路径
+    const path2 = tsConfigPaths[`#${key}`][0]; // 实际指向的路径
     return toPosixPath(path.relative(path.dirname(path1), path2)).replace(/\.ts$/, ""); // trim ending .ts;
   };
 
@@ -119,6 +122,7 @@ const buildSingle = async (options: {
   buildConfig: Omit<Bfsp.UserConfig, "build">;
   thePackageJson: $PackageJson;
   buildOutDir: string;
+  bfspUserConfig: $BfspUserConfig;
 }) => {
   const tscLogger = createTscLogger();
   const viteLogger = createViteLogger();
@@ -129,6 +133,7 @@ const buildSingle = async (options: {
     buildConfig,
     thePackageJson,
     buildOutDir,
+    bfspUserConfig,
   } = options;
   const { debug, flag, success, info, warn, error } = options.buildLogger;
 
@@ -138,50 +143,54 @@ const buildSingle = async (options: {
     formatExts: parseFormats(buildConfig.formats),
   };
   flag(`generating tsconfig.json`);
-  const tsConfig1 = await generateTsConfig(root, userConfig1, buildService);
+  const tsConfig1 = await generateTsConfig(root, userConfig1, buildService, {
+    outDirRoot: path.relative(root, buildOutDir),
+    outDirName: "source",
+  });
   tsConfig1.isolatedJson.compilerOptions.emitDeclarationOnly = true;
   flag(`setting tsconfig.json`);
   await writeTsConfig(root, userConfig1, tsConfig1);
   success(`set tsconfig.json`);
 
   //#region 生成 package.json
-
   flag(`generating package.json`);
   /// 将 package.json 的 types 路径进行修改
-  const packageJson = jsonClone(thePackageJson);
-  Reflect.deleteProperty(thePackageJson, "scripts");
-  Reflect.deleteProperty(packageJson, "private");
-  Object.assign(
-    packageJson,
-    {
-      name: buildConfig.name,
-      files: ["dist", "source"],
-    },
-    buildConfig.packageJson
-  );
-  {
-    const repathTypePath = (typePath: string) => {
-      // const typesPathInfo = path.parse(typePath);
-      return typePath.replace(".bfsp/tsc", "source");
-      // return toPosixPath(path.join("source/isolated", typePath));
-    };
-    for (const exportConfig of Object.values(packageJson.exports)) {
-      exportConfig.types = repathTypePath(exportConfig.types);
-    }
-    packageJson.types = repathTypePath(packageJson.types);
-  }
-  /// 写入package.json
-  flag(`writing package.json`);
+  const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1);
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
-  await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
-  success(`writed package.json`);
-  //#endregion
-
   //#region 安装依赖
+  debugger;
   flag(`installing dependencies`);
   await installBuildDeps({ root });
   success(`installed dependencies`);
+  //#endregion
 
+  // Object.assign(
+  //   packageJson,
+  //   {
+  //     name: buildConfig.name,
+  //     files: ["dist", "source"],
+  //   },
+  //   buildConfig.packageJson
+  // );
+  // debugger;
+  // {
+  //   const repathTypePath = (typePath: string) => {
+  //     // const typesPathInfo = path.parse(typePath);
+  //     return typePath.replace(".bfsp/tsc", "source");
+  //     // return toPosixPath(path.join("source/isolated", typePath));
+  //   };
+  //   for (const exportConfig of Object.values(packageJson.exports)) {
+  //     exportConfig.types = repathTypePath(exportConfig.types);
+  //   }
+  //   packageJson.types = repathTypePath(packageJson.types);
+  // }
+
+  /// 写入package.json
+  flag(`writing package.json`);
+  Reflect.deleteProperty(packageJson, "scripts");
+  Reflect.deleteProperty(packageJson, "private");
+  await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
+  success(`writed package.json`);
   //#endregion
 
   //#region 编译typescript，生成 typings
@@ -395,6 +404,7 @@ export const doBuild = async (options: {
           buildConfig,
           thePackageJson,
           buildOutDir,
+          bfspUserConfig,
         });
 
         await buildService.afterSingleBuild({ buildOutDir, config: buildConfig });

@@ -1,4 +1,5 @@
 import { setTimeout as sleep } from "node:timers/promises";
+import "@bfchain/pkgm-base/util/typings";
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import { ignore } from "@bfchain/pkgm-base/lib/ignore";
 import { EventEmitter } from "node:events";
