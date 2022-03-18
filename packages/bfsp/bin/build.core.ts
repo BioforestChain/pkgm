@@ -22,11 +22,19 @@ import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
 const debug = Debug("bfsp:bin/build");
 
-export const writeBuildConfigs = async (options: { root?: string; buildService: BuildService }) => {
-  const { root = process.cwd(), buildService } = options;
+export const writeBuildConfigs = async (
+  args: {
+    root?: string;
+    buildService: BuildService;
+  },
+  options?: {
+    logger?: PKGM.SimpleLogger;
+  }
+) => {
+  const { root = process.cwd(), buildService } = args;
   const bfspUserConfig = await getBfspUserConfig(root);
   const projectConfig = { projectDirpath: root, bfspUserConfig };
-  const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
+  const subConfigs = await writeBfspProjectConfig(projectConfig, buildService, options);
   return { subConfigs, bfspUserConfig };
 };
 export const installBuildDeps = async (options: { root: string }) => {
@@ -146,6 +154,7 @@ const buildSingle = async (options: {
   const tsConfig1 = await generateTsConfig(root, userConfig1, buildService, {
     outDirRoot: path.relative(root, buildOutDir),
     outDirName: "source",
+    logger: options.buildLogger,
   });
   tsConfig1.isolatedJson.compilerOptions.emitDeclarationOnly = true;
   flag(`setting tsconfig.json`);
@@ -160,7 +169,6 @@ const buildSingle = async (options: {
   });
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
   //#region 安装依赖
-  debugger;
   flag(`installing dependencies`);
   await installBuildDeps({ root });
   success(`installed dependencies`);
@@ -312,16 +320,19 @@ class BuildLogger {
     return this.prompts[this.prompts.length - 1] || "";
   }
   success = (msg: unknown) => {
-    this.bundlePanel.write("info", `${this._prompt} ${chalk.green("✔")} ${msgStringify(msg)}`);
+    this.bundlePanel.write("info", `${this._prompt} ${chalk.green("✓")} ${msgStringify(msg)}`);
   };
   info = (msg: unknown) => {
+    this.bundlePanel.write("info", `${this._prompt} ${chalk.cyan("i")} ${msgStringify(msg)}`);
+  };
+  log = (msg: unknown) => {
     this.bundlePanel.write("info", `${this._prompt} ${msgStringify(msg)}`);
   };
   warn = (msg: unknown) => {
-    this.bundlePanel.write("warn", `${this._prompt} ${chalk.yellow("!")} ${msgStringify(msg)}`);
+    this.bundlePanel.write("warn", `${this._prompt} ${chalk.yellow("⚠")} ${msgStringify(msg)}`);
   };
   error = (msg: unknown) => {
-    this.bundlePanel.write("error", `${this._prompt} ${chalk.red("❌")} ${msgStringify(msg)}`);
+    this.bundlePanel.write("error", `${this._prompt} ${chalk.red("𐄂")} ${msgStringify(msg)}`);
   };
   flag = (msg: string, loading = true) => {
     this.statusBar.setMsg(`${this._prompt} ${msg}`, loading);
@@ -402,6 +413,7 @@ export const doBuild = async (options: {
     buildLogger.flag(chalk.magenta("🎉 build finished 🎊"), false);
     buildLogger.updateStatus("success");
   } catch (e) {
+    buildLogger.flag(chalk.red("build failed"), false);
     buildLogger.error(e);
   }
 };

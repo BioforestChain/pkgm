@@ -28,28 +28,29 @@ function createDevTui() {
           },
           clear() {},
           updateStatus(s: PanelStatus) {},
+          logger: console,
         };
       },
       createViteLogger: () => {
         const warnedMessages = new Set<unknown>();
         const loggedErrors = new WeakSet<Error | RollupError>();
-        const logger: Logger = {
+        const viteLogger: Logger = {
           hasWarned: false,
           info(msg, opts) {
             console.log(msg);
           },
           warn(msg, opts) {
-            logger.hasWarned = true;
+            viteLogger.hasWarned = true;
             console.log(msg);
           },
           warnOnce(msg, opts) {
             if (warnedMessages.has(msg)) return;
-            logger.hasWarned = true;
+            viteLogger.hasWarned = true;
             console.log(msg);
             warnedMessages.add(msg);
           },
           error(msg, opts) {
-            logger.hasWarned = true;
+            viteLogger.hasWarned = true;
             console.log(msg);
           },
           clearScreen() {},
@@ -57,7 +58,8 @@ function createDevTui() {
             return loggedErrors.has(error);
           },
         };
-        return logger;
+
+        return viteLogger;
       },
     };
   }
@@ -70,7 +72,6 @@ function createDevTui() {
       if (typeof msg === "string") {
         return msg;
       }
-      debugger;
       return util.inspect(msg, { colors: true });
     };
     const logger: Logger = {

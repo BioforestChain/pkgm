@@ -19,7 +19,7 @@ export const devCommand = defineCommand(
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
     description: helpOptions.dev,
   } as const,
-  async (params, args) => {
+  async (params, args, ctx) => {
     const warn = Warn("bfsp:bin/dev");
     const log = Debug("bfsp:bin/dev");
     let { format } = params;
@@ -45,7 +45,7 @@ export const devCommand = defineCommand(
 
     const bfspUserConfig = await getBfspUserConfig(root);
     const projectConfig = { projectDirpath: root, bfspUserConfig };
-    const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
+    const subConfigs = await writeBfspProjectConfig(projectConfig, buildService, tscLogger);
     const subStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
     const depStream = watchDeps(root, subStreams.packageJsonStream, { runYarn: true });
 

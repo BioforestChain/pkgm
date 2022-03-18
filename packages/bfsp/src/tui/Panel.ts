@@ -2,6 +2,7 @@ import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { afm } from "./animtion";
 import { FRAMES, getBaseWidgetOptions, H_LOG, H_NAV, W_MAIN } from "./const";
+import { createSuperLogger } from "../SuperLogger";
 
 export interface PanelContext {
   debug(log: string): void;
@@ -82,6 +83,26 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     this._isActive = false;
     this.elLog.hide();
     this._render();
+  }
+
+  protected $getLoggerWriter() {
+    return (s: string) => this.elLog.setContent(this.elLog.getContent() + s);
+  }
+  private _logger?: PKGM.Logger;
+  get logger() {
+    if (this._logger === undefined) {
+      const writer = this.$getLoggerWriter();
+      this._logger = createSuperLogger({
+        prefix: "",
+        infoPrefix: "i",
+        warnPrefix: "⚠",
+        errorPrefix: "𐄂",
+        successPrefix: "✓",
+        stdoutWriter: writer,
+        stderrWriter: writer,
+      });
+    }
+    return this._logger;
   }
 }
 export type StatusChangeCallback = (s: PanelStatus, ctx: BFSP.TUI.Panel) => void;

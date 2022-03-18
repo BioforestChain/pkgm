@@ -15,9 +15,16 @@ export class TscPanel extends Panel<"Tsc"> {
       } else {
         this.updateStatus("success");
       }
+      this.elLog.log(this._loggerContent);
     } else {
       this.updateStatus("loading");
     }
+  }
+  private _loggerContent = "";
+  protected override $getLoggerWriter() {
+    return (s: string) => {
+      this._loggerContent += s;
+    };
   }
 }
 export class BundlePanel extends Panel<"Bundle"> {

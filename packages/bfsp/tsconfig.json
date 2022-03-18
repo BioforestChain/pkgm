@@ -68,6 +68,7 @@
     "src/bin/ArgvParser.ts",
     "src/@type.ts",
     "src/logger.ts",
+    "src/SuperLogger.ts",
     "src/bfspConfig.ts",
     "src/toolkit.require.ts",
     "src/toolkit.ts",

@@ -21,11 +21,13 @@ declare namespace PKGM {
     group: Console["group"];
     groupEnd: Console["groupEnd"];
   };
+
   type NormalPrinter = Print & Partial<SuperPrinter>;
-  type ConsoleLogger = {
+  type SimpleLogger = {
     log: NormalPrinter;
     warn: NormalPrinter;
     error: NormalPrinter;
     info: NormalPrinter;
-  } & Partial<Omit<Logger, "log" | "warn" | "error" | "info">>;
+  };
+  type ConsoleLogger = SimpleLogger & Partial<Omit<Logger, keyof SimpleLogger>>;
 }

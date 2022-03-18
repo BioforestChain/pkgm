@@ -98,6 +98,8 @@ export class ProfileMap {
       return pInfo;
     }
   };
+  constructor(private logger: PKGM.SimpleLogger = console) {}
+
   private _privatepathMap = new Map<
     /* #filepath */ string,
     Map</* profile */ string, /* filepath#profile */ string | Set<string /* filepath#profile */>>
@@ -173,7 +175,6 @@ export class ProfileMap {
       return profile as Bfsp.Profile;
     });
 
-    // debugger;
     for (const [privatePath, map] of this._privatepathMap) {
       const profilePaths = new Set<string>();
 
@@ -237,7 +238,7 @@ export class ProfileMap {
       }
 
       if (profilePaths.size === 0) {
-        debugger;
+        this.logger.warn(`no match any paths of '${privatePath}' with profiles: ${profileList}`);
       }
 
       /**
@@ -335,7 +336,7 @@ export const generateTsConfig = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
   buildService: BuildService,
-  options: { outDirRoot?: string; outDirName?: string } = {}
+  options: { outDirRoot?: string; outDirName?: string; logger?: PKGM.SimpleLogger } = {}
 ) => {
   const allTsFileList = await buildService
     .walkFiles(projectDirpath, {
@@ -352,7 +353,7 @@ export const generateTsConfig = async (
     typeFiles: new ListSet<string>(),
     testFiles: new ListSet<string>(),
     binFiles: new ListSet<string>(),
-    profileMap: new ProfileMap(),
+    profileMap: new ProfileMap(options.logger),
   };
 
   groupTsFilesByAdd(projectDirpath, bfspUserConfig, allTsFileList, tsFilesLists);
