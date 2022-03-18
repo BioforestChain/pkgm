@@ -9,7 +9,7 @@ const wm = new FbWatchmanClient();
 const watcherCache = EasyMap.from({
   async creater(root: string) {
     await wm.afterReady();
-    const projectResp = await wm.command(["watch-project", root]);
+    const projectResp = await wm.commandAsync(["watch-project", root]);
 
     // It is considered to be best practice to show any 'warning' or
     // 'error' information to the user, as it may suggest steps
@@ -36,7 +36,7 @@ const watcherCache = EasyMap.from({
         subName = `${projectBaseName}:${createHash("md5").update(JSON.stringify(sub)).digest("base64")}`;
       }
 
-      await wm.command(["subscribe", projectResp.watch, subName, sub]);
+      await wm.commandAsync(["subscribe", projectResp.watch, subName, sub]);
       wm.on("subscription", function (subscriptionResp: any) {
         if (subscriptionResp.subscription !== subName) return;
 
