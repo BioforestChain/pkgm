@@ -15,7 +15,7 @@ const watcherCache = EasyMap.from({
     // 'error' information to the user, as it may suggest steps
     // for remediation
     if (projectResp.warning) {
-      getTui().getPanel("Bundle").write("warn", projectResp.warning);
+      getTui().getPanel("Bundle").writeViteLog("warn", projectResp.warning);
     }
 
     const projectBaseName = `[${createHash("md5").update(root).digest("base64")}]`;

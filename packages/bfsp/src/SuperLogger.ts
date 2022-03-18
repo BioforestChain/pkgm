@@ -12,6 +12,8 @@ export const createSuperLogger = (options: {
   warnPrefix?: string;
   errorPrefix?: string;
   successPrefix?: string;
+  clearScreen?: () => void;
+  clearLine?: () => void;
 }) => {
   /**
    * 在 line  模式意思是：下一次打印从新的一行开始。
@@ -95,5 +97,8 @@ export const createSuperLogger = (options: {
     error,
     group,
     groupEnd,
-  } as const;
+    clearScreen: options.clearScreen ?? noop,
+    clearLine: options.clearLine ?? noop,
+  } as PKGM.Logger;
 };
+const noop = () => {};

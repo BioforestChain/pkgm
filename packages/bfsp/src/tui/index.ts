@@ -200,7 +200,7 @@ export const testTui = () => {
   const tui = getTui();
   const tsc = tui.getPanel("Tsc");
   const vite = tui.getPanel("Bundle");
-  vite.write("info", "vite v2.7.1 start building");
+  vite.writeViteLog("info", "vite v2.7.1 start building");
   const randMsg = () => {
     const errCount = Math.round(Math.random() * 10) % 2;
     const tsmsg = `Found ${errCount} errors`;
@@ -211,7 +211,7 @@ export const testTui = () => {
         tsc.write(crypto.randomBytes(6).toString("base64"));
       }
     } else {
-      vite.write("info", crypto.randomBytes(6).toString("base64"));
+      vite.writeViteLog("info", crypto.randomBytes(6).toString("base64"));
     }
     setTimeout(() => {
       randMsg();

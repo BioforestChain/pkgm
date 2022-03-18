@@ -19,7 +19,7 @@ export const devCommand = defineCommand(
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
     description: helpOptions.dev,
   } as const,
-  async (params, args, ctx) => {
+  async (params, args) => {
     const warn = Warn("bfsp:bin/dev");
     const log = Debug("bfsp:bin/dev");
     let { format } = params;
@@ -61,6 +61,7 @@ export const devCommand = defineCommand(
       format: format as Bfsp.Format,
       buildService,
       subStreams,
+      logger: tscLogger.logger,
     });
     const { abortable } = task;
     const bundlePanel = getTui().getPanel("Bundle");

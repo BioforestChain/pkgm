@@ -3,6 +3,7 @@ import { debug as D } from "@bfchain/pkgm-base/lib/debug";
 import type { Logger, LoggerOptions, LogLevel } from "@bfchain/pkgm-base/lib/vite";
 import util from "node:util";
 import type { RollupError } from "rollup";
+import { consoleLogger } from "./consoleLogger";
 import { getTui, PanelStatus } from "./tui/index";
 
 export const LogLevels: Record<LogLevel, number> = {
@@ -12,59 +13,51 @@ export const LogLevels: Record<LogLevel, number> = {
   info: 3,
 };
 const useScreen = true;
+let createTscLogger = () => {
+  return {
+    write(s: string) {
+      console.log(s);
+    },
+    clear() {},
+    updateStatus(s: PanelStatus) {},
+    logger: consoleLogger,
+  };
+};
+let createViteLogger = () => {
+  const warnedMessages = new Set<unknown>();
+  const loggedErrors = new WeakSet<Error | RollupError>();
+  const viteLogger: Logger = {
+    hasWarned: false,
+    info(msg, opts) {
+      console.log(msg);
+    },
+    warn(msg, opts) {
+      viteLogger.hasWarned = true;
+      console.log(msg);
+    },
+    warnOnce(msg, opts) {
+      if (warnedMessages.has(msg)) return;
+      viteLogger.hasWarned = true;
+      console.log(msg);
+      warnedMessages.add(msg);
+    },
+    error(msg, opts) {
+      viteLogger.hasWarned = true;
+      console.log(msg);
+    },
+    clearScreen() {},
+    hasErrorLogged(error) {
+      return loggedErrors.has(error);
+    },
+  };
+
+  return Object.assign(viteLogger, { logger: consoleLogger });
+};
+
 if (!useScreen) {
-  console.log(`面板已被禁用，若要使用面板，请将 useScreen 设为true`);
-}
-
-export const { createTscLogger, createViteLogger } = createDevTui();
-
-function createDevTui() {
-  if (!useScreen) {
-    return {
-      createTscLogger: () => {
-        return {
-          write(s: string) {
-            console.log(s);
-          },
-          clear() {},
-          updateStatus(s: PanelStatus) {},
-          logger: console,
-        };
-      },
-      createViteLogger: () => {
-        const warnedMessages = new Set<unknown>();
-        const loggedErrors = new WeakSet<Error | RollupError>();
-        const viteLogger: Logger = {
-          hasWarned: false,
-          info(msg, opts) {
-            console.log(msg);
-          },
-          warn(msg, opts) {
-            viteLogger.hasWarned = true;
-            console.log(msg);
-          },
-          warnOnce(msg, opts) {
-            if (warnedMessages.has(msg)) return;
-            viteLogger.hasWarned = true;
-            console.log(msg);
-            warnedMessages.add(msg);
-          },
-          error(msg, opts) {
-            viteLogger.hasWarned = true;
-            console.log(msg);
-          },
-          clearScreen() {},
-          hasErrorLogged(error) {
-            return loggedErrors.has(error);
-          },
-        };
-
-        return viteLogger;
-      },
-    };
-  }
-
-  function createViteLogger(level: LogLevel = "info", options: LoggerOptions = {}): Logger {
+  console.warn(`TUI面板已被禁用，使用日志模式！`);
+} else {
+  createViteLogger = (level: LogLevel = "info", options: LoggerOptions = {}) => {
     const warnedMessages = new Set<unknown>();
 
     const bundlePanel = getTui().getPanel("Bundle");
@@ -77,21 +70,21 @@ function createDevTui() {
     const logger: Logger = {
       hasWarned: false,
       info(msg, opts) {
-        bundlePanel.write("info", msgStringify(msg), opts);
+        bundlePanel.writeViteLog("info", msgStringify(msg), opts);
       },
       warn(msg, opts) {
         logger.hasWarned = true;
-        bundlePanel.write("warn", msgStringify(msg), opts);
+        bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
       },
       warnOnce(msg, opts) {
         if (warnedMessages.has(msg)) return;
         logger.hasWarned = true;
-        bundlePanel.write("warn", msgStringify(msg), opts);
+        bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
         warnedMessages.add(msg);
       },
       error(msg, opts) {
         logger.hasWarned = true;
-        bundlePanel.write("error", msgStringify(msg), opts);
+        bundlePanel.writeViteLog("error", msgStringify(msg), opts);
       },
       clearScreen() {
         bundlePanel.clear();
@@ -101,19 +94,16 @@ function createDevTui() {
       },
     };
 
-    return logger;
-  }
-
-  function createTscLogger() {
+    return Object.assign(logger, {
+      logger: bundlePanel.logger,
+    });
+  };
+  createTscLogger = () => {
     const tscPanel = getTui().getPanel("Tsc");
     return tscPanel;
-  }
-
-  return {
-    createViteLogger,
-    createTscLogger,
   };
 }
+export { createTscLogger, createViteLogger };
 
 export function Debug(label: string) {
   const d = D(label);

@@ -17,5 +17,5 @@ export const doNpm = async (options: { root: string }) => {
   const buildPath = path.join(root, consts.BuildOutRootPath);
   await cpr(buildPath, npmPath);
 
-  b.write("info", `npm files ready at: ${npmPath}`);
+  b.writeViteLog("info", `npm files ready at: ${npmPath}`);
 };

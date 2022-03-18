@@ -6,7 +6,8 @@ import { Panel } from "./Panel";
 
 export class TscPanel extends Panel<"Tsc"> {
   write(text: string) {
-    this.elLog.log(text);
+    this.$elLogWrite(text);
+
     const foundErrors = text.match(/Found (\d+) error/);
     if (foundErrors !== null) {
       const errorCount = parseInt(foundErrors[1]);
@@ -26,6 +27,9 @@ export class TscPanel extends Panel<"Tsc"> {
       this._loggerContent += s;
     };
   }
+  protected override $getLoggerClear() {
+    return () => (this._loggerContent = "");
+  }
 }
 export class BundlePanel extends Panel<"Bundle"> {
   private _loggedErrors = new WeakSet<Error | RollupError>();
@@ -43,7 +47,7 @@ export class BundlePanel extends Panel<"Bundle"> {
   hasErrorLogged(error: Error | RollupError) {
     return this._loggedErrors.has(error);
   }
-  write(type: LogType, text: string, options: LogErrorOptions = {}) {
+  writeViteLog(type: LogType, text: string, options: LogErrorOptions = {}) {
     if (this._isInited === undefined) {
       if (text.includes("vite")) {
         const blankMsg = text.replace(

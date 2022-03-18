@@ -9,6 +9,7 @@ declare namespace NodeJS {
 
 declare namespace PKGM {
   type Print = (format?: any, ...param: any[]) => void;
+  type ClearScreen = () => void;
   type PipeFrom = (stream: import("node:stream").Readable) => void;
   type SuperPrinter = Print & { write: Print; pipeFrom: PipeFrom };
   type Logger = {
@@ -20,6 +21,7 @@ declare namespace PKGM {
     success: SuperPrinter;
     group: Console["group"];
     groupEnd: Console["groupEnd"];
+    clearScreen: ClearScreen;
   };
 
   type NormalPrinter = Print & Partial<SuperPrinter>;
@@ -28,6 +30,7 @@ declare namespace PKGM {
     warn: NormalPrinter;
     error: NormalPrinter;
     info: NormalPrinter;
+    clearScreen: ClearScreen;
   };
   type ConsoleLogger = SimpleLogger & Partial<Omit<Logger, keyof SimpleLogger>>;
 }

@@ -8,6 +8,7 @@ import { BuildService } from "../../src/buildService";
 import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
 import { $TsConfig } from "../../src/configs/tsConfig";
 import type { $ViteConfig } from "../../src/configs/viteConfig";
+import { consoleLogger } from "../../src/consoleLogger";
 import { Debug } from "../../src/logger";
 import { parseExtensionAndFormat } from "../../src/toolkit";
 const log = Debug("bfsp:config/vite");
@@ -22,8 +23,10 @@ export const ViteConfigFactory = (options: {
   profiles?: string[];
   outDir?: string;
   outRoot?: string;
+  logger?: PKGM.ConsoleLogger;
 }) => {
   const { userConfig, tsConfig, projectDirpath, viteConfig } = options;
+  const logger = options.logger ?? consoleLogger;
 
   const fe = parseExtensionAndFormat(options.format ?? "esm");
   const format = ALLOW_FORMATS.has(fe.format as any) ? (fe.format as Bfsp.JsFormat) : "esm";
@@ -114,10 +117,6 @@ export const ViteConfigFactory = (options: {
         compilerOptions.inlineSources = false;
         compilerOptions.inlineSourceMap = false;
 
-        function printDiagnostics(...args: unknown[]) {
-          console.error(inspect(args, false, 10, true));
-        }
-
         return {
           name: "tsc.emitDecoratorMetadata",
           load(source: string) {
@@ -150,7 +149,8 @@ export const ViteConfigFactory = (options: {
               // log(program.outputText);
               return program.outputText;
             } catch (err) {
-              printDiagnostics({ file: source, err });
+              logger.error("TSC ERR IN source: %s", source);
+              logger.error(err);
             }
             return null;
           },

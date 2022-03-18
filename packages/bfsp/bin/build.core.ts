@@ -239,6 +239,7 @@ const buildSingle = async (options: {
     viteConfig: viteConfig1,
     tsConfig: tsConfig1,
     outRoot: buildOutDir,
+    logger: viteLogger.logger,
   });
   const distDir = jsBundleConfig.build!.outDir!;
 
@@ -319,21 +320,13 @@ class BuildLogger {
   private get _prompt() {
     return this.prompts[this.prompts.length - 1] || "";
   }
-  success = (msg: unknown) => {
-    this.bundlePanel.write("info", `${this._prompt} ${chalk.green("✓")} ${msgStringify(msg)}`);
-  };
-  info = (msg: unknown) => {
-    this.bundlePanel.write("info", `${this._prompt} ${chalk.cyan("i")} ${msgStringify(msg)}`);
-  };
-  log = (msg: unknown) => {
-    this.bundlePanel.write("info", `${this._prompt} ${msgStringify(msg)}`);
-  };
-  warn = (msg: unknown) => {
-    this.bundlePanel.write("warn", `${this._prompt} ${chalk.yellow("⚠")} ${msgStringify(msg)}`);
-  };
-  error = (msg: unknown) => {
-    this.bundlePanel.write("error", `${this._prompt} ${chalk.red("𐄂")} ${msgStringify(msg)}`);
-  };
+  private _logger = this.bundlePanel.logger;
+  log = this._logger.log.bind(this._logger);
+  info = this._logger.info.bind(this._logger);
+  success = this._logger.success.bind(this._logger);
+  warn = this._logger.warn.bind(this._logger);
+  error = this._logger.error.bind(this._logger);
+  clearScreen = this._logger.clearScreen.bind(this._logger);
   flag = (msg: string, loading = true) => {
     this.statusBar.setMsg(`${this._prompt} ${msg}`, loading);
   };

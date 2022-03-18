@@ -89,6 +89,7 @@
     "src/tui/index.ts",
     "src/watcher.ts",
     "src/buildService.ts",
+    "src/consoleLogger.ts",
     "src/consts.ts",
     "src/deps.ts",
     "src/index.ts",

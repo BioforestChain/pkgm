@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { writeJsonConfig } from "../../bin/util";
 import { BuildService } from "../buildService";
+import { consoleLogger } from "../consoleLogger";
 import { TscIsolatedOutRootPath, TscOutRootPath, TscTypingsOutRootPath } from "../consts";
 import { Debug, Warn } from "../logger";
 import {
@@ -98,7 +99,7 @@ export class ProfileMap {
       return pInfo;
     }
   };
-  constructor(private logger: PKGM.SimpleLogger = console) {}
+  constructor(private logger: PKGM.ConsoleLogger = consoleLogger) {}
 
   private _privatepathMap = new Map<
     /* #filepath */ string,
@@ -174,6 +175,8 @@ export class ProfileMap {
       }
       return profile as Bfsp.Profile;
     });
+
+    this.logger.clearScreen();
 
     for (const [privatePath, map] of this._privatepathMap) {
       const profilePaths = new Set<string>();
@@ -336,7 +339,7 @@ export const generateTsConfig = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
   buildService: BuildService,
-  options: { outDirRoot?: string; outDirName?: string; logger?: PKGM.SimpleLogger } = {}
+  options: { outDirRoot?: string; outDirName?: string; logger?: PKGM.ConsoleLogger } = {}
 ) => {
   const allTsFileList = await buildService
     .walkFiles(projectDirpath, {

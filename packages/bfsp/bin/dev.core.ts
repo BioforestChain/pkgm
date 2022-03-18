@@ -17,14 +17,15 @@ export const doDev = async (options: {
   format?: Bfsp.Format;
   buildService: BuildService;
   subStreams: ReturnType<typeof watchBfspProjectConfig>;
+  logger?: PKGM.Logger;
 }) => {
-  const log = Debug("bfsp:bin/dev");
+  const debug = Debug("bfsp:bin/dev");
 
   // const cwd = process.cwd();
   // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
   const { root = process.cwd(), format, buildService, subStreams } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
 
-  log("root", root);
+  debug("root", root);
 
   /// 监听项目变动
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
@@ -41,7 +42,7 @@ export const doDev = async (options: {
       /// debounce
       await sleep(500);
       if (closeSign.is_finished) {
-        log("skip vite build by debounce");
+        debug("skip vite build by debounce");
         return;
       }
 
@@ -56,6 +57,7 @@ export const doDev = async (options: {
         viteConfig,
         tsConfig,
         format: format ?? userConfig.userConfig.formats?.[0],
+        logger: options.logger,
       };
       if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
         return;
@@ -63,7 +65,7 @@ export const doDev = async (options: {
       preViteConfigBuildOptions = viteConfigBuildOptions;
       const viteBuildConfig = ViteConfigFactory(viteConfigBuildOptions);
 
-      log("running bfsp build!");
+      debug("running bfsp build!");
       //#region vite
       const viteLogger = createViteLogger("info", {});
       const dev = (await buildBfsp({
@@ -84,18 +86,18 @@ export const doDev = async (options: {
       //#endregion
 
       closeSign.onSuccess((reason) => {
-        log("close bfsp build, reason: ", reason);
+        debug("close bfsp build, reason: ", reason);
         preViteConfigBuildOptions = undefined;
         dev.close();
       });
 
       dev.on("change", (id, change) => {
-        log(`${change.event} file: ${id} `);
+        debug(`${change.event} file: ${id} `);
       });
 
       dev.on("event", async (event) => {
         const name = userConfig.userConfig.name;
-        log(`package ${name}: ${event.code}`);
+        debug(`package ${name}: ${event.code}`);
         if (event.code === "START") {
           startCb && (await startCb(name));
           return;

@@ -85,8 +85,15 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     this._render();
   }
 
+  protected $elLogWrite(s: string) {
+    this.elLog.setContent(this.elLog.getContent() + s);
+  }
+
   protected $getLoggerWriter() {
-    return (s: string) => this.elLog.setContent(this.elLog.getContent() + s);
+    return (s: string) => this.$elLogWrite(s);
+  }
+  protected $getLoggerClear() {
+    return () => {};
   }
   private _logger?: PKGM.Logger;
   get logger() {
@@ -100,6 +107,7 @@ export abstract class Panel<N extends string, K extends number = number> impleme
         successPrefix: "✓",
         stdoutWriter: writer,
         stderrWriter: writer,
+        clearScreen: this.$getLoggerClear(),
       });
     }
     return this._logger;
