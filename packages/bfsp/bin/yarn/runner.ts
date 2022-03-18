@@ -88,7 +88,6 @@ export const runYarn = (opts: RunYarnOption) => {
       onFlag = onMessage,
     } = opts;
 
-    onWarn("yarn install!!!");
     proc = cp.spawn(
       "node",
       [

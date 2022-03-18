@@ -18,12 +18,13 @@ export const generatePackageJson = async (
   tsConfig: $TsConfig,
   options: {
     customTypesRoot?: string;
+    packageTemplateJson?: {};
   } = {}
 ) => {
   if (!PKGM_VERSION) {
     PKGM_VERSION = getBfspVersion();
   }
-  const packageJson = JSON.parse(packageJsonTemplate);
+  const packageJson = options.packageTemplateJson ?? JSON.parse(packageJsonTemplate);
   packageJson.name = bfspUserConfig.userConfig.name;
   const { exportsMap } = bfspUserConfig.exportsDetail;
 

@@ -117,12 +117,13 @@ type SimpleLogger = (msg: unknown) => void;
  */
 const buildSingle = async (options: {
   root: string;
+  buildOutDir: string;
+
+  thePackageJson: $PackageJson;
+  bfspUserConfig: $BfspUserConfig;
+
   buildLogger: BuildLogger;
   buildService: BuildService;
-  buildConfig: Omit<Bfsp.UserConfig, "build">;
-  thePackageJson: $PackageJson;
-  buildOutDir: string;
-  bfspUserConfig: $BfspUserConfig;
 }) => {
   const tscLogger = createTscLogger();
   const viteLogger = createViteLogger();
@@ -130,11 +131,11 @@ const buildSingle = async (options: {
     //
     root,
     buildService,
-    buildConfig,
     thePackageJson,
     buildOutDir,
     bfspUserConfig,
   } = options;
+  const buildConfig = bfspUserConfig.userConfig;
   const { debug, flag, success, info, warn, error } = options.buildLogger;
 
   const userConfig1 = {
@@ -155,7 +156,9 @@ const buildSingle = async (options: {
   //#region 生成 package.json
   flag(`generating package.json`);
   /// 将 package.json 的 types 路径进行修改
-  const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1);
+  const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1, {
+    packageTemplateJson: thePackageJson,
+  });
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
   //#region 安装依赖
   debugger;
@@ -163,27 +166,6 @@ const buildSingle = async (options: {
   await installBuildDeps({ root });
   success(`installed dependencies`);
   //#endregion
-
-  // Object.assign(
-  //   packageJson,
-  //   {
-  //     name: buildConfig.name,
-  //     files: ["dist", "source"],
-  //   },
-  //   buildConfig.packageJson
-  // );
-  // debugger;
-  // {
-  //   const repathTypePath = (typePath: string) => {
-  //     // const typesPathInfo = path.parse(typePath);
-  //     return typePath.replace(".bfsp/tsc", "source");
-  //     // return toPosixPath(path.join("source/isolated", typePath));
-  //   };
-  //   for (const exportConfig of Object.values(packageJson.exports)) {
-  //     exportConfig.types = repathTypePath(exportConfig.types);
-  //   }
-  //   packageJson.types = repathTypePath(packageJson.types);
-  // }
 
   /// 写入package.json
   flag(`writing package.json`);
@@ -380,8 +362,8 @@ export const doBuild = async (options: {
 
     /**已经清理过的文件夹目录，避免重复清理 */
     const rmDirs = new Set<string>();
-    for (const [index, buildConfig] of buildUserConfigList.entries()) {
-      const buildTitle = chalk.gray(`${buildConfig.name}::${buildConfig.formats?.[0] ?? "esm"}`);
+    for (const [index, userConfig] of buildUserConfigList.entries()) {
+      const buildTitle = chalk.gray(`${userConfig.name}::${userConfig.formats?.[0] ?? "esm"}`);
       buildLogger.prompts.push(buildTitle);
       const startTime = Date.now();
       const taskTitle = `build task: (${index + 1}/${buildUserConfigList.length})`;
@@ -389,7 +371,7 @@ export const doBuild = async (options: {
 
       {
         /**要输出的文件夹根路径 */
-        const buildOutDir = path.resolve(BUILD_OUT_ROOT, buildConfig.name);
+        const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfig.name);
 
         /// 按需移除 build 文件夹
         if (rmDirs.has(buildOutDir) === false) {
@@ -398,16 +380,20 @@ export const doBuild = async (options: {
         }
         /// 开始执行编译
         await buildSingle({
+          /// 路径
           root,
+          buildOutDir,
+
+          /// 配置
+          thePackageJson,
+          bfspUserConfig: { ...bfspUserConfig, userConfig },
+
+          /// 服务
           buildLogger,
           buildService,
-          buildConfig,
-          thePackageJson,
-          buildOutDir,
-          bfspUserConfig,
         });
 
-        await buildService.afterSingleBuild({ buildOutDir, config: buildConfig });
+        await buildService.afterSingleBuild({ buildOutDir, config: userConfig });
       }
 
       const buildTimeSpan = chalk.cyan("+" + (Date.now() - startTime) + "ms");
