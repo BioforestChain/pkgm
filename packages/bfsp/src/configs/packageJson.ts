@@ -3,9 +3,8 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { getBfspVersion, writeJsonConfig } from "../../bin/util";
-import * as consts from "../consts";
 import { Debug } from "../logger";
-import { Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
+import { jsonClone, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
 const log = Debug("bfsp:config/package.json");
@@ -24,7 +23,9 @@ export const generatePackageJson = async (
   if (!PKGM_VERSION) {
     PKGM_VERSION = getBfspVersion();
   }
-  const packageJson = options.packageTemplateJson ?? JSON.parse(packageJsonTemplate);
+  const packageJson = options.packageTemplateJson
+    ? jsonClone(options.packageTemplateJson)
+    : JSON.parse(packageJsonTemplate);
   packageJson.name = bfspUserConfig.userConfig.name;
   const { exportsMap } = bfspUserConfig.exportsDetail;
 

@@ -20,7 +20,6 @@ import { runTsc } from "./tsc/runner";
 import { writeJsonConfig } from "./util";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
-const jsonClone = <T>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;
 const debug = Debug("bfsp:bin/build");
 
 export const writeBuildConfigs = async (options: { root?: string; buildService: BuildService }) => {

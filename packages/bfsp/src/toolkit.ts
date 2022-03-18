@@ -715,3 +715,4 @@ export async function cpr(src: string, dest: string) {
     await copyFile(filepath, destFilepath);
   }
 }
+export const jsonClone = <T>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;
