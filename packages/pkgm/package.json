@@ -1,15 +1,15 @@
 {
-    "name": "@bfchain/pkgm",
-    "version": "2.5.17",
-    "publishConfig": {
-      "access": "public"
-    },
-    "bin": {
-      "bfsp": "./bfsp/bin.mjs",
-      "bfsw": "./bfsw/bin.mjs"
-    },
-    "dependencies": {
-      "@bfchain/pkgm-bfsp": "^2.5.17",
-      "@bfchain/pkgm-bfsw": "^2.5.17"
-    }
+  "name": "@bfchain/pkgm",
+  "version": "2.5.18",
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "bfsp": "./bfsp/bin.mjs",
+    "bfsw": "./bfsw/bin.mjs"
+  },
+  "dependencies": {
+    "@bfchain/pkgm-bfsp": "^2.5.18",
+    "@bfchain/pkgm-bfsw": "^2.5.18"
   }
+}
