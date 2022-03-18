@@ -98,16 +98,25 @@ export class ProfileMap {
       return pInfo;
     }
   };
-  private _map1 = new Map<
+  private _privatepathMap = new Map<
     /* #filepath */ string,
-    Map</* profile */ string, /* filepath#profile */ string | /* duplication filepath#profile */ Set<string>>
+    Map</* profile */ string, /* filepath#profile */ string | Set<string /* filepath#profile */>>
   >();
-  private _map2 = new Map</* filepath#profile */ string, $ProfileInfo>();
+  private _filepathPinfo = new Map</* filepath#profile */ string, $ProfileInfo>();
+  /**
+   * 没有被profiles命中的文件
+   * 最终会从files中排除出去
+   */
+  private _unuseFiles = new Set<string>();
+  get unuseFiles() {
+    return this._unuseFiles as ReadonlySet<string>;
+  }
+
   addProfileInfo(pInfo: $ProfileInfo) {
-    const profileMap = this._map1;
-    let map = profileMap.get(pInfo.privatePath);
+    const privatepathMap = this._privatepathMap;
+    let map = privatepathMap.get(pInfo.privatePath);
     if (map === undefined) {
-      profileMap.set(pInfo.privatePath, (map = new Map()));
+      privatepathMap.set(pInfo.privatePath, (map = new Map()));
     }
     for (const profile of pInfo.profiles) {
       let sourceFiles = map.get(profile);
@@ -126,16 +135,16 @@ export class ProfileMap {
       }
       map.set(profile, sourceFiles);
     }
-    this._map2.set(pInfo.sourcePath, pInfo);
+    this._filepathPinfo.set(pInfo.sourcePath, pInfo);
   }
   removeProfileInfo(sourcePath: string) {
-    const pInfo = this._map2.get(sourcePath);
+    const pInfo = this._filepathPinfo.get(sourcePath);
     if (pInfo === undefined) {
       return false;
     }
-    this._map2.delete(sourcePath);
-    const profileMap = this._map1;
-    const map = profileMap.get(pInfo.privatePath);
+    this._filepathPinfo.delete(sourcePath);
+    const privatepathMap = this._privatepathMap;
+    const map = privatepathMap.get(pInfo.privatePath);
     if (map === undefined) {
       return false;
     }
@@ -165,11 +174,13 @@ export class ProfileMap {
     });
 
     // debugger;
-    for (const [privatePath, map] of this._map1) {
+    for (const [privatePath, map] of this._privatepathMap) {
       const profilePaths = new Set<string>();
 
       // const multiProfileSources =
-      /// 优先根据profiles来插入
+      /**
+       * 这里只挑选有被profile命中的，其它一概不选
+       */
       for (const profile of profileList) {
         const sourceFiles = map.get(profile);
         if (sourceFiles === undefined) {
@@ -181,7 +192,7 @@ export class ProfileMap {
           /// 从多个sourceFile中对比出于profiles匹配程度最高的sourceFile
           let pInfoList: $ProfileInfo[] = [];
           for (const sourceFile of sourceFiles) {
-            const pInfo = this._map2.get(sourceFile);
+            const pInfo = this._filepathPinfo.get(sourceFile);
             if (pInfo !== undefined) {
               pInfoList.push(pInfo);
             }
@@ -225,16 +236,30 @@ export class ProfileMap {
         }
       }
 
-      /// 否则使用默认顺序来插入
+      if (profilePaths.size === 0) {
+        debugger;
+      }
+
+      /**
+       * 将其它没有使用上的文件收集起来
+       */
       for (const sourceFiles of map.values()) {
         if (typeof sourceFiles === "string") {
-          profilePaths.add(sourceFiles);
+          if (profilePaths.has(sourceFiles) === false) {
+            this._unuseFiles.add(sourceFiles);
+          }
         } else {
-          profilePaths.add(sourceFiles.values().next().value!);
+          for (const sourceFile of sourceFiles) {
+            if (profilePaths.has(sourceFile) === false) {
+              this._unuseFiles.add(sourceFile);
+            }
+          }
         }
       }
 
-      paths[`#${privatePath.slice(2 /* './' */)}`] = [...profilePaths];
+      if (profilePaths.size !== 0) {
+        paths[`#${privatePath.slice(2 /* './' */)}`] = [...profilePaths];
+      }
     }
     return paths;
   }
@@ -389,7 +414,9 @@ export const generateTsConfig = async (
       noEmit: false,
       emitDeclarationOnly: false,
     },
-    files: tsFilesLists.isolatedFiles.toArray(),
+    files: tsFilesLists.isolatedFiles
+      .toArray()
+      .filter((filepath) => tsFilesLists.profileMap.unuseFiles.has(filepath) === false),
     references: [
       {
         path: "./tsconfig.typings.json",
@@ -405,7 +432,9 @@ export const generateTsConfig = async (
       outDir: TscTypingsOutRootPath(options.outDirRoot, options.outDirName),
       noEmit: false,
     },
-    files: tsFilesLists.typeFiles.toArray(),
+    files: tsFilesLists.typeFiles
+      .toArray()
+      .filter((filepath) => tsFilesLists.profileMap.unuseFiles.has(filepath) === false),
     references: [],
   };
 

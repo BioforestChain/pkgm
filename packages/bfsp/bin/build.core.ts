@@ -400,7 +400,7 @@ export const doBuild = async (options: {
       buildLogger.info(`${chalk.green(">>>")} finished ${taskTitle} ${buildTimeSpan}`);
       buildLogger.prompts.pop();
     }
-    buildLogger.flag("build finished", false);
+    buildLogger.flag(chalk.magenta("🎉 build finished 🎊"), false);
     buildLogger.updateStatus("success");
   } catch (e) {
     buildLogger.error(e);
