@@ -9,7 +9,6 @@ const wm = new FbWatchmanClient();
 const watcherCache = EasyMap.from({
   async creater(root: string) {
     await wm.afterReady();
-    console.log(root);
     const projectResp = await wm.commandAsync(["watch-project", root]);
 
     const logger = console; //  getTui().getPanel("Bundle").logger;

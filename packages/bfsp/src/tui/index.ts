@@ -3,25 +3,11 @@ import { chalk, supportsColor } from "@bfchain/pkgm-base/lib/chalk";
 import crypto from "node:crypto";
 import "./@type";
 import { afm } from "./animtion";
-import { getBaseWidgetOptions, H_NAV, H_STATUSBAR, W_MAIN, W_MAIN_N } from "./const";
+import { TuiStyle, W_MAIN_N } from "./const";
 import { BundlePanel, DepsPanel, TscPanel } from "./internalPanels";
 import { StatusChangeCallback } from "./Panel";
 import { StatusBar } from "./StatusBar";
 export * from "./Panel";
-
-const TuiStyle = {
-  nav: {
-    top: H_NAV,
-    height: H_NAV,
-    width: W_MAIN,
-  } as Widgets.BoxOptions,
-  statusBar: {
-    ...getBaseWidgetOptions(),
-    top: `100%-${H_STATUSBAR}`,
-    height: H_STATUSBAR,
-    width: W_MAIN,
-  } as Widgets.BoxOptions,
-};
 
 class Tui {
   private _currentKey: number = -1;
@@ -117,7 +103,7 @@ class Tui {
     sorted.forEach((p, i) => {
       // 菜单项样式
       p.elMenu.width = `${unitWidth}%`;
-      p.elMenu.left = i * unitWidth;
+      p.elMenu.left = `${i * unitWidth}%`;
       nav.append(p.elMenu);
       this._screen.append(p.elLog);
       // 按键导航

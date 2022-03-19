@@ -1,6 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { debug as D } from "@bfchain/pkgm-base/lib/debug";
-import { defineViteWriteLine, Logger, LoggerOptions, LogLevel } from "@bfchain/pkgm-base/lib/vite";
+import { defineViteStdoutApis, Logger, LoggerOptions, LogLevel } from "@bfchain/pkgm-base/lib/vite";
 import util from "node:util";
 import type { RollupError } from "rollup";
 import { consoleLogger } from "./consoleLogger";
@@ -106,11 +106,23 @@ if (!useScreen) {
     return Object.assign(viteLogger, { logger: consoleLogger });
   };
 } else {
-  defineViteWriteLine(() => {
+  const getViteStdoutApis = () => {
     const bundlePanel = getTui().getPanel("Bundle");
     const writeLine = bundlePanel.logger.log.line;
-    defineViteWriteLine(writeLine);
-    return writeLine;
+    const clearLine = bundlePanel.logger.clearLine;
+    return { writeLine, clearLine };
+  };
+  defineViteStdoutApis({
+    writeLine: (log) => {
+      const apis = getViteStdoutApis();
+      defineViteStdoutApis(apis);
+      return apis.writeLine(log);
+    },
+    clearLine: () => {
+      const apis = getViteStdoutApis();
+      defineViteStdoutApis(apis);
+      return apis.clearLine;
+    },
   });
 }
 export { createTscLogger, createViteLogger };

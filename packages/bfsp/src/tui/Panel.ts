@@ -1,7 +1,7 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { afm } from "./animtion";
-import { FRAMES, getBaseWidgetOptions, H_LOG, H_NAV, W_MAIN } from "./const";
+import { FRAMES, getBaseWidgetOptions, H_LOG, H_NAV, TuiStyle, T_NAV, W_MAIN } from "./const";
 import { createSuperLogger } from "../SuperLogger";
 
 export interface PanelContext {
@@ -18,7 +18,7 @@ export abstract class Panel<N extends string, K extends number = number> impleme
   }
   private _loadingFrameId = 0;
   private _isActive = true;
-  readonly elLog = blessed.log(logWidgetOptions);
+  readonly elLog = blessed.log(TuiStyle.logPanel);
   readonly elMenu = blessed.box({});
   onStatusChange?: StatusChangeCallback;
   updateStatus(s: PanelStatus) {
@@ -115,25 +115,3 @@ export abstract class Panel<N extends string, K extends number = number> impleme
 }
 export type StatusChangeCallback = (s: PanelStatus, ctx: BFSP.TUI.Panel) => void;
 export type PanelStatus = "success" | "error" | "warn" | "loading" | "info";
-const logWidgetOptions: Widgets.BoxOptions = {
-  ...getBaseWidgetOptions(),
-  top: 2 * H_NAV,
-  width: W_MAIN,
-  height: H_LOG,
-  keys: true,
-  vi: true,
-  mouse: true,
-  scrollable: true,
-  draggable: true,
-  alwaysScroll: true,
-  scrollbar: {
-    ch: " ",
-    track: {
-      inverse: true,
-    },
-    style: {
-      inverse: true,
-      fg: "cyan",
-    },
-  },
-};

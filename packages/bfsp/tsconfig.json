@@ -45,6 +45,7 @@
     "bin/vite/configFactory.ts",
     "bin/util.ts",
     "bin/bfsp.cmd.ts",
+    "bin/bfsp.env.ts",
     "bin/test.ts",
     "bin/dev.bin.ts",
     "bin/dev.core.ts",

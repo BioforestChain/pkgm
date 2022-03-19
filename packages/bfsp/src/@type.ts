@@ -3,13 +3,14 @@ declare namespace NodeJS {
     noDeprecation: boolean;
     env: {
       LD_LIBRARY_PATH: string;
+      PKGM_MODE: string;
     } & ProcessEnv;
   }
 }
 
 declare namespace PKGM {
   type Print = (format?: any, ...param: any[]) => void;
-  type ClearScreen = () => void;
+  type Clear = () => void;
   type PipeFrom = (stream: import("node:stream").Readable) => void;
   type SuperPrinter = Print & { write: Print; line: Print; pipeFrom: PipeFrom };
   type Logger = {
@@ -21,7 +22,8 @@ declare namespace PKGM {
     success: SuperPrinter;
     group: Console["group"];
     groupEnd: Console["groupEnd"];
-    clearScreen: ClearScreen;
+    clearScreen: Clear;
+    clearLine: Clear;
   };
 
   type NormalPrinter = Print & Partial<SuperPrinter>;
@@ -30,7 +32,8 @@ declare namespace PKGM {
     warn: NormalPrinter;
     error: NormalPrinter;
     info: NormalPrinter;
-    clearScreen: ClearScreen;
+    clearScreen: Clear;
+    clearLine: Clear;
   };
   type ConsoleLogger = SimpleLogger & Partial<Omit<Logger, keyof SimpleLogger>>;
 }

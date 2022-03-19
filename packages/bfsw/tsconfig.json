@@ -31,6 +31,7 @@
     "package.json",
     "postinstall.ts",
     "bin/bfsw.cmd.ts",
+    "bin/bfsw.env.ts",
     "bin/build.bin.ts",
     "bin/npm.bin.ts",
     "bin/dev.bin.ts",

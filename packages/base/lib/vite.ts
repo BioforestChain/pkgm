@@ -7,12 +7,27 @@ const walkFiles = (dir: string) => {
     if (fs.statSync(filepath).isDirectory()) {
       walkFiles(filepath);
     } else if (filepath.endsWith(".js")) {
-      const fileContent = fs.readFileSync(filepath, "utf-8");
+      let fileContent = fs.readFileSync(filepath, "utf-8");
+      let changed = false;
       if (fileContent.includes("function writeLine(")) {
-        const hackFileContent = fileContent
-          .replace("function writeLine(", "function stdoutWriteLine(")
-          .replace(/\swriteLine\(/g, " (globalThis.viteWriteLine||stdoutWriteLine)(");
-        fs.writeFileSync(filepath, hackFileContent);
+        fileContent =
+          `function stdoutClearLine () { process.stdout.clearLine(0); process.stdout.cursorTo(0); };\n` +
+          fileContent
+            .replace("function writeLine(", "function stdoutWriteLine(")
+            .replace(/\swriteLine\(/g, " (globalThis.viteWriteLine||stdoutWriteLine)(");
+        changed = true;
+      }
+      if (fileContent.includes(`process.stdout.clearLine(0);`)) {
+        fileContent =
+          `function stdoutClearLine () { process.stdout.clearLine(0); process.stdout.cursorTo(0); };\n` +
+          fileContent.replace(
+            /process\.stdout\.clearLine\(0\);[\s\n]*process\.stdout\.cursorTo\(0\);/,
+            "(globalThis.viteClearLine||stdoutClearLine)()"
+          );
+        changed = true;
+      }
+      if (changed) {
+        fs.writeFileSync(filepath, fileContent);
       }
     }
   }
@@ -20,7 +35,9 @@ const walkFiles = (dir: string) => {
 walkFiles(path.dirname(path.dirname(require.resolve("vite"))));
 export const { build } = require("vite") as typeof import("vite");
 
-export const defineViteWriteLine = (writeLine: (log: string) => void) => {
-  Reflect.set(globalThis, "viteWriteLine", writeLine);
+export const defineViteStdoutApis = (apis: { writeLine: (log: string) => void; clearLine: () => void }) => {
+  Reflect.set(globalThis, "viteWriteLine", apis.writeLine);
+  Reflect.set(globalThis, "viteClearLine", apis.clearLine);
 };
+
 export type { InlineConfig, LogErrorOptions, Logger, LoggerOptions, LogLevel, LogType } from "vite";

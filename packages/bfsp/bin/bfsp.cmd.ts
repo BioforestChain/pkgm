@@ -1,3 +1,4 @@
+import "./bfsp.env";
 import { buildCommand } from "./build.bin";
 import { devCommand } from "./dev.bin";
 import { initCommand } from "./init.bin";
