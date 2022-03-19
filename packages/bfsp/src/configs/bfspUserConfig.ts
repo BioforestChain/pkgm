@@ -7,7 +7,7 @@ import { pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
 import { BuildService } from "../buildService";
-import { Debug } from "../logger";
+import { DevLogger } from "../logger";
 import * as consts from "../consts";
 import {
   fileIO,
@@ -19,7 +19,7 @@ import {
   toPosixPath,
 } from "../toolkit";
 
-const log = Debug("bfsp:config/#bfsp");
+const debug = DevLogger("bfsp:config/#bfsp");
 
 // export const enum BUILD_MODE {
 //   DEVELOPMENT = "development",
@@ -161,7 +161,7 @@ export const createTsconfigForEsbuild = (content: string) => {
   const tsConfigPath = path.join(tmpdir(), `tsconfig.bfsp-${createHash("md5").update(content).digest("hex")}.json`);
   if (existsSync(tsConfigPath) === false) {
     writeFileSync(tsConfigPath, content);
-    log("tsconfigUrl", tsConfigPath);
+    debug("tsconfigUrl", tsConfigPath);
   }
   return tsConfigPath;
 };
@@ -192,7 +192,7 @@ export const readUserConfig = async (
       }
       const cache_filepath = resolve(bfspDir, cache_filename);
       try {
-        log("complie #bfsp");
+        debug("complie #bfsp");
         await build({
           entryPoints: [filename],
           absWorkingDir: dirname,
@@ -259,7 +259,7 @@ export const watchBfspUserConfig = (
     }
 
     if (!existsSync(projectDirpath)) {
-      log("unable to read bfsp user config: project maybe removed");
+      debug("unable to read bfsp user config: project maybe removed");
       return;
     }
     const userConfig = await readUserConfig(projectDirpath, {
@@ -269,7 +269,7 @@ export const watchBfspUserConfig = (
       if (isDeepStrictEqual(curBfspUserConfig?.userConfig, userConfig)) {
         return;
       }
-      log("bfspuserConfig changed!!");
+      debug("bfspuserConfig changed!!");
       follower.push((curBfspUserConfig = _getBfspUserConfig(userConfig)));
     }
   });

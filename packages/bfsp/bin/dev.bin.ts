@@ -1,13 +1,13 @@
 import path from "node:path";
 import { defineCommand } from "../bin";
-import { ALLOW_FORMATS, getBfspUserConfig } from "../src/configs/bfspUserConfig";
+import { getTui, watchBfspProjectConfig, watchDeps, writeBfspProjectConfig } from "../src";
 import { getBfspBuildService } from "../src/buildService";
-import { Debug, Warn, createTscLogger } from "../src/logger";
+import { ALLOW_FORMATS, getBfspUserConfig } from "../src/configs/bfspUserConfig";
+import { createTscLogger, DevLogger } from "../src/logger";
 import { watchSingle } from "../src/watcher";
 import { doDev } from "./dev.core";
-import { runTsc } from "./tsc/runner";
-import { writeBfspProjectConfig, watchBfspProjectConfig, watchDeps, getTui } from "../src";
 import { helpOptions } from "./help.core";
+import { runTsc } from "./tsc/runner";
 
 export const devCommand = defineCommand(
   "dev",
@@ -20,11 +20,10 @@ export const devCommand = defineCommand(
     description: helpOptions.dev,
   } as const,
   async (params, args) => {
-    const warn = Warn("bfsp:bin/dev");
-    const log = Debug("bfsp:bin/dev");
+    const debug = DevLogger("bfsp:bin/dev");
     let { format } = params;
     if (format !== undefined && ALLOW_FORMATS.has(format as any) === false) {
-      warn(`invalid format: '${format}'`);
+      debug.warn(`invalid format: '${format}'`);
       format = undefined;
     }
 
@@ -49,7 +48,8 @@ export const devCommand = defineCommand(
     const subStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
     const depStream = watchDeps(root, subStreams.packageJsonStream, { runYarn: true });
 
-    const tscStoppable = runTsc({
+    /* const tscStoppable = */
+    runTsc({
       watch: true,
       tsconfigPath: path.join(root, "tsconfig.json"),
       onMessage: (s) => tscLogger.write(s),
@@ -61,7 +61,6 @@ export const devCommand = defineCommand(
       format: format as Bfsp.Format,
       buildService,
       subStreams,
-      logger: tscLogger.logger,
     });
     const { abortable } = task;
     const bundlePanel = getTui().getPanel("Bundle");

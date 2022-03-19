@@ -4,7 +4,7 @@ import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { isDeepStrictEqual } from "node:util";
 import { watchBfspProjectConfig } from "../src/bfspConfig";
 import { BuildService } from "../src/buildService";
-import { createViteLogger, Debug } from "../src/logger";
+import { createViteLogger, DevLogger } from "../src/logger";
 import { Closeable } from "../src/toolkit";
 import type { RollupWatcher } from "./shim";
 import { buildBfsp } from "./shim";
@@ -17,9 +17,8 @@ export const doDev = async (options: {
   format?: Bfsp.Format;
   buildService: BuildService;
   subStreams: ReturnType<typeof watchBfspProjectConfig>;
-  logger?: PKGM.Logger;
 }) => {
-  const debug = Debug("bfsp:bin/dev");
+  const debug = DevLogger("bfsp:bin/dev");
 
   // const cwd = process.cwd();
   // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
@@ -57,7 +56,6 @@ export const doDev = async (options: {
         viteConfig,
         tsConfig,
         format: format ?? userConfig.userConfig.formats?.[0],
-        logger: options.logger,
       };
       if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
         return;

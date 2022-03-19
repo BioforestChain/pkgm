@@ -12,7 +12,7 @@ import { $PackageJson, generatePackageJson } from "../src/configs/packageJson";
 import { generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import * as consts from "../src/consts";
-import { createTscLogger, createViteLogger, Debug } from "../src/logger";
+import { createTscLogger, createViteLogger, DevLogger } from "../src/logger";
 import { fileIO, folderIO, toPosixPath, walkFiles } from "../src/toolkit";
 import { getTui, PanelStatus } from "../src/tui/index";
 import { runTerser } from "./terser/runner";
@@ -20,21 +20,13 @@ import { runTsc } from "./tsc/runner";
 import { writeJsonConfig } from "./util";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
-const debug = Debug("bfsp:bin/build");
+const debug = DevLogger("bfsp:bin/build");
 
-export const writeBuildConfigs = async (
-  args: {
-    root?: string;
-    buildService: BuildService;
-  },
-  options?: {
-    logger?: PKGM.SimpleLogger;
-  }
-) => {
+export const writeBuildConfigs = async (args: { root?: string; buildService: BuildService }) => {
   const { root = process.cwd(), buildService } = args;
   const bfspUserConfig = await getBfspUserConfig(root);
   const projectConfig = { projectDirpath: root, bfspUserConfig };
-  const subConfigs = await writeBfspProjectConfig(projectConfig, buildService, options);
+  const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
   return { subConfigs, bfspUserConfig };
 };
 export const installBuildDeps = async (options: { root: string }) => {
@@ -154,7 +146,6 @@ const buildSingle = async (options: {
   const tsConfig1 = await generateTsConfig(root, userConfig1, buildService, {
     outDirRoot: path.relative(root, buildOutDir),
     outDirName: "source",
-    logger: options.buildLogger,
   });
   tsConfig1.isolatedJson.compilerOptions.emitDeclarationOnly = true;
   flag(`setting tsconfig.json`);
@@ -189,9 +180,7 @@ const buildSingle = async (options: {
       const tsc = runTsc({
         tsconfigPath: path.resolve(path.join(root, "tsconfig.isolated.json")),
         projectMode: true,
-        onMessage: (x) => {
-          tscLogger.write(x);
-        },
+        onMessage: (x) => tscLogger.write(x),
         onClear: () => tscLogger.clear(),
         onExit: resolve,
         watch: true,
@@ -239,7 +228,6 @@ const buildSingle = async (options: {
     viteConfig: viteConfig1,
     tsConfig: tsConfig1,
     outRoot: buildOutDir,
-    logger: viteLogger.logger,
   });
   const distDir = jsBundleConfig.build!.outDir!;
 

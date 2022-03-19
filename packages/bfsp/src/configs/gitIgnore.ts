@@ -1,5 +1,5 @@
 import { resolve } from "node:path";
-import { Debug } from "../logger";
+import { DevLogger } from "../logger";
 import { fileIO, isEqualSet, Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
 import { $BfspUserConfig } from "./bfspUserConfig";
 import { defaultIgnores, effectConfigIgnores } from "./commonIgnore";
@@ -19,7 +19,7 @@ export const writeGitIgnore = (projectDirpath: string, gitIgnore: $GitIgnore) =>
   return fileIO.set(resolve(projectDirpath, ".gitignore"), Buffer.from([...gitIgnore].join("\n")));
 };
 
-const log = Debug("bfsp:config/gitginore");
+const debug = DevLogger("bfsp:config/gitginore");
 export const watchGitIgnore = (
   projectDirpath: string,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
@@ -46,7 +46,7 @@ export const watchGitIgnore = (
     if (write) {
       await writeGitIgnore(projectDirpath, newGitIgnore);
     }
-    log("gitignore changed");
+    debug("gitignore changed");
     follower.push((curGitIgnore = newGitIgnore));
   });
 

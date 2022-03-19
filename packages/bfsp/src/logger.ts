@@ -1,6 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { debug as D } from "@bfchain/pkgm-base/lib/debug";
-import type { Logger, LoggerOptions, LogLevel } from "@bfchain/pkgm-base/lib/vite";
+import { defineViteWriteLine, Logger, LoggerOptions, LogLevel } from "@bfchain/pkgm-base/lib/vite";
 import util from "node:util";
 import type { RollupError } from "rollup";
 import { consoleLogger } from "./consoleLogger";
@@ -13,99 +13,109 @@ export const LogLevels: Record<LogLevel, number> = {
   info: 3,
 };
 const useScreen = true;
-let createTscLogger = () => {
-  return {
-    write(s: string) {
-      console.log(s);
-    },
-    clear() {},
-    updateStatus(s: PanelStatus) {},
-    logger: consoleLogger,
-  };
-};
-let createViteLogger = () => {
+
+let createViteLogger = (level: LogLevel = "info", options: LoggerOptions = {}) => {
   const warnedMessages = new Set<unknown>();
-  const loggedErrors = new WeakSet<Error | RollupError>();
-  const viteLogger: Logger = {
+
+  const bundlePanel = getTui().getPanel("Bundle");
+  const msgStringify = (msg: unknown) => {
+    if (typeof msg === "string") {
+      return msg;
+    }
+    return util.inspect(msg, { colors: true });
+  };
+  const logger: Logger = {
     hasWarned: false,
     info(msg, opts) {
-      console.log(msg);
+      bundlePanel.writeViteLog("info", msgStringify(msg), opts);
     },
     warn(msg, opts) {
-      viteLogger.hasWarned = true;
-      console.log(msg);
+      logger.hasWarned = true;
+      bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
     },
     warnOnce(msg, opts) {
       if (warnedMessages.has(msg)) return;
-      viteLogger.hasWarned = true;
-      console.log(msg);
+      logger.hasWarned = true;
+      bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
       warnedMessages.add(msg);
     },
     error(msg, opts) {
-      viteLogger.hasWarned = true;
-      console.log(msg);
+      logger.hasWarned = true;
+      bundlePanel.writeViteLog("error", msgStringify(msg), opts);
     },
-    clearScreen() {},
+    clearScreen() {
+      bundlePanel.clear();
+    },
     hasErrorLogged(error) {
-      return loggedErrors.has(error);
+      return bundlePanel.hasErrorLogged(error);
     },
   };
 
-  return Object.assign(viteLogger, { logger: consoleLogger });
+  return Object.assign(logger, {
+    logger: bundlePanel.logger,
+  });
+};
+
+export type $TscLogger = {
+  write: (s: string) => void;
+  clear: () => void;
+};
+let createTscLogger = (): $TscLogger => {
+  const tscPanel = getTui().getPanel("Tsc");
+  return tscPanel;
 };
 
 if (!useScreen) {
   console.warn(`TUI面板已被禁用，使用日志模式！`);
-} else {
+  createTscLogger = () => {
+    return {
+      write(s: string) {
+        console.log(s);
+      },
+      clear() {},
+    };
+  };
   createViteLogger = (level: LogLevel = "info", options: LoggerOptions = {}) => {
     const warnedMessages = new Set<unknown>();
-
-    const bundlePanel = getTui().getPanel("Bundle");
-    const msgStringify = (msg: unknown) => {
-      if (typeof msg === "string") {
-        return msg;
-      }
-      return util.inspect(msg, { colors: true });
-    };
-    const logger: Logger = {
+    const loggedErrors = new WeakSet<Error | RollupError>();
+    const viteLogger: Logger = {
       hasWarned: false,
       info(msg, opts) {
-        bundlePanel.writeViteLog("info", msgStringify(msg), opts);
+        console.log(msg);
       },
       warn(msg, opts) {
-        logger.hasWarned = true;
-        bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
+        viteLogger.hasWarned = true;
+        console.log(msg);
       },
       warnOnce(msg, opts) {
         if (warnedMessages.has(msg)) return;
-        logger.hasWarned = true;
-        bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
+        viteLogger.hasWarned = true;
+        console.log(msg);
         warnedMessages.add(msg);
       },
       error(msg, opts) {
-        logger.hasWarned = true;
-        bundlePanel.writeViteLog("error", msgStringify(msg), opts);
+        viteLogger.hasWarned = true;
+        console.log(msg);
       },
-      clearScreen() {
-        bundlePanel.clear();
-      },
+      clearScreen() {},
       hasErrorLogged(error) {
-        return bundlePanel.hasErrorLogged(error);
+        return loggedErrors.has(error);
       },
     };
 
-    return Object.assign(logger, {
-      logger: bundlePanel.logger,
-    });
+    return Object.assign(viteLogger, { logger: consoleLogger });
   };
-  createTscLogger = () => {
-    const tscPanel = getTui().getPanel("Tsc");
-    return tscPanel;
-  };
+} else {
+  defineViteWriteLine(() => {
+    const bundlePanel = getTui().getPanel("Bundle");
+    const writeLine = bundlePanel.logger.log.line;
+    defineViteWriteLine(writeLine);
+    return writeLine;
+  });
 }
 export { createTscLogger, createViteLogger };
 
-export function Debug(label: string) {
+function DebugFactory(level: "info" | "warn" | "error" = "info", label: string) {
   const d = D(label);
   let t = Date.now();
 
@@ -119,38 +129,24 @@ export function Debug(label: string) {
       t = now;
 
       args = [util.format(...args)];
+      if (level === "warn") {
+        args[0] = chalk.yellow(args[0]);
+      } else if (level === "error") {
+        args[0] = chalk.red(args[0]);
+      }
       D.formatArgs.call(d, args);
       if (!useScreen) {
         console.log(...args);
       } else {
-        getTui().debug(...(args as any));
+        getTui().debug(...args);
       }
     },
-    { enabled: d.enabled }
+    { enabled: level === "info" ? d.enabled : true }
   );
 }
-export type $Logger = ReturnType<typeof Debug>;
-
-export function Warn(label: string) {
-  const d = D(label);
-  let t = Date.now();
-  return Object.assign(
-    (...args: unknown[]) => {
-      if (!d.enabled) {
-        return;
-      }
-      const now = Date.now();
-      d.diff = now - t;
-      t = now;
-
-      args = [chalk.yellow(util.format(...args))];
-      D.formatArgs.call(d, args);
-      if (!useScreen) {
-        console.log(...args);
-      } else {
-        getTui().debug(...(args as any));
-      }
-    },
-    { enabled: true }
-  );
-}
+export const DevLogger = (label: string) => {
+  return Object.assign(DebugFactory("info", label), {
+    warn: DebugFactory("warn", label),
+    error: DebugFactory("error", label),
+  });
+};

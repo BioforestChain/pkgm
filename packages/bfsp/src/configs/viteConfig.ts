@@ -1,10 +1,10 @@
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { Debug } from "../logger";
+import { DevLogger } from "../logger";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import type { $TsConfig } from "./tsConfig";
-const log = Debug("bfsp:config/vite");
+const debug = DevLogger("bfsp:config/vite");
 // import { $TsConfig } from "./tsConfig";
 // import viteConfigTemplate from "../../assets/vite.config.template.ts?raw";
 
@@ -37,7 +37,7 @@ export const generateViteConfig = async (
     viteInput[output] = path.join(projectDirpath, filepath);
   }
 
-  log("viteInput", viteInput);
+  debug("viteInput", viteInput);
 
   return {
     viteInput,
@@ -72,7 +72,7 @@ export const watchViteConfig = (
     if (isDeepStrictEqual(preViteConfig, viteConfig)) {
       return;
     }
-    log("viteConfig changed!!", viteConfig);
+    debug("viteConfig changed!!", viteConfig);
     follower.push((preViteConfig = viteConfig));
   });
 

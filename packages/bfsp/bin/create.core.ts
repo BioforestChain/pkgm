@@ -7,10 +7,11 @@ import { defaultIgnores } from "../src/configs/commonIgnore";
 import { ts } from "./fmt.core";
 import { writeJsonConfig } from "./util";
 import { doInit } from "./init.core";
+import { consoleLogger } from "../src/consoleLogger";
 
 export const doCreate = async (
   options: { root: string; name: string; license?: string },
-  logger: PKGM.ConsoleLogger = console
+  logger: PKGM.ConsoleLogger = consoleLogger
 ) => {
   const { root, name, license = "MIT" } = options;
   folderIO.tryInit(root);

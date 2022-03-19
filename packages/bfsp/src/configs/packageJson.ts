@@ -3,11 +3,11 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { getBfspVersion, writeJsonConfig } from "../../bin/util";
-import { Debug } from "../logger";
+import { DevLogger } from "../logger";
 import { jsonClone, Loopable, SharedAsyncIterable, SharedFollower, toPosixPath } from "../toolkit";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
-const log = Debug("bfsp:config/package.json");
+const debug = DevLogger("bfsp:config/package.json");
 // const format
 
 let PKGM_VERSION: string;
@@ -189,12 +189,12 @@ export const watchPackageJson = (
     }
     if (write) {
       if (!existsSync(projectDirpath)) {
-        log("unable to write package.json: project maybe removed");
+        debug.error("unable to write package.json: project maybe removed");
         return;
       }
       await writePackageJson(projectDirpath, newPackageJson);
     }
-    log("packageJson changed");
+    debug("packageJson changed");
     follower.push((curPackageJson = newPackageJson));
   });
 

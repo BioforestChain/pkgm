@@ -140,6 +140,9 @@ export const runYarn = (opts: RunYarnOption) => {
             case "info":
               onMessage(json.data);
               break;
+            case "warn":
+              onWarn(json.data);
+              break;
             case "error":
               onError(json.data);
               yarnRunSuccess = false;

@@ -30,12 +30,18 @@ export const createSuperLogger = (options: {
    *    write 模式，那么每次输出后，curLinePrefix 的值就变成了 linePrefix。
    */
   let curLinePrefix: string | undefined;
+  /**
+   * 上一次是否是writeLine模式
+   * 每一次print都会被重置状态成false
+   */
+  let preWriteLine = false;
   let groupPrefix = "";
   const Print = (linePrefix: string, writer: $Writer, lineMode: boolean) => {
     if (linePrefix.length > 0) {
       linePrefix += " ";
     }
     return (format?: any, ...param: any[]) => {
+      preWriteLine = false;
       let out: string = "";
       // 如果前缀改变了，那么强制换行
       if (linePrefix !== curLinePrefix) {
@@ -69,13 +75,24 @@ export const createSuperLogger = (options: {
       });
     };
   };
-  const SuperPrinter = (linePrefix: string, writer: $Writer) => {
-    const print = Print(linePrefix, writer, false);
-    const line = Print(linePrefix, writer, true);
-    const pipeFrom = PipeFrom(writer, print);
-    return Object.assign(line, { write: print, pipeFrom });
+  const WriteLine = (print: PKGM.Print) => {
+    const line: PKGM.Print = (...args) => {
+      if (preWriteLine) {
+        clearLine();
+      }
+      print(...args);
+      preWriteLine = true;
+    };
+    return line;
   };
-  const { prefix, stderrWriter, stdoutWriter } = options;
+  const SuperPrinter = (linePrefix: string, writer: $Writer) => {
+    const write = Print(linePrefix, writer, false);
+    const log = Print(linePrefix, writer, true);
+    const line = WriteLine(write);
+    const pipeFrom = PipeFrom(writer, write);
+    return Object.assign(log, { write, line, pipeFrom });
+  };
+  const { prefix, stderrWriter, stdoutWriter, clearScreen = noop, clearLine = noop } = options;
   const log = SuperPrinter(chalk.cyan(options.logPrefix ?? prefix), stderrWriter);
   const info = SuperPrinter(chalk.blue(options.infoPrefix ?? prefix), stderrWriter);
   const warn = SuperPrinter(chalk.yellow(options.warnPrefix ?? prefix), stdoutWriter);
@@ -97,8 +114,8 @@ export const createSuperLogger = (options: {
     error,
     group,
     groupEnd,
-    clearScreen: options.clearScreen ?? noop,
-    clearLine: options.clearLine ?? noop,
+    clearScreen,
+    clearLine,
   } as PKGM.Logger;
 };
 const noop = () => {};

@@ -1,38 +1,17 @@
 import { runYarn } from "./yarn/runner";
+import { consoleLogger } from "../src/consoleLogger";
 
-export const doInit = async (options: { root: string }, consoleLogger: PKGM.ConsoleLogger = console) => {
+export const doInit = async (options: { root: string }, logger: PKGM.Logger = consoleLogger) => {
   const { root } = options;
 
-  consoleLogger.info("linking dependencies");
-
-  let onMessage: undefined | ((s: string) => void);
-  let onError: undefined | ((s: string) => void);
-  if (consoleLogger.isSuperLogger) {
-    const logger = consoleLogger as PKGM.Logger;
-    onMessage = (chunk) => {
-      const log = chunk.trim();
-      if (log.startsWith("success")) {
-        logger.success(log);
-      } else {
-        logger.info(log);
-      }
-    };
-    onError = (chunk) => {
-      const log = chunk.trim();
-      if (log.startsWith("warning")) {
-        logger.warn(log);
-      } else {
-        logger.error(log);
-      }
-    };
-  }
+  logger.info("linking dependencies");
 
   return runYarn({
     root,
-    onMessage: consoleLogger.info,
-    onError: consoleLogger.error,
-    onSuccess: consoleLogger.success,
-    onWarn: consoleLogger.warn,
+    onMessage: logger.info,
+    onError: logger.error,
+    onSuccess: logger.success,
+    onWarn: logger.warn,
     onFlag: () => {},
   }).afterDone;
 };

@@ -4,14 +4,15 @@ import { getExternalOption } from "@bfchain/pkgm-base/vite-config-helper";
 import fs from "node:fs";
 import path from "node:path";
 import { inspect } from "node:util";
+import { getTui } from "../../src";
 import { BuildService } from "../../src/buildService";
 import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
 import { $TsConfig } from "../../src/configs/tsConfig";
 import type { $ViteConfig } from "../../src/configs/viteConfig";
 import { consoleLogger } from "../../src/consoleLogger";
-import { Debug } from "../../src/logger";
+import { DevLogger } from "../../src/logger";
 import { parseExtensionAndFormat } from "../../src/toolkit";
-const log = Debug("bfsp:config/vite");
+const debug = DevLogger("bfsp:config/vite");
 
 export const ViteConfigFactory = (options: {
   userConfig: Bfsp.UserConfig;
@@ -23,10 +24,9 @@ export const ViteConfigFactory = (options: {
   profiles?: string[];
   outDir?: string;
   outRoot?: string;
-  logger?: PKGM.ConsoleLogger;
 }) => {
   const { userConfig, tsConfig, projectDirpath, viteConfig } = options;
-  const logger = options.logger ?? consoleLogger;
+  const logger = getTui().getPanel("Bundle").logger;
 
   const fe = parseExtensionAndFormat(options.format ?? "esm");
   const format = ALLOW_FORMATS.has(fe.format as any) ? (fe.format as Bfsp.JsFormat) : "esm";
@@ -38,14 +38,14 @@ export const ViteConfigFactory = (options: {
     base: "./",
     cacheDir: "node_modules/.bfsp",
     envPrefix: ["BFSP_", "VITE_"],
-    clearScreen: !log.enabled,
+    clearScreen: !debug.enabled,
     build: {
       target: userConfig.target ?? tsConfig.json.compilerOptions.target,
       outDir: outDir,
       minify: false,
       watch: {
         chokidar: { cwd: projectDirpath },
-        clearScreen: !log.enabled,
+        clearScreen: !debug.enabled,
       },
       rollupOptions: {
         preserveEntrySignatures: "strict",
@@ -144,12 +144,12 @@ export const ViteConfigFactory = (options: {
                 return null;
               }
 
-              log("need emitDecoratorMetadata", source);
+              debug("need emitDecoratorMetadata", source);
               const program = typescript.transpileModule(ts, parsedTsConfig);
               // log(program.outputText);
               return program.outputText;
             } catch (err) {
-              logger.error("TSC ERR IN source: %s", source);
+              logger.error("[Error Source]: %s", source);
               logger.error(err);
             }
             return null;
@@ -158,12 +158,12 @@ export const ViteConfigFactory = (options: {
       })(),
       (() => {
         const profileImports = options.tsConfig.json.compilerOptions.paths;
-        log("profileImports", profileImports);
+        debug("profileImports", profileImports);
         return {
           name: "Profile imports",
           async resolveId(source: string, importer: string, options: any) {
             if (source.startsWith("#")) {
-              log("Profile import", source);
+              debug("Profile import", source);
               const imports = profileImports[source as Bfsp.Profile];
               if (Array.isArray(imports)) {
                 const id = path.resolve(projectDirpath, imports[0]);
@@ -171,7 +171,7 @@ export const ViteConfigFactory = (options: {
                 if (resolution) {
                   this.load(resolution); // preload
                 } else {
-                  log(`unable to resolve:  ${source}`);
+                  debug.error(`unable to resolve:  ${source}`);
                   return source; // can't resolve
                 }
                 return id;

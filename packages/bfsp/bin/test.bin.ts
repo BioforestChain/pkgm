@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { defineCommand } from "../bin";
-import { Debug } from "../src/logger";
+import { DevLogger } from "../src/logger";
 import { doTest } from "./test";
 import inspector from "node:inspector";
 
@@ -11,7 +11,7 @@ export const testCommand = defineCommand(
     args: [{ type: "rest", name: "tests", description: "test names" }],
   } as const,
   async (params, args) => {
-    const log = Debug("bfsp:bin/test");
+    const debug = DevLogger("bfsp:bin/test");
 
     let root = process.cwd();
     const tests = args[0];
@@ -26,7 +26,7 @@ export const testCommand = defineCommand(
       }
     }
     for (const test of tests) {
-      log("run test:", test);
+      debug("run test:", test);
     }
 
     await doTest({

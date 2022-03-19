@@ -1,11 +1,11 @@
 import { isDeepStrictEqual } from "node:util";
 import { runYarn } from "../bin/yarn/runner";
 import { $PackageJson } from "./configs/packageJson";
-import { Debug } from "./logger";
+import { DevLogger } from "./logger";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "./toolkit";
 import { getTui } from "./tui";
 
-const log = Debug("bfsp:deps");
+const debug = DevLogger("bfsp:deps");
 
 export const watchDeps = (
   projectDirpath: string,
@@ -23,7 +23,7 @@ export const watchDeps = (
     }
     curDeps = packageJson.dependencies;
     if (options?.runYarn) {
-      log(`deps changed: ${projectDirpath}`);
+      debug(`deps changed: ${projectDirpath}`);
       depsPanel.updateStatus("loading");
       const yarnTask = runYarn({
         root: projectDirpath,

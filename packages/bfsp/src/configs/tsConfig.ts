@@ -1,10 +1,11 @@
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { existsSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { writeJsonConfig } from "../../bin/util";
 import { BuildService } from "../buildService";
 import { consoleLogger } from "../consoleLogger";
 import { TscIsolatedOutRootPath, TscOutRootPath, TscTypingsOutRootPath } from "../consts";
-import { Debug, Warn } from "../logger";
+import { DevLogger } from "../logger";
 import {
   $PathInfo,
   fileIO,
@@ -21,9 +22,9 @@ import {
   SharedFollower,
   toPosixPath,
 } from "../toolkit";
+import { getTui } from "../tui";
 import type { $BfspUserConfig } from "./bfspUserConfig";
-const log = Debug("bfsp:config/tsconfig");
-const warn = Warn("bfsp:config/tsconfig");
+const debug = DevLogger("bfsp:config/tsconfig");
 
 // export const getFilename = (somepath: string) => {
 //   return somepath.match(/([^\\\/]+)\.[^\\\/]+$/)?.[1] ?? "";
@@ -168,7 +169,7 @@ export class ProfileMap {
   }
   toTsPaths(_profileNameList: string[] = ["default"]) {
     const paths: { [key: Bfsp.Profile]: string[] } = {};
-    log("profiles", _profileNameList);
+    debug("profiles", _profileNameList);
     const profileList = _profileNameList.map((profile) => {
       if (profile.startsWith("#") === false) {
         profile = "#" + profile;
@@ -241,7 +242,9 @@ export class ProfileMap {
       }
 
       if (profilePaths.size === 0) {
-        this.logger.warn(`no match any paths of '${privatePath}' with profiles: ${profileList}`);
+        this.logger.warn(
+          `no match any profile paths of '${chalk.blue(privatePath)}' with config: ${chalk.cyan(profileList.join())}`
+        );
       }
 
       /**
@@ -339,7 +342,7 @@ export const generateTsConfig = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
   buildService: BuildService,
-  options: { outDirRoot?: string; outDirName?: string; logger?: PKGM.ConsoleLogger } = {}
+  options: { outDirRoot?: string; outDirName?: string } = {}
 ) => {
   const allTsFileList = await buildService
     .walkFiles(projectDirpath, {
@@ -356,7 +359,7 @@ export const generateTsConfig = async (
     typeFiles: new ListSet<string>(),
     testFiles: new ListSet<string>(),
     binFiles: new ListSet<string>(),
-    profileMap: new ProfileMap(options.logger),
+    profileMap: new ProfileMap(getTui().getPanel("Tsc").logger),
   };
 
   groupTsFilesByAdd(projectDirpath, bfspUserConfig, allTsFileList, tsFilesLists);
@@ -514,7 +517,7 @@ export const watchTsConfig = (
   let preTsConfigJson = "";
   /// 循环处理监听到的事件
   const looper = Loopable("watch tsconfigs", async (reasons) => {
-    log("reasons:", reasons);
+    debug("reasons:", reasons);
     const bfspUserConfig = await bfspUserConfigStream.getCurrent();
     // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
     if (tsConfig === undefined) {
@@ -537,8 +540,8 @@ export const watchTsConfig = (
         }
       }
       cachedEventList.clear();
-      log("add", addFileList);
-      log("unlink", removeFileList);
+      debug("add", addFileList);
+      debug("unlink", removeFileList);
 
       /// 将变更的文件写入tsconfig中
       if (addFileList.length > 0) {
@@ -585,13 +588,13 @@ export const watchTsConfig = (
 
     if (write) {
       if (!existsSync(projectDirpath)) {
-        log("unable to write tsconfig: project maybe removed");
+        debug("unable to write tsconfig: project maybe removed");
         return;
       }
       await writeTsConfig(projectDirpath, bfspUserConfig, tsConfig);
     }
 
-    log("tsconfig changed!!");
+    debug("tsconfig changed!!");
     follower.push(tsConfig);
   });
   buildService.watcher.watchTs(projectDirpath, async (p, type) => {
@@ -599,7 +602,7 @@ export const watchTsConfig = (
       if (type === "change") {
         return;
       }
-      log(`${type} file`, p);
+      debug(`${type} file`, p);
       cachedEventList.set(p, type);
       looper.loop(`${type} file`, 200);
     }

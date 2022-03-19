@@ -9,10 +9,10 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 //#endregion
 import type { ModuleFormat } from "rollup";
-import { Debug } from "./logger";
+import { DevLogger } from "./logger";
 export * from "./toolkit.require";
 export * from "./toolkit.watcher";
-const log = Debug("toolkit");
+const log = DevLogger("toolkit");
 
 /**
  * 一个通用的基于时间的缓存器

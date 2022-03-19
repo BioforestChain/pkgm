@@ -11,7 +11,7 @@ declare namespace PKGM {
   type Print = (format?: any, ...param: any[]) => void;
   type ClearScreen = () => void;
   type PipeFrom = (stream: import("node:stream").Readable) => void;
-  type SuperPrinter = Print & { write: Print; pipeFrom: PipeFrom };
+  type SuperPrinter = Print & { write: Print; line: Print; pipeFrom: PipeFrom };
   type Logger = {
     isSuperLogger: true;
     log: SuperPrinter;
