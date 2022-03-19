@@ -240,12 +240,12 @@ export async function watchWorkspace(options: { root: string }) {
       {
         expression: [
           "allof",
-          ["name", ["#bfsw.json", "#bfsw.ts", "#bfsw.mts", "#bfsw.mtsx"]],
+          ["name", ["#bfsw.ts"]],
           ["not", ["match", "**/node_modules/**", "wholename"]],
           ["not", ["match", "**/.*/**", "wholename"]],
         ],
         chokidar: [
-          ["#bfsw.json", "#bfsw.ts", "#bfsw.mts", "#bfsw.mtsx"].map((x) => `./**/${x}`),
+          ["#bfsw.ts"].map((x) => `./**/${x}`),
           { cwd: root, ignoreInitial: true, ignored: [/node_modules*/, /\.bfsp*/] },
         ],
       },
@@ -258,12 +258,12 @@ export async function watchWorkspace(options: { root: string }) {
       {
         expression: [
           "allof",
-          ["name", ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"]],
+          ["name", ["#bfsp.ts"]],
           ["not", ["match", "**/node_modules/**", "wholename"]],
           ["not", ["match", "**/.*/**", "wholename"]],
         ],
         chokidar: [
-          ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"].map((x) => `./**/${x}`),
+          ["#bfsp.ts"].map((x) => `./**/${x}`),
           { cwd: root, ignoreInitial: false, ignored: [/node_modules*/, /\.bfsp*/] },
         ],
       },
@@ -276,13 +276,18 @@ export async function watchWorkspace(options: { root: string }) {
       {
         expression: [
           "allof",
-          ["match", "*.ts", "wholename"],
-          ["match", "*.tsx", "wholename"],
-          ["match", "*.cts", "wholename"],
-          ["match", "*.mts", "wholename"],
-          ["match", "*.ctsx", "wholename"],
-          ["match", "*.mtsx", "wholename"],
+          [
+            "anyof",
+            ["match", "**/*.ts", "wholename"],
+            ["match", "**/*.tsx", "wholename"],
+            ["match", "**/*.cts", "wholename"],
+            ["match", "**/*.mts", "wholename"],
+            ["match", "**/*.ctsx", "wholename"],
+            ["match", "**/*.mtsx", "wholename"],
+          ],
           ["not", ["match", "**/node_modules/**", "wholename"]],
+          ["not", ["match", "build/**", "wholename"]],
+          ["not", ["match", "dist/**", "wholename"]],
           ["not", ["match", "**/.*/**", "wholename"]],
         ],
         chokidar: [

@@ -7,13 +7,18 @@ export function watchSingle() {
       {
         expression: [
           "allof",
-          ["match", "*.ts", "wholename"],
-          ["match", "*.tsx", "wholename"],
-          ["match", "*.cts", "wholename"],
-          ["match", "*.mts", "wholename"],
-          ["match", "*.ctsx", "wholename"],
-          ["match", "*.mtsx", "wholename"],
+          [
+            "anyof",
+            ["match", "**/*.ts", "wholename"],
+            ["match", "**/*.tsx", "wholename"],
+            ["match", "**/*.cts", "wholename"],
+            ["match", "**/*.mts", "wholename"],
+            ["match", "**/*.ctsx", "wholename"],
+            ["match", "**/*.mtsx", "wholename"],
+          ],
           ["not", ["match", "**/node_modules/**", "wholename"]],
+          ["not", ["match", "build/**", "wholename"]],
+          ["not", ["match", "dist/**", "wholename"]],
           ["not", ["match", "**/.*/**", "wholename"]],
         ],
         chokidar: [
@@ -35,12 +40,12 @@ export function watchSingle() {
       {
         expression: [
           "allof",
-          ["name", ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"]],
+          ["name", ["#bfsp.ts"]],
           ["not", ["match", "**/node_modules/**", "wholename"]],
           ["not", ["match", "**/.*/**", "wholename"]],
         ],
         chokidar: [
-          ["#bfsp.json", "#bfsp.ts", "#bfsp.mts", "#bfsp.mtsx"],
+          ["#bfsp.ts"],
           {
             cwd: root,
             ignoreInitial: false,

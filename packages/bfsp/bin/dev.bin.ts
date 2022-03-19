@@ -44,7 +44,7 @@ export const devCommand = defineCommand(
 
     const bfspUserConfig = await getBfspUserConfig(root);
     const projectConfig = { projectDirpath: root, bfspUserConfig };
-    const subConfigs = await writeBfspProjectConfig(projectConfig, buildService, tscLogger);
+    const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
     const subStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
     const depStream = watchDeps(root, subStreams.packageJsonStream, { runYarn: true });
 
