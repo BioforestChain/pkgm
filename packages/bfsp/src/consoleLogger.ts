@@ -4,7 +4,7 @@ export const consoleLogger = createSuperLogger({
   prefix: "",
   infoPrefix: "i",
   warnPrefix: "⚠",
-  errorPrefix: "𐄂",
+  errorPrefix: "X",
   successPrefix: "✓",
   stdoutWriter: process.stdout.write.bind(process.stdout),
   stderrWriter: process.stderr.write.bind(process.stderr),

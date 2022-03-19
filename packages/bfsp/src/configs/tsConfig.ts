@@ -242,8 +242,8 @@ export class ProfileMap {
       }
 
       if (profilePaths.size === 0) {
-        this.logger.warn(
-          `no match any profile paths of '${chalk.blue(privatePath)}' with config: ${chalk.cyan(profileList.join())}`
+        this.logger.error(
+          `no match any profile paths of '${chalk.blue(privatePath)}' with config: ${chalk.red(profileList.join())}`
         );
       }
 

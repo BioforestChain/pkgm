@@ -103,7 +103,7 @@ export abstract class Panel<N extends string, K extends number = number> impleme
         prefix: "",
         infoPrefix: "i",
         warnPrefix: "⚠",
-        errorPrefix: "𐄂",
+        errorPrefix: "X",
         successPrefix: "✓",
         stdoutWriter: writer,
         stderrWriter: writer,
