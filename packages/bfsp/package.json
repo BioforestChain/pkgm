@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm-bfsp",
-  "version": "2.5.18",
+  "version": "2.5.19",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",
@@ -52,7 +52,7 @@
   "author": "bnqkl",
   "license": "MIT",
   "dependencies": {
-    "@bfchain/pkgm-base": "^2.5.18",
+    "@bfchain/pkgm-base": "^2.5.19",
     "chalk": "^5.0.0",
     "yarn": "^1.22.17"
   },
