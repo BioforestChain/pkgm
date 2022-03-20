@@ -1,11 +1,12 @@
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import path from "node:path";
 import { defineCommand } from "../bin";
-import { getTui, watchBfspProjectConfig, watchDeps, writeBfspProjectConfig } from "../src";
+import { getTui, watchBfspProjectConfig, doWatchDeps, writeBfspProjectConfig } from "../src";
 import { getBfspBuildService } from "../src/buildService";
 import { ALLOW_FORMATS, getBfspUserConfig } from "../src/configs/bfspUserConfig";
 import { createTscLogger, DevLogger } from "../src/logger";
 import { watchSingle } from "../src/watcher";
-import { doDev } from "./dev.core";
+import { doDev as doDevBundle } from "./dev.core";
 import { helpOptions } from "./help.core";
 import { runTsc } from "./tsc/runner";
 
@@ -27,13 +28,19 @@ export const devCommand = defineCommand(
       format = undefined;
     }
 
+    const bundlePanel = getTui().getPanel("Dev");
+
     const profiles = params?.profiles?.split(",") || [];
     if (profiles.length === 0) {
       profiles.push("default");
+    } else if (profiles.includes("default") === false) {
+      bundlePanel.logger.warn(
+        `your dev profiles is ${chalk.cyan(profiles.join(", "))}. no includes '${chalk.cyan("default")}'.`
+      );
     }
 
     let root = process.cwd();
-    let maybeRoot = args[0];
+    const maybeRoot = args[0];
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
@@ -45,8 +52,9 @@ export const devCommand = defineCommand(
     const bfspUserConfig = await getBfspUserConfig(root);
     const projectConfig = { projectDirpath: root, bfspUserConfig };
     const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
-    const subStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
-    const depStream = watchDeps(root, subStreams.packageJsonStream, { runYarn: true });
+    const configStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
+    // const { stream: depStream,onSt }
+    const wathDeps = doWatchDeps(root, configStreams.packageJsonStream, { runInstall: true });
 
     /* const tscStoppable = */
     runTsc({
@@ -56,29 +64,22 @@ export const devCommand = defineCommand(
       onClear: () => tscLogger.clear(),
     });
 
-    const task = await doDev({
+    const devBundle = await doDevBundle({
       root,
       format: format as Bfsp.Format,
       buildService,
-      subStreams,
+      subStreams: configStreams,
     });
-    const { abortable } = task;
-    const bundlePanel = getTui().getPanel("Bundle");
-    task.onSuccess(() => {
-      bundlePanel.updateStatus("success");
-    });
-    task.onError(() => {
-      bundlePanel.updateStatus("error");
-    });
-    task.onStart(() => {
-      bundlePanel.updateStatus("loading");
-    });
+    const { abortable } = devBundle;
     /// 开始监听并触发编译
-    subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
-    subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
-    subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
-    depStream.onNext(() => abortable.restart("deps installed "));
-    if (subStreams.viteConfigStream.hasCurrent()) {
+    configStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
+    configStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
+    configStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
+    wathDeps.stream.onNext(() => abortable.restart("deps installed"));
+    wathDeps.onStartInstall = () => {
+      abortable.close();
+    };
+    if (configStreams.viteConfigStream.hasCurrent()) {
       abortable.start();
     }
   }

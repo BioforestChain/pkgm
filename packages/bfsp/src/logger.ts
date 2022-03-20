@@ -4,7 +4,8 @@ import { defineViteStdoutApis, Logger, LoggerOptions, LogLevel } from "@bfchain/
 import util from "node:util";
 import type { RollupError } from "rollup";
 import { consoleLogger } from "./consoleLogger";
-import { getTui, PanelStatus } from "./tui/index";
+import { getTui } from "./tui/index";
+import { BundlePanel } from "./tui/internalPanels";
 
 export const LogLevels: Record<LogLevel, number> = {
   silent: 0,
@@ -14,46 +15,51 @@ export const LogLevels: Record<LogLevel, number> = {
 };
 const useScreen = true;
 
-let createViteLogger = (level: LogLevel = "info", options: LoggerOptions = {}) => {
-  const warnedMessages = new Set<unknown>();
+let _viteLogger: Logger | undefined;
+let createViteLogger = (bundlePanel: BundlePanel, level: LogLevel = "info", options: LoggerOptions = {}) => {
+  if (_viteLogger === undefined) {
+    const warnedMessages = new Set<unknown>();
 
-  const bundlePanel = getTui().getPanel("Bundle");
-  const msgStringify = (msg: unknown) => {
-    if (typeof msg === "string") {
-      return msg;
-    }
-    return util.inspect(msg, { colors: true });
-  };
-  const logger: Logger = {
-    hasWarned: false,
-    info(msg, opts) {
-      bundlePanel.writeViteLog("info", msgStringify(msg), opts);
-    },
-    warn(msg, opts) {
-      logger.hasWarned = true;
-      bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
-    },
-    warnOnce(msg, opts) {
-      if (warnedMessages.has(msg)) return;
-      logger.hasWarned = true;
-      bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
-      warnedMessages.add(msg);
-    },
-    error(msg, opts) {
-      logger.hasWarned = true;
-      bundlePanel.writeViteLog("error", msgStringify(msg), opts);
-    },
-    clearScreen() {
-      bundlePanel.clear();
-    },
-    hasErrorLogged(error) {
-      return bundlePanel.hasErrorLogged(error);
-    },
-  };
+    const msgStringify = (msg: unknown) => {
+      if (typeof msg === "string") {
+        return msg;
+      }
+      return util.inspect(msg, { colors: true });
+    };
+    const logger: Logger = {
+      hasWarned: false,
+      info(msg, opts) {
+        bundlePanel.writeViteLog("info", msgStringify(msg), opts);
+      },
+      warn(msg, opts) {
+        logger.hasWarned = true;
+        bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
+      },
+      warnOnce(msg, opts) {
+        if (warnedMessages.has(msg)) return;
+        logger.hasWarned = true;
+        bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
+        warnedMessages.add(msg);
+      },
+      error(msg, opts) {
+        logger.hasWarned = true;
+        bundlePanel.writeViteLog("error", msgStringify(msg), opts);
+      },
+      clearScreen() {
+        bundlePanel.clearViteLog();
+      },
+      hasErrorLogged(error) {
+        return bundlePanel.hasErrorLogged(error);
+      },
+    };
 
-  return Object.assign(logger, {
-    logger: bundlePanel.logger,
-  });
+    _viteLogger = logger;
+
+    const writeLine = bundlePanel.logger.log.line;
+    const clearLine = bundlePanel.logger.clearLine;
+    defineViteStdoutApis({ writeLine, clearLine });
+  }
+  return _viteLogger;
 };
 
 export type $TscLogger = {
@@ -75,7 +81,7 @@ if (!useScreen) {
       clear() {},
     };
   };
-  createViteLogger = (level: LogLevel = "info", options: LoggerOptions = {}) => {
+  createViteLogger = () => {
     const warnedMessages = new Set<unknown>();
     const loggedErrors = new WeakSet<Error | RollupError>();
     const viteLogger: Logger = {
@@ -105,25 +111,6 @@ if (!useScreen) {
 
     return Object.assign(viteLogger, { logger: consoleLogger });
   };
-} else {
-  const getViteStdoutApis = () => {
-    const bundlePanel = getTui().getPanel("Bundle");
-    const writeLine = bundlePanel.logger.log.line;
-    const clearLine = bundlePanel.logger.clearLine;
-    return { writeLine, clearLine };
-  };
-  defineViteStdoutApis({
-    writeLine: (log) => {
-      const apis = getViteStdoutApis();
-      defineViteStdoutApis(apis);
-      return apis.writeLine(log);
-    },
-    clearLine: () => {
-      const apis = getViteStdoutApis();
-      defineViteStdoutApis(apis);
-      return apis.clearLine;
-    },
-  });
 }
 export { createTscLogger, createViteLogger };
 

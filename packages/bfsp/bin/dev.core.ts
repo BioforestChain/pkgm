@@ -9,6 +9,7 @@ import { Closeable } from "../src/toolkit";
 import type { RollupWatcher } from "./shim";
 import { buildBfsp } from "./shim";
 import { ViteConfigFactory } from "./vite/configFactory";
+import { getTui } from "../src/tui";
 
 type DevEventCallback = (name: string) => BFChainUtil.PromiseMaybe<void>;
 
@@ -19,6 +20,7 @@ export const doDev = async (options: {
   subStreams: ReturnType<typeof watchBfspProjectConfig>;
 }) => {
   const debug = DevLogger("bfsp:bin/dev");
+  const devPanel = getTui().getPanel("Dev");
 
   // const cwd = process.cwd();
   // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
@@ -56,6 +58,7 @@ export const doDev = async (options: {
         viteConfig,
         tsConfig,
         format: format ?? userConfig.userConfig.formats?.[0],
+        logger: devPanel.logger,
       };
       if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
         return;
@@ -65,7 +68,7 @@ export const doDev = async (options: {
 
       debug("running bfsp build!");
       //#region vite
-      const viteLogger = createViteLogger("info", {});
+      const viteLogger = createViteLogger(devPanel);
       const dev = (await buildBfsp({
         ...viteBuildConfig,
         build: {
@@ -97,6 +100,7 @@ export const doDev = async (options: {
         const name = userConfig.userConfig.name;
         debug(`package ${name}: ${event.code}`);
         if (event.code === "START") {
+          devPanel.updateStatus("loading");
           startCb && (await startCb(name));
           return;
         }
@@ -105,10 +109,12 @@ export const doDev = async (options: {
           // close as https://www.rollupjs.org/guide/en/#rollupwatch suggests
           event.result.close();
           viteLogger.info(`${chalk.green("√")} package ${name} build complete`);
+          devPanel.updateStatus("success");
           successCb && (await successCb(name));
           return;
         }
         if (event.code === "ERROR") {
+          devPanel.updateStatus("error");
           errorCb && (await errorCb(name));
           return;
         }

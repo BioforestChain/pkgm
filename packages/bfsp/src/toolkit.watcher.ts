@@ -1,23 +1,24 @@
 import { FbWatchmanClient, SubscribeOptions } from "@bfchain/pkgm-base/lib/fb-watchman";
 import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
+import { consoleLogger } from "./consoleLogger";
 import { createHash } from "node:crypto";
-import { getTui } from "./tui";
 
 const wm = new FbWatchmanClient();
 
 /// 目录监听器
 const watcherCache = EasyMap.from({
-  async creater(root: string) {
+  transformKey: (args: { root: string; logger: PKGM.ConsoleLogger }) => {
+    return args.root;
+  },
+  creater: async (args, root) => {
     await wm.afterReady();
     const projectResp = await wm.commandAsync(["watch-project", root]);
-
-    const logger = console; //  getTui().getPanel("Bundle").logger;
 
     // It is considered to be best practice to show any 'warning' or
     // 'error' information to the user, as it may suggest steps
     // for remediation
     if (projectResp.warning) {
-      logger.warn(projectResp.warning);
+      args.logger.warn(projectResp.warning);
     }
 
     const projectBaseName = `[${createHash("md5").update(root).digest("base64")}]`;
@@ -51,7 +52,8 @@ const watcherCache = EasyMap.from({
   },
 });
 
-export const getWatcher = (root: string) => watcherCache.forceGet(root);
+export const getWatcher = (root: string, logger: PKGM.ConsoleLogger = consoleLogger) =>
+  watcherCache.forceGet({ root, logger });
 
 (async () => {
   if (process.argv.includes("--test-watchman")) {

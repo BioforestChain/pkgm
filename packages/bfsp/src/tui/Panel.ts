@@ -8,7 +8,12 @@ export interface PanelContext {
   debug(log: string): void;
 }
 export abstract class Panel<N extends string, K extends number = number> implements BFSP.TUI.Panel<N, K> {
-  constructor(protected _ctx: PanelContext, readonly key: K, readonly name: N) {
+  constructor(
+    protected _ctx: PanelContext,
+    /**数字快捷键 */
+    public orderKey: K,
+    readonly name: N
+  ) {
     this.deactivate();
     this.updateStatus(this._status);
   }
@@ -64,9 +69,9 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     c += " ";
     // content
     if (this._isActive) {
-      c += chalk.bgWhiteBright(chalk.bold(chalk.cyan.underline(`[${this.key}]`) + " " + chalk.black(this.name)));
+      c += chalk.bgWhiteBright(chalk.bold(chalk.cyan.underline(`[${this.orderKey}]`) + " " + chalk.black(this.name)));
     } else {
-      c += chalk.cyan.underline(`[${this.key}]`) + " " + this.name;
+      c += chalk.cyan.underline(`[${this.orderKey}]`) + " " + this.name;
     }
     return c;
   }
@@ -92,7 +97,10 @@ export abstract class Panel<N extends string, K extends number = number> impleme
   protected $getLoggerWriter() {
     return (s: string) => this.$elLogWrite(s);
   }
-  protected $getLoggerClear() {
+  protected $getLoggerClearScreen() {
+    return () => {};
+  }
+  protected $getLoggerClearLine() {
     return () => {};
   }
   private _logger?: PKGM.Logger;
@@ -107,7 +115,8 @@ export abstract class Panel<N extends string, K extends number = number> impleme
         successPrefix: "✓",
         stdoutWriter: writer,
         stderrWriter: writer,
-        clearScreen: this.$getLoggerClear(),
+        clearScreen: this.$getLoggerClearScreen(),
+        clearLine: this.$getLoggerClearLine(),
       });
     }
     return this._logger;

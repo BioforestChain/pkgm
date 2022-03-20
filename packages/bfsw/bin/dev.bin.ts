@@ -1,4 +1,4 @@
-import { ALLOW_FORMATS, Debug, Warn } from "@bfchain/pkgm-bfsp";
+import { ALLOW_FORMATS, DevLogger } from "@bfchain/pkgm-bfsp";
 import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
 import path from "node:path";
 import { workspaceInit } from "./workspace";
@@ -36,11 +36,10 @@ export const devCommand = defineCommand(
     description: "enable bfsw project developmer mode, monitor code modifications in real-time.",
   } as const,
   (params, args) => {
-    const warn = Warn("bfsp:bin/dev");
-    const log = Debug("bfsp:bin/dev");
+    const debug = DevLogger("bfsp:bin/dev");
     let { format } = params;
     if (format !== undefined && ALLOW_FORMATS.has(format as any) === false) {
-      warn(`invalid format: '${format}'`);
+      debug.warn(`invalid format: '${format}'`);
       format = undefined;
     }
 

@@ -34,9 +34,6 @@
   "files": [
     "package.json",
     "assets/package.template.json",
-    "script/fixNodeModules.ts",
-    "script/installWatchman.ts",
-    "postinstall.ts",
     "bin/tsc/worker.ts",
     "bin/tsc/runner.ts",
     "bin/terser/worker.ts",
@@ -87,6 +84,7 @@
     "src/tui/Panel.ts",
     "src/tui/StatusBar.ts",
     "src/tui/const.ts",
+    "src/tui/Tui.ts",
     "src/tui/index.ts",
     "src/watcher.ts",
     "src/buildService.ts",
@@ -98,7 +96,7 @@
     "tests/build.test.ts",
     "tests/util.test.ts",
     "test.ts",
-    "bin.ts"
+    "bin.ts",
   ],
   "references": [
     // {

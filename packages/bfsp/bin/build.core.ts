@@ -3,7 +3,6 @@ import { build as buildBfsp } from "@bfchain/pkgm-base/lib/vite";
 import { existsSync } from "node:fs";
 import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { setTimeout } from "node:timers/promises";
 import { inspect } from "node:util";
 import { $BfspUserConfig, getBfspUserConfig, parseExports, parseFormats } from "../src";
 import { writeBfspProjectConfig } from "../src/bfspConfig";
@@ -13,7 +12,7 @@ import { generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import * as consts from "../src/consts";
 import { createTscLogger, createViteLogger, DevLogger } from "../src/logger";
-import { fileIO, folderIO, toPosixPath, walkFiles } from "../src/toolkit";
+import { folderIO, toPosixPath, walkFiles } from "../src/toolkit";
 import { getTui, PanelStatus } from "../src/tui/index";
 import { runTerser } from "./terser/runner";
 import { runTsc } from "./tsc/runner";
@@ -104,9 +103,6 @@ const rePathProfileImports = async (tsConfigPaths: { [path: string]: string[] },
   );
 };
 
-type StringLogger = (msg: string) => void;
-type SimpleLogger = (msg: unknown) => void;
-
 /**
  * 执行编译
  * 流程如下：
@@ -124,8 +120,9 @@ const buildSingle = async (options: {
   buildLogger: BuildLogger;
   buildService: BuildService;
 }) => {
+  const buildPanel = getTui().getPanel("Build");
   const tscLogger = createTscLogger();
-  const viteLogger = createViteLogger();
+  const viteLogger = createViteLogger(buildPanel);
   const {
     //
     root,
@@ -228,6 +225,7 @@ const buildSingle = async (options: {
     viteConfig: viteConfig1,
     tsConfig: tsConfig1,
     outRoot: buildOutDir,
+    logger: buildPanel.logger,
   });
   const distDir = jsBundleConfig.build!.outDir!;
 
@@ -301,7 +299,7 @@ const msgStringify = (msg: unknown) => {
 class BuildLogger {
   constructor(
     public prompts: string[] = [],
-    private readonly bundlePanel = getTui().getPanel("Bundle"),
+    private readonly bundlePanel = getTui().getPanel("Build"),
     private readonly statusBar = getTui().status
   ) {}
 

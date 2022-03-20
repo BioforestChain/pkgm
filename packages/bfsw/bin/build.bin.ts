@@ -1,4 +1,4 @@
-import { Debug, Warn } from "@bfchain/pkgm-bfsp";
+import { DevLogger } from "@bfchain/pkgm-bfsp";
 import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
 import path from "node:path";
 import { workspaceInit } from "./workspace";
@@ -14,8 +14,7 @@ export const buildCommand = defineCommand(
     description: "bundle multiple profiles code.",
   } as const,
   (params, args) => {
-    const warn = Warn("bfsp:bin/build");
-    const log = Debug("bfsp:bin/build");
+    const debug = DevLogger("bfsp:bin/build");
 
     const profiles = params?.profiles?.split(",") || [];
     if (profiles.length === 0) {

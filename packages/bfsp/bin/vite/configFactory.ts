@@ -24,9 +24,10 @@ export const ViteConfigFactory = (options: {
   profiles?: string[];
   outDir?: string;
   outRoot?: string;
+  logger: PKGM.Logger;
 }) => {
   const { userConfig, tsConfig, projectDirpath, viteConfig } = options;
-  const logger = getTui().getPanel("Bundle").logger;
+  const logger = options.logger;
 
   const fe = parseExtensionAndFormat(options.format ?? "esm");
   const format = ALLOW_FORMATS.has(fe.format as any) ? (fe.format as Bfsp.JsFormat) : "esm";

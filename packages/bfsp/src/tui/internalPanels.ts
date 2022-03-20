@@ -27,11 +27,11 @@ export class TscPanel extends Panel<"Tsc"> {
       this._loggerContent += s;
     };
   }
-  protected override $getLoggerClear() {
+  protected override $getLoggerClearScreen() {
     return () => (this._loggerContent = "");
   }
 }
-export class BundlePanel extends Panel<"Bundle"> {
+export class BundlePanel<N extends string = string> extends Panel<N> {
   private _loggedErrors = new WeakSet<Error | RollupError>();
   private _lastType: LogType | undefined;
   private _lastMsg: string | undefined;
@@ -80,7 +80,7 @@ export class BundlePanel extends Panel<"Bundle"> {
 
       if (type === this._lastType && text === this._lastMsg) {
         this._sameCount++;
-        this.clear();
+        // this.clear();
         this._boxContent =
           this._boxContent.slice(0, -this._lastContent.length) +
           (this._lastContent = format() + ` ${chalk.yellow(`(x${this._sameCount + 1})`)}\n`);
@@ -89,9 +89,9 @@ export class BundlePanel extends Panel<"Bundle"> {
         this._sameCount = 0;
         this._lastMsg = text;
         this._lastType = type;
-        if (options.clear) {
-          this.clear();
-        }
+        // if (options.clear) {
+        //   this.clear();
+        // }
         this._boxContent = this._boxContent + (this._lastContent = format() + `\n`);
         this.elLog.setContent(this._boxContent);
       }
@@ -100,7 +100,37 @@ export class BundlePanel extends Panel<"Bundle"> {
       }
     }
   }
+  clearViteLog() {
+    this._boxContent = "";
+    this._lastContent = "";
+    this._lastMsg = undefined;
+    this._lastType = undefined;
+    this._sameCount = 0;
+    this.elLog.setContent(this._boxContent);
+  }
+  protected override $elLogWrite(s: string): void {
+    this.writeViteLog("info", s);
+  }
+  protected override $getLoggerClearLine() {
+    return () => {
+      debugger;
+      this._boxContent = this._boxContent.slice(0, -this._lastContent.length);
+      this._lastContent = "";
+      this._lastMsg = undefined;
+      this._lastType = undefined;
+      this._sameCount = 0;
+      this.elLog.setContent(this._boxContent);
+    };
+  }
+  protected override $getLoggerClearScreen() {
+    return () => {
+      this.clearViteLog();
+    };
+  }
 }
+export class DevPanel extends BundlePanel<"Dev"> {}
+export class BuildPanel extends BundlePanel<"Build"> {}
+export class WorkspacesPanel extends BundlePanel<"Workspaces"> {}
 export class DepsPanel extends Panel<"Deps"> {
   write(text: string) {
     this.elLog.setContent(this.elLog.getContent() + text);

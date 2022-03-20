@@ -59,7 +59,6 @@
   "peerDependencies": {
     "tslib": "^2.3.1"
   },
-  "@bfchain/pkgm-base": "^2.5.17",
   "devDependencies": {
     "@bfchain/pkgm-base": "link:../base",
     "vite": "^2.8.6"

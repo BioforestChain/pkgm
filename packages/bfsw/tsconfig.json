@@ -29,7 +29,6 @@
   },
   "files": [
     "package.json",
-    "postinstall.ts",
     "bin/bfsw.cmd.ts",
     "bin/bfsw.env.ts",
     "bin/build.bin.ts",
@@ -41,7 +40,6 @@
     "bin/create.core.ts",
     "bin/version.bin.ts",
     "bin/help.bin.ts",
-    "bin/help.core.ts",
     "bin/workspace.ts",
     "src/buildService.ts",
     "src/index.ts",

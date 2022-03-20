@@ -10,7 +10,7 @@ import { doInit } from "./init.core";
 
 export const doCreate = async (
   options: { root: string; name: string; license?: string },
-  logger: PKGM.ConsoleLogger = console
+  logger: PKGM.ConsoleLogger
 ) => {
   const { root, name, license = "MIT" } = options;
 

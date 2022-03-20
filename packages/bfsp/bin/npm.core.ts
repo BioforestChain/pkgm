@@ -6,7 +6,7 @@ import { createTscLogger } from "../src/logger";
 import { watchSingle } from "../src/watcher";
 import { doBuild, installBuildDeps, runBuildTsc, writeBuildConfigs } from "./build.core";
 export const doNpm = async (options: { root: string }) => {
-  const b = getTui().getPanel("Bundle");
+  const b = getTui().getPanel("Build");
   const root = options.root;
   const buildService = getBfspBuildService(watchSingle());
   const cfgs = await writeBuildConfigs({ root, buildService });

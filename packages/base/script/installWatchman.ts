@@ -4,7 +4,7 @@ function quiet(promise: any) {
   promise._quiet = true;
   return promise;
 }
-export const installWatchman = async (logger: PKGM.ConsoleLogger = console) => {
+export const installWatchman = async (logger = console) => {
   const hasCommand =
     os.platform() === "win32"
       ? async (cmd: string) => {

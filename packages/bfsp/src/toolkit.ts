@@ -552,7 +552,7 @@ export const Closeable = <T1 = unknown, T2 = unknown>(
               state = "closed";
             }
           }
-        } else {
+        } else if (cmd === "close") {
           if (state === "opened") {
             state = "closing";
             try {
@@ -570,6 +570,8 @@ export const Closeable = <T1 = unknown, T2 = unknown>(
             aborter = undefined;
             state = "closed";
           }
+        } else {
+          throw new Error(`unknonw cmd: ${cmd}`);
         }
       } while (true);
     }

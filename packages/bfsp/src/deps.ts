@@ -6,32 +6,45 @@ import { Loopable, SharedAsyncIterable, SharedFollower } from "./toolkit";
 import { getTui } from "./tui";
 
 const debug = DevLogger("bfsp:deps");
+type DepsEventCallback = () => unknown;
 
-export const watchDeps = (
+export const doWatchDeps = (
   projectDirpath: string,
   packageJsonStream: SharedAsyncIterable<$PackageJson>,
-  options?: { runYarn: boolean }
+  options?: { runInstall: boolean }
 ) => {
   const depsPanel = getTui().getPanel("Deps");
+  let startInstallCb: DepsEventCallback | undefined;
   let curDeps = {};
   const follower = new SharedFollower<boolean>();
   let stoppable: { stop: () => void } | undefined;
-  const looper = Loopable("watch deps", async () => {
+  const loopable = Loopable("watch deps", async () => {
     const packageJson = await packageJsonStream.getCurrent();
     if (isDeepStrictEqual(packageJson.dependencies, curDeps)) {
       return;
     }
     curDeps = packageJson.dependencies;
-    if (options?.runYarn) {
+    if (options?.runInstall) {
+      startInstallCb && (await startInstallCb());
       debug(`deps changed: ${projectDirpath}`);
       depsPanel.updateStatus("loading");
+      const logger = depsPanel.logger;
       const yarnTask = runYarn({
         root: projectDirpath,
         onMessage: (s) => {
-          depsPanel.log(s);
+          logger.log(s);
         },
         onFlag: (s, loading) => {
-          depsPanel.line("...." + s);
+          logger.log.line("...." + s);
+        },
+        onWarn: (s) => {
+          logger.warn(s);
+        },
+        onSuccess: (s) => {
+          logger.success(s);
+        },
+        onError: (s) => {
+          logger.error(s);
         },
       });
       stoppable = yarnTask;
@@ -49,9 +62,18 @@ export const watchDeps = (
       stoppable.stop();
       stoppable = undefined;
     }
-    looper.loop();
+    loopable.loop();
   });
   //#endregion
 
-  return new SharedAsyncIterable<boolean>(follower);
+  return {
+    loopable,
+    stream: new SharedAsyncIterable<boolean>(follower),
+    get onStartInstall() {
+      return startInstallCb;
+    },
+    set onStartInstall(cb: typeof startInstallCb) {
+      startInstallCb = cb;
+    },
+  };
 };

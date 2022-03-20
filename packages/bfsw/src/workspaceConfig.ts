@@ -1,5 +1,5 @@
 import { build, Loader, Plugin } from "@bfchain/pkgm-base/lib/esbuild";
-import { createTsconfigForEsbuild, Debug, fileIO, folderIO, toPosixPath, _readFromMjs } from "@bfchain/pkgm-bfsp";
+import { createTsconfigForEsbuild, DevLogger, fileIO, folderIO, toPosixPath, _readFromMjs } from "@bfchain/pkgm-bfsp";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import path, { resolve } from "node:path";
@@ -18,7 +18,7 @@ export const readWorkspaceConfig = async (
     refresh?: boolean;
   }
 ) => {
-  const log = Debug("bfsp:config/#bfsp");
+  const debug = DevLogger("bfsp:config/#bfsp");
   const externalMarker: Plugin = {
     name: "#bfsw resolver",
     setup(build) {
@@ -119,7 +119,7 @@ export const readWorkspaceConfig = async (
       }
       const cache_filepath = resolve(bfswDir, cache_filename);
       try {
-        log("complie #bfsw");
+        debug("complie #bfsw");
         await build({
           entryPoints: [filename],
           absWorkingDir: dirname,

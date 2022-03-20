@@ -1,8 +1,8 @@
 import {
   BuildService,
-  consts,
+  BuildOutRootPath,
   createTscLogger,
-  Debug,
+  DevLogger,
   doBuild,
   doDev,
   getBfspUserConfig,
@@ -13,7 +13,7 @@ import {
   runYarn,
   Tasks,
   watchBfspProjectConfig,
-  watchDeps,
+  doWatchDeps,
   writeBfspProjectConfig,
   writeBuildConfigs,
   writeJsonConfig,
@@ -36,7 +36,7 @@ import {
   watchWorkspace,
 } from "../src/watcher";
 
-const log = Debug("workspace");
+const debug = DevLogger("bfsw:workspace");
 
 let root = "";
 let appWatcher: ReturnType<typeof watchWorkspace>;
@@ -220,7 +220,7 @@ class DepInstaller {
             await cb();
           });
           this._map.forEach(async (cb, name) => {
-            log(`dep done: ${name}`);
+            debug(`dep done: ${name}`);
             await cb();
           });
         }
@@ -264,7 +264,7 @@ async function createAllSymlink() {
   };
   for (const s of states.states()) {
     // @TODO: 从@bfchain/pkgm-bfsp导出构建outDir的函数
-    const outDir = path.join(root, s.path, consts.BuildOutRootPath);
+    const outDir = path.join(root, s.path, BuildOutRootPath);
 
     if (s.userConfig.build) {
       for (const buildConfig of s.userConfig.build) {
@@ -286,20 +286,20 @@ async function runDevTask(options: { root: string }) {
   const bfspUserConfig = await getBfspUserConfig(p);
   const projectConfig = { projectDirpath: p, bfspUserConfig };
   const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
-  const subStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
-  const depStream = watchDeps(p, subStreams.packageJsonStream, { runYarn: false });
+  const configStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
+  const watchDeps = doWatchDeps(p, configStreams.packageJsonStream, { runInstall: false });
 
   const task = await doDev({
     root: p,
     buildService,
-    subStreams,
+    subStreams: configStreams,
   });
 
   /// 开始监听并触发编译
-  subStreams.userConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
-  subStreams.viteConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
-  subStreams.tsConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
-  depStream.onNext(async () => {
+  configStreams.userConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
+  configStreams.viteConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
+  configStreams.tsConfigStream.onNext(() => pendingTasks.add(bfspUserConfig.userConfig.name));
+  watchDeps.stream.onNext(async () => {
     depInstaller.add({
       name: bfspUserConfig.userConfig.name,
       onDone: async () => {
@@ -307,7 +307,7 @@ async function runDevTask(options: { root: string }) {
       },
     });
   });
-  if (subStreams.viteConfigStream.hasCurrent()) {
+  if (configStreams.viteConfigStream.hasCurrent()) {
     pendingTasks.add(bfspUserConfig.userConfig.name);
   }
   return task;
@@ -353,7 +353,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
     const watcherLimit = Math.max(1, Math.min(options.watcherLimit ?? 1, os.cpus().length - 1));
     const runningDevTasks = new RunningDevTasks();
 
-    const bundlePanel = getTui().getPanel("Bundle");
+    const bundlePanel = getTui().getPanel("Workspaces");
     for await (const taskSignal of ParallelRunner(watcherLimit)) {
       const userConfigName = await pendingTasks.next();
 
@@ -365,7 +365,7 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
         runningDevTasks.addNew(task);
 
         task.onSuccess((name) => {
-          log(`vite rollup ${name} watcher end!`);
+          debug(`vite rollup ${name} watcher end!`);
           taskSignal.resolve();
           if (pendingTasks.hasRemaining() === false) {
             bundlePanel.updateStatus("success");
@@ -407,6 +407,6 @@ export async function workspaceInit(options: { root: string; mode: "dev" | "buil
         await doBuild({ root: path.join(root, s.path), buildService: bfswBuildService!, cfgs: map.get(name)! });
       }
     }
-    getTui().status.postMsg("all build tasks finished");
+    getTui().status.setMsg("all build tasks finished");
   }
 }

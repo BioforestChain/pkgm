@@ -51,6 +51,7 @@
     "dependency-graph": "^0.11.0"
   },
   "devDependencies": {
+    "@types/node": "^17.0.0",
     "@bfchain/pkgm-base": "link:../base",
     "@bfchain/pkgm-bfsp": "link:../bfsp",
     "vite": "^2.8.6"

@@ -1,6 +1,6 @@
 import { getYarnPath } from "@bfchain/pkgm-base/lib/yarn";
 import cp from "node:child_process";
-export const doInit = async (options: { root: string }, consoleLogger: PKGM.ConsoleLogger = console) => {
+export const doInit = async (options: { root: string }, consoleLogger: PKGM.ConsoleLogger) => {
   const { root } = options;
   consoleLogger.info("linking dependencies");
   const yarnPath = await getYarnPath();
