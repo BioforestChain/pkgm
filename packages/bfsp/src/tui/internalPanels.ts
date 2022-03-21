@@ -32,22 +32,22 @@ export class TscPanel extends Panel<"Tsc"> {
   }
 }
 export class BundlePanel<N extends string = string> extends Panel<N> {
-  private _loggedErrors = new WeakSet<Error | RollupError>();
-  private _viteLastMsgType: LogType | undefined;
-  private _viteLastMsg: string | undefined;
-  private _viteSameCount = 0;
-  private _viteLastContent = "";
-  private _viteAllContent = "";
-  private _viteLogoContent?: string;
-  private _thresh = LogLevels.info; // 默认打印所有的日志等级
+  protected $viteLoggedErrors = new WeakSet<Error | RollupError>();
+  protected $viteLastMsgType: LogType | undefined;
+  protected $viteLastMsg: string | undefined;
+  protected $viteSameCount = 0;
+  protected $viteLastContent = "";
+  protected $viteAllContent = "";
+  protected $viteLogoContent?: string;
+  protected $viteLogThresh = LogLevels.info; // 默认打印所有的日志等级
 
   setLevel(l: LogLevel) {
-    this._thresh = LogLevels[l];
+    this.$viteLogThresh = LogLevels[l];
   }
   hasErrorLogged(error: Error | RollupError) {
-    return this._loggedErrors.has(error);
+    return this.$viteLoggedErrors.has(error);
   }
-  private _formatViteMsg = (type: LogType, msg: string, options: LogErrorOptions) => {
+  protected $formatViteMsg = (type: LogType, msg: string, options: LogErrorOptions) => {
     if (options.timestamp) {
       return `${chalk.dim(new Date().toLocaleTimeString())} ${msg}`;
     } else {
@@ -56,37 +56,37 @@ export class BundlePanel<N extends string = string> extends Panel<N> {
   };
   writeViteLog(type: LogType, msg: string, options: LogErrorOptions = {}) {
     /// 移除 logo
-    if (this._viteLogoContent === undefined) {
+    if (this.$viteLogoContent === undefined) {
       if (msg.includes("vite")) {
         const blankMsg = msg.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "");
         const viteVersion = blankMsg.match(/^vite v[\d\.]+/);
         if (viteVersion) {
-          this._viteLogoContent = msg;
+          this.$viteLogoContent = msg;
           this._ctx.debug(msg);
           return;
         }
       }
-    } else if (this._viteLogoContent === msg) {
+    } else if (this.$viteLogoContent === msg) {
       return;
     }
 
-    if (this._thresh >= LogLevels[type]) {
+    if (this.$viteLogThresh >= LogLevels[type]) {
       if (options.error) {
-        this._loggedErrors.add(options.error);
+        this.$viteLoggedErrors.add(options.error);
       }
 
-      if (options.clear && type === this._viteLastMsgType && msg === this._viteLastMsg) {
-        this._viteSameCount++;
-        this._viteAllContent =
-          this._viteAllContent.slice(0, -this._viteLastContent.length) +
-          (this._viteLastContent =
-            this._formatViteMsg(type, msg, options) + ` ${chalk.yellow(`(x${this._viteSameCount + 1})`)}\n`);
+      if (options.clear && type === this.$viteLastMsgType && msg === this.$viteLastMsg) {
+        this.$viteSameCount++;
+        this.$viteAllContent =
+          this.$viteAllContent.slice(0, -this.$viteLastContent.length) +
+          (this.$viteLastContent =
+            this.$formatViteMsg(type, msg, options) + ` ${chalk.yellow(`(x${this.$viteSameCount + 1})`)}\n`);
       } else {
-        this._viteSameCount = 0;
-        this._viteLastMsg = msg;
-        this._viteLastMsgType = type;
-        this._viteAllContent =
-          this._viteAllContent + (this._viteLastContent = this._formatViteMsg(type, msg, options) + `\n`);
+        this.$viteSameCount = 0;
+        this.$viteLastMsg = msg;
+        this.$viteLastMsgType = type;
+        this.$viteAllContent =
+          this.$viteAllContent + (this.$viteLastContent = this.$formatViteMsg(type, msg, options) + `\n`);
       }
       this.$queueRenderLog();
 
@@ -98,20 +98,23 @@ export class BundlePanel<N extends string = string> extends Panel<N> {
       }
     }
   }
+  getViteLogAllContent() {
+    return this.$viteAllContent;
+  }
   clearViteLogScreen() {
-    this._viteAllContent = "";
-    this._viteLastContent = "";
-    this._viteLastMsg = undefined;
-    this._viteLastMsgType = undefined;
-    this._viteSameCount = 0;
+    this.$viteAllContent = "";
+    this.$viteLastContent = "";
+    this.$viteLastMsg = undefined;
+    this.$viteLastMsgType = undefined;
+    this.$viteSameCount = 0;
     this.$queueRenderLog();
   }
   clearViteLogLine() {
-    this._viteAllContent = this._viteAllContent.slice(0, -this._viteLastContent.length);
-    this._viteLastContent = "";
-    this._viteLastMsg = undefined;
-    this._viteLastMsgType = undefined;
-    this._viteSameCount = 0;
+    this.$viteAllContent = this.$viteAllContent.slice(0, -this.$viteLastContent.length);
+    this.$viteLastContent = "";
+    this.$viteLastMsg = undefined;
+    this.$viteLastMsgType = undefined;
+    this.$viteSameCount = 0;
     this.$queueRenderLog();
   }
   private _viteLogger?: PKGM.Logger;
@@ -134,11 +137,20 @@ export class BundlePanel<N extends string = string> extends Panel<N> {
   }
 
   protected override $renderLog(): void {
-    this.elLog.setContent(this._viteAllContent + this.$logAllContent);
+    this.elLog.setContent(this.$viteAllContent + this.$logAllContent);
   }
 }
 export class DevPanel extends BundlePanel<"Dev"> {}
-export class BuildPanel extends BundlePanel<"Build"> {}
+export class BuildPanel extends BundlePanel<"Build"> {
+  protected override $renderLog(): void {
+    if (this.$viteAllContent.length > 0) {
+      const logWidth = typeof this.elLog.width === "number" ? this.elLog.width - 3 : 4;
+      this.elLog.setContent(this.$logAllContent + chalk.grey("─".repeat(logWidth)) + "\n" + this.$viteAllContent);
+    } else {
+      this.elLog.setContent(this.$logAllContent);
+    }
+  }
+}
 export class WorkspacesPanel extends BundlePanel<"Workspaces"> {}
 export class DepsPanel extends Panel<"Deps"> {
   private _depsAllContent = "";

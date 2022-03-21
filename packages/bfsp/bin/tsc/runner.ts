@@ -15,8 +15,6 @@ export interface RunTscOption {
   watch?: boolean;
 }
 export const runTsc = (opts: RunTscOption) => {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
   let workerMjsPath = path.join(getBfspWorkerDir(), "tsc_worker.mjs");
   if (!existsSync(workerMjsPath)) {
     workerMjsPath = path.join(getBfspWorkerDir(), "../tsc_worker.mjs");

@@ -152,7 +152,6 @@ export const runYarn = (opts: RunYarnOption) => {
               preProgressId = "";
               break;
             case "success":
-              debugger;
               logger.success(json.data);
               yarnRunSuccess = true;
               break;

@@ -169,7 +169,7 @@ const buildSingle = async (options: {
     const generateTypings = new Promise<void>((resolve) => {
       const tsc = runTsc({
         tsconfigPath: path.resolve(path.join(root, "tsconfig.isolated.json")),
-        projectMode: true,
+        projectMode: false,
         onMessage: (x) => tscLogger.write(x),
         onClear: () => tscLogger.clear(),
         onExit: resolve,
@@ -218,7 +218,7 @@ const buildSingle = async (options: {
     viteConfig: viteConfig1,
     tsConfig: tsConfig1,
     outRoot: buildOutDir,
-    logger: buildPanel.logger,
+    logger: buildPanel.viteLogger,
   });
   const distDir = jsBundleConfig.build!.outDir!;
 
@@ -238,6 +238,8 @@ const buildSingle = async (options: {
     mode: "production",
     customLogger: viteLogger,
   });
+  success(buildPanel.getViteLogAllContent().trim());
+  buildPanel.clearViteLogScreen();
   success(`bundled javascript codes`);
 
   //#endregion
@@ -279,13 +281,6 @@ const collectBuildConfigs = (rootConfig: Bfsp.UserConfig, configList: Omit<Bfsp.
     configList.push(rootConfig);
   }
   return configList;
-};
-
-const msgStringify = (msg: unknown) => {
-  if (typeof msg === "string") {
-    return msg;
-  }
-  return inspect(msg, { colors: true });
 };
 
 class BuildLogger {
