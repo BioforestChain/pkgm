@@ -219,12 +219,17 @@ export const getBfswDir = () => {
 export const getBfspWorkerDir = () => {
   return path.join(getBfspDir(), "dist/main");
 };
+let bfspPkgJson: any;
 export const getBfspPackageJson = () => {
-  const p = path.join(getBfspDir(), "package.json");
-  return new Function(`return ${readFileSync(p, "utf-8")}`)();
+  if (bfspPkgJson === undefined) {
+    const p = path.join(getBfspDir(), "package.json");
+    bfspPkgJson = new Function(`return ${readFileSync(p, "utf-8")}`)();
+  }
+  return bfspPkgJson;
 };
 export const getBfspVersion = () => {
-  return getBfspPackageJson().version;
+  const version = getBfspPackageJson().version;
+  return version as string;
 };
 
 export const getBfswPackageJson = () => {

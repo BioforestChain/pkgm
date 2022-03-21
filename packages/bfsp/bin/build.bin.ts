@@ -5,6 +5,7 @@ import { DevLogger } from "../src/logger";
 import { watchSingle } from "../src/watcher";
 import { doBuild, writeBuildConfigs } from "./build.core";
 import { helpOptions } from "./help.core";
+import { linkBFChainPkgmModules } from "./yarn/runner";
 
 export const buildCommand = defineCommand(
   "build",
@@ -29,6 +30,9 @@ export const buildCommand = defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
+
+    /// 先确保将 pkgm 的包安置好
+    await linkBFChainPkgmModules(root);
 
     const buildService = getBfspBuildService(watchSingle());
     const cfgs = await writeBuildConfigs({ root, buildService });

@@ -1,8 +1,10 @@
-import { defineCommand } from "../bin";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import path from "node:path";
-import { doCreate } from "./create.core";
+import { defineCommand } from "../bin";
+import { doCreateBfsp } from "./create.core";
 import { helpOptions } from "./help.core";
-import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { doInit } from "./init.core";
+import { linkBFChainPkgmModules } from "./yarn/runner";
 
 export const createCommand = defineCommand(
   "create",
@@ -33,6 +35,29 @@ export const createCommand = defineCommand(
       return;
     }
 
-    return doCreate({ root: projectRoot, name: projectName, license: params.license }, ctx.logger);
+    const logger = ctx.logger;
+
+    /// 先确保将 pkgm 的包安置好
+    await linkBFChainPkgmModules(projectRoot);
+
+    /// 创建核心文件
+    await doCreateBfsp({ root: projectRoot, name: projectName, license: params.license }, logger);
+
+    /// 根据核心文件初始化配置与依赖安装
+    const initSuccessed = await doInit({ root: projectRoot }, logger);
+    if (initSuccessed === false) {
+      logger.warn(`dependencies install failed, check your network.`);
+    }
+
+    /// print help docs
+    logger.log(`project inited, run the following commands to start dev\n`);
+    const relative_path = path.relative(process.cwd(), projectRoot);
+    if (relative_path) {
+      logger.log(chalk.blue(`cd ${relative_path}`));
+    }
+    if (initSuccessed === false) {
+      logger.log(chalk.blue(`bfsp init`));
+    }
+    logger.log(chalk.blue(`bfsp dev`));
   }
 );

@@ -1,26 +1,21 @@
-import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
+import { userInfo } from "node:os";
 import path from "node:path";
-import { folderIO, getBfspVersion } from "../src";
-import { defaultIgnores } from "../src/configs/commonIgnore";
+import { folderIO } from "../src";
 import { ts } from "./fmt.core";
-import { doInit } from "./init.core";
 import { writeJsonConfig } from "./util";
 
-export const doCreate = async (options: { root: string; name: string; license?: string }, logger: PKGM.Logger) => {
-  const { root, name, license = "MIT" } = options;
+export const doCreateBfsp = async (
+  options: { root: string; name: string; license?: string; skipGit?: boolean },
+  logger: PKGM.Logger
+) => {
+  const { root, name, license = "MIT", skipGit = false } = options;
   folderIO.tryInit(root);
-  const version = getBfspVersion();
   const packageJson = {
     name,
-    version: "1.0.0",
-    license,
     scripts: {
       dev: "bfsp dev",
-    },
-    devDependencies: {
-      "@bfchain/pkgm-bfsp": `${version}`,
     },
   };
   logger.log(`creating files`);
@@ -29,38 +24,31 @@ export const doCreate = async (options: { root: string; name: string; license?: 
   import { defineConfig } from "@bfchain/pkgm-bfsp";
   export default defineConfig((info) => {
   const config: Bfsp.UserConfig = {
-    name: "${name}",
+    name: ${JSON.stringify(name)},
     exports: {
       ".": "./index.ts",
     },
+    packageJson: {
+      license: ${JSON.stringify(license)},
+      author: ${JSON.stringify(userInfo().username)}
+    }
   };
   return config;
 });
   `;
-  await writeFile(path.join(root, "index.ts"), `export {}`);
-  await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));
+  /// 写入基本的 bfsp 文件
   await writeFile(path.join(root, "#bfsp.ts"), bfspTsFile);
+  await writeFile(path.join(root, "index.ts"), `export {}`);
 
-  const g = spawn("git", ["init"], { cwd: root, stdio: "pipe" });
-  if (logger.isSuperLogger) {
-    g.stdout && logger.warn.pipeFrom!(g.stdout);
-    g.stderr && logger.error.pipeFrom!(g.stderr);
-  } else {
-    g.stdout?.pipe(process.stdout);
-    g.stderr?.pipe(process.stderr);
+  /// 初始化git仓库
+  if (skipGit === false) {
+    const g = spawn("git", ["init"], { cwd: root, stdio: "pipe" });
+    logger.warn.pipeFrom(g.stdout);
+    logger.error.pipeFrom(g.stderr);
+    await new Promise<number>((resolve) => {
+      g.on("exit", (code) => {
+        resolve(code ?? 0);
+      });
+    });
   }
-  const initSuccessed = await doInit({ root }, logger);
-  if (initSuccessed === false) {
-    logger.warn(`dependencies install failed, check your network.`);
-  }
-  logger.log(`project inited, run the following commands to start dev\n`);
-  const relative_path = path.relative(process.cwd(), root);
-  if (relative_path) {
-    logger.log(chalk.blue(`cd ${relative_path}`));
-  }
-  if (initSuccessed === false) {
-    logger.log(chalk.blue(`bfsp init`));
-  }
-  logger.log(chalk.blue(`bfsp dev`));
-  process.exit(0);
 };

@@ -1,11 +1,9 @@
-import cp from "node:child_process";
 import { getYarnPath } from "@bfchain/pkgm-base/lib/yarn";
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
-import { require } from "@bfchain/pkgm-base/src/toolkit.require";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
+import cp from "node:child_process";
 import fs from "node:fs";
-import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 export interface RunYarnOption {
   root: string;
   onExit?: (done: boolean) => void;

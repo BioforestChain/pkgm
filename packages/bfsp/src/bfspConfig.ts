@@ -17,10 +17,14 @@ export const getBfspProjectConfig = async (dirname = process.cwd()) => {
 };
 export type $BfspProjectConfig = Awaited<ReturnType<typeof getBfspProjectConfig>>;
 
-export const writeBfspProjectConfig = async (projectConfig: $BfspProjectConfig, buildService: BuildService) => {
+export const writeBfspProjectConfig = async (
+  projectConfig: $BfspProjectConfig,
+  buildService: BuildService,
+  options: { logger?: PKGM.Logger } = {}
+) => {
   const { projectDirpath, bfspUserConfig } = projectConfig;
 
-  const tsConfig = await generateTsConfig(projectDirpath, bfspUserConfig, buildService);
+  const tsConfig = await generateTsConfig(projectDirpath, bfspUserConfig, buildService, options);
   const viteConfig = await generateViteConfig(projectDirpath, bfspUserConfig, tsConfig);
 
   const gitIgnorePo = generateGitIgnore(projectDirpath, bfspUserConfig.userConfig);

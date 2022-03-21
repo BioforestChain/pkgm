@@ -10,7 +10,6 @@ import { $TsConfig } from "./tsConfig";
 const debug = DevLogger("bfsp:config/package.json");
 // const format
 
-let PKGM_VERSION: string;
 export const generatePackageJson = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
@@ -20,9 +19,6 @@ export const generatePackageJson = async (
     packageTemplateJson?: {};
   } = {}
 ) => {
-  if (!PKGM_VERSION) {
-    PKGM_VERSION = getBfspVersion();
-  }
   const packageJson = options.packageTemplateJson
     ? jsonClone(options.packageTemplateJson)
     : JSON.parse(packageJsonTemplate);
@@ -125,19 +121,12 @@ export const generatePackageJson = async (
 
   // 版本
   const userConfigPackageJson = bfspUserConfig.userConfig.packageJson ?? {};
-  if (userConfigPackageJson.version) {
+  if (typeof userConfigPackageJson.version === "string") {
     packageJson.version = userConfigPackageJson.version;
   }
   packageJsonKeys.add("version");
 
   // 依赖
-
-  // packageJson.devDependencies["@bfchain/pkgm-bfsp"] = `${PKGM_VERSION}`;
-  // packageJson.devDependencies["@bfchain/pkgm-bfsp"] = `link:${path.dirname(
-  //   require.resolve("@bfchain/pkgm-bfsp/package.json")
-  // )}`;
-  // packageJson.scripts.postinstall = require.resolve("@bfchain/pkgm-bfsp");
-
   packageJson.dependencies = Object.assign(
     //
     {},

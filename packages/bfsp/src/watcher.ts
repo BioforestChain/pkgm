@@ -60,3 +60,10 @@ export function watchSingle() {
     watchUserConfig,
   } as Bfsp.AppWatcher;
 }
+export function watchNoop() {
+  const watcher: Bfsp.AppWatcher = {
+    watchTs: () => {},
+    watchUserConfig: () => {},
+  };
+  return watcher;
+}

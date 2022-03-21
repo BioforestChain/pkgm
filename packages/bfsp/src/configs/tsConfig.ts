@@ -347,7 +347,7 @@ export const generateTsConfig = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
   buildService: BuildService,
-  options: { outDirRoot?: string; outDirName?: string } = {}
+  options: { outDirRoot?: string; outDirName?: string; logger?: PKGM.Logger } = {}
 ) => {
   const allTsFileList = await buildService
     .walkFiles(projectDirpath, {
@@ -364,7 +364,7 @@ export const generateTsConfig = async (
     typeFiles: new ListSet<string>(),
     testFiles: new ListSet<string>(),
     binFiles: new ListSet<string>(),
-    profileMap: new ProfileMap(getTui().getPanel("Tsc").logger),
+    profileMap: new ProfileMap(options.logger ?? getTui().getPanel("Tsc").logger),
   };
 
   groupTsFilesByAdd(projectDirpath, bfspUserConfig, allTsFileList, tsFilesLists);
