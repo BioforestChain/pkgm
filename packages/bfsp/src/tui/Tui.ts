@@ -9,6 +9,7 @@ import { StatusBar } from "./StatusBar";
 export class Tui {
   private _focusedKey: number = -1;
   private _panels = new Map<BFSP.TUI.Panel.Name, BFSP.TUI.Panel.Any>();
+  private _panelOrderedList: BFSP.TUI.Panel.Any[] = [];
   private _screen!: Widgets.Screen;
   status!: StatusBar;
   readonly nav: Widgets.BoxElement;
@@ -27,7 +28,7 @@ export class Tui {
       screen.append(nav);
       // 左右导航
       screen.key(["left", "right"], (ch, key) => {
-        const allPanels = [...this._panels.values()];
+        const allPanels = this._panelOrderedList;
         let index = allPanels.findIndex((p) => p.orderKey === this._focusedKey);
         if (key.name === "left") {
           index--;
@@ -144,9 +145,12 @@ export class Tui {
         screen.append(panel.elLog);
         screen.key(`${panel.orderKey}`, this._onKeyEventMap.forceGet(panel));
       }
+      this._panelOrderedList = allPanels;
 
-      /// 强制聚焦
-      this._onKeyEventMap.forceGet(panel)();
+      /// 强制聚焦第一个面板
+      const firstPanel = allPanels[0];
+      this._focusedKey = firstPanel.orderKey;
+      this._updateSelected();
     }
     return panel;
   }
