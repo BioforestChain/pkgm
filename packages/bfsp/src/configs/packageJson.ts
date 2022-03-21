@@ -57,6 +57,7 @@ export const generatePackageJson = async (
     return toPosixPath(path.join(`dist/${fe.format}`, `${outputName}${fe.extension}`));
   };
 
+  const packageJsonKeys = new Set<string>();
   //#region exports 导出
   packageJson.exports = {};
   for (const [posixKey, input] of Object.entries(bfspUserConfig.exportsDetail.formatedExports)) {
@@ -82,10 +83,10 @@ export const generatePackageJson = async (
     packageJson.main = packageJson.exports["."][defaultFormat.format === "esm" ? "import" : "require"];
     packageJson.types = packageJson.exports["."].types; // viteConfig.mainEntry;
   }
+  packageJsonKeys.add("exports");
   //#endregion
 
-  // typesVersions
-
+  //#region typesVersions
   const typesVersionsEntries: { [index: string]: string[] } = {};
   for (const [key, exportEntry] of Object.entries(packageJson.exports)) {
     if (key === ".") {
@@ -99,6 +100,8 @@ export const generatePackageJson = async (
       "*": typesVersionsEntries,
     };
   }
+  packageJsonKeys.add("typesVersions");
+  //#endregion
 
   //#region bin 导出
 
@@ -117,6 +120,7 @@ export const generatePackageJson = async (
     }
     packageJson.bin[binName] = toPosixPath(path.join(`dist/esm`, `${outputFilename}.mjs`));
   }
+  packageJsonKeys.add("bin");
   //#endregion
 
   // 版本
@@ -124,6 +128,7 @@ export const generatePackageJson = async (
   if (userConfigPackageJson.version) {
     packageJson.version = userConfigPackageJson.version;
   }
+  packageJsonKeys.add("version");
 
   // 依赖
 
@@ -139,22 +144,38 @@ export const generatePackageJson = async (
     packageJson.dependencies,
     userConfigPackageJson.dependencies
   );
+  packageJsonKeys.add("dependencies");
+
   packageJson.devDependencies = Object.assign(
     //
     {},
     packageJson.devDependencies,
     userConfigPackageJson.devDependencies
   );
+  packageJsonKeys.add("devDependencies");
+
   packageJson.optionalDependencies = Object.assign(
     {},
     packageJson.optionalDependencies,
     userConfigPackageJson.optionalDependencies
   );
+  packageJsonKeys.add("optionalDependencies");
+
   packageJson.peerDependencies = Object.assign(
     {},
     packageJson.peerDependencies,
     userConfigPackageJson.peerDependencies
   );
+  packageJsonKeys.add("peerDependencies");
+
+  /// 合并剩余的 key
+  for (const key in userConfigPackageJson) {
+    if (packageJsonKeys.has(key)) {
+      continue;
+    }
+    packageJson[key] = userConfigPackageJson[key];
+  }
+
   return packageJson as typeof import("../../assets/package.template.json");
 };
 
