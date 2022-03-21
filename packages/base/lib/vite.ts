@@ -10,14 +10,12 @@ const walkFiles = (dir: string) => {
       let fileContent = fs.readFileSync(filepath, "utf-8");
       let changed = false;
       if (fileContent.includes("function writeLine(")) {
-        fileContent =
-          `function stdoutClearLine () { process.stdout.clearLine(0); process.stdout.cursorTo(0); };\n` +
-          fileContent
-            .replace("function writeLine(", "function stdoutWriteLine(")
-            .replace(/\swriteLine\(/g, " (globalThis.viteWriteLine||stdoutWriteLine)(");
+        fileContent = fileContent
+          .replace("function writeLine(", "function stdoutWriteLine(")
+          .replace(/\swriteLine\(/g, " (globalThis.viteWriteLine||stdoutWriteLine)(");
         changed = true;
       }
-      if (fileContent.includes(`process.stdout.clearLine(0);`)) {
+      if (fileContent.includes(`process.stdout.clearLine(0);`) && fileContent.includes("stdoutClearLine") === false) {
         fileContent =
           `function stdoutClearLine () { process.stdout.clearLine(0); process.stdout.cursorTo(0); };\n` +
           fileContent.replace(

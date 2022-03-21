@@ -28,24 +28,9 @@ export const doWatchDeps = (
       startInstallCb && (await startInstallCb());
       debug(`deps changed: ${projectDirpath}`);
       depsPanel.updateStatus("loading");
-      const logger = depsPanel.logger;
       const yarnTask = runYarn({
         root: projectDirpath,
-        onMessage: (s) => {
-          logger.log(s);
-        },
-        onFlag: (s, loading) => {
-          logger.log.line("...." + s);
-        },
-        onWarn: (s) => {
-          logger.warn(s);
-        },
-        onSuccess: (s) => {
-          logger.success(s);
-        },
-        onError: (s) => {
-          logger.error(s);
-        },
+        logger: depsPanel.depsLogger,
       });
       stoppable = yarnTask;
       const isSuccess = await yarnTask.afterDone;

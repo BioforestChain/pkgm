@@ -34,15 +34,7 @@ export const installBuildDeps = async (options: { root: string }) => {
   depsPanel.updateStatus("loading");
   const isSuccess = await runYarn({
     root,
-    onMessage: (s) => depsPanel.log(s),
-    onFlag: (s, loading) => {
-      if (typeof loading === "number") {
-        s = (loading * 100).toFixed(2) + "% " + s;
-      } else {
-        s = "... " + s;
-      }
-      depsPanel.line(s);
-    },
+    logger: depsPanel.depsLogger,
   }).afterDone;
   depsPanel.updateStatus(isSuccess ? "success" : "error");
 };

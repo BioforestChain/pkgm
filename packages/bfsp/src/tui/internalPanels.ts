@@ -141,16 +141,45 @@ export class DevPanel extends BundlePanel<"Dev"> {}
 export class BuildPanel extends BundlePanel<"Build"> {}
 export class WorkspacesPanel extends BundlePanel<"Workspaces"> {}
 export class DepsPanel extends Panel<"Deps"> {
-  private _inLine = -1;
-  log(text: string) {
-    this._inLine = -1;
-    this.elLog.pushLine(text);
+  private _depsAllContent = "";
+  private _depsLastContent = "";
+  writeDepsLog(s: string) {
+    this._depsAllContent += this._depsLastContent = s;
+    this.$queueRenderLog();
   }
-  line(text: string) {
-    if (this._inLine === -1) {
-      const index = this.elLog.getLines().length;
-      this._inLine = index;
+  clearDepsLogLine() {
+    if (this._depsLastContent.length === 0) {
+      return;
     }
-    this.elLog.setLine(this._inLine, text);
+    this._depsAllContent = this._depsAllContent.slice(0, -this._depsLastContent.length);
+    this._depsLastContent = "";
+    this._depsAllContent;
+  }
+  clearDepsLogScreen() {
+    this._depsLastContent = "";
+    this._depsAllContent = "";
+    this.$queueRenderLog();
+  }
+
+  private _depsLogger?: PKGM.Logger;
+  get depsLogger() {
+    if (this._depsLogger === undefined) {
+      this._depsLogger = createSuperLogger({
+        prefix: "",
+        infoPrefix: "i",
+        warnPrefix: "⚠",
+        errorPrefix: "X",
+        successPrefix: "✓",
+        stdoutWriter: (s) => this.writeDepsLog(s),
+        stderrWriter: (s) => this.writeDepsLog(s),
+        clearScreen: this.clearDepsLogLine.bind(this),
+        clearLine: this.clearDepsLogScreen.bind(this),
+      });
+    }
+    return this._depsLogger;
+  }
+
+  protected override $renderLog(): void {
+    this.elLog.setContent(this._depsAllContent + this.$logAllContent);
   }
 }

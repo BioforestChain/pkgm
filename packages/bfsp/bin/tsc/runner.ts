@@ -28,6 +28,7 @@ export const runTsc = (opts: RunTscOption) => {
     stdin: false,
     stdout: false,
     stderr: false,
+    env: {},
   });
   let resolve: Function;
   const ret = Object.assign(new Promise<void>((cb) => (resolve = cb)), {

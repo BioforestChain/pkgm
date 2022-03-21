@@ -194,37 +194,33 @@ class DepInstaller {
       return;
     }
     this._map.set(opts.name, opts.onDone);
-    if (!this._closable) {
-      this._runRootYarn();
-    }
+    this._runRootYarn();
   }
-  private _runRootYarn() {
+  private async _runRootYarn() {
     if (this._closable) {
       return;
     }
     const depsPanel = getTui().getPanel("Deps");
     depsPanel.updateStatus("loading");
-    this._closable = runYarn({
-      root,
-      onMessage: (s) => depsPanel.write(s),
-      onExit: () => {
-        depsPanel.updateStatus("success");
-        if (this._pendingDeps) {
-          this._pendingDeps = false;
-          this._closable = undefined;
-          this._runRootYarn();
-        } else {
-          // 所有依赖都安装完成，触发map里的回调
-          this._closable = undefined;
-          this._allDoneCbs.forEach(async (cb) => {
-            await cb();
-          });
-          this._map.forEach(async (cb, name) => {
-            debug(`dep done: ${name}`);
-            await cb();
-          });
-        }
-      },
+    do {
+      this._pendingDeps = false;
+
+      this._closable = runYarn({
+        root,
+        logger: depsPanel.depsLogger,
+      });
+      const isSuccess = await this._closable.afterDone;
+      depsPanel.updateStatus(isSuccess ? "success" : "error");
+
+      this._closable = undefined;
+    } while (this._pendingDeps);
+    // 所有依赖都安装完成，触发map里的回调
+    this._allDoneCbs.forEach(async (cb) => {
+      await cb();
+    });
+    this._map.forEach(async (cb, name) => {
+      debug(`dep done: ${name}`);
+      await cb();
     });
   }
 }

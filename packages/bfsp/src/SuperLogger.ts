@@ -1,6 +1,8 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import type { Readable } from "node:stream";
 import util from "node:util";
+import { afm } from "./tui/animtion";
+import { FRAMES } from "./tui/const";
 
 type $Writer = (s: string) => void;
 export const createSuperLogger = (options: {
@@ -41,6 +43,8 @@ export const createSuperLogger = (options: {
    */
   let preWriteLine = false;
   let groupPrefix = "";
+  let loadingPrefix = "";
+  let progressPrefix = "";
   const Print = (linePrefix: string, writer: $Writer, lineMode: boolean) => {
     if (linePrefix.length > 0) {
       linePrefix += " ";
@@ -50,11 +54,13 @@ export const createSuperLogger = (options: {
       let out: string = "";
       // 如果前缀改变了，那么强制换行
       if (linePrefix !== curLinePrefix) {
-        out += linePrefix + groupPrefix;
+        out += linePrefix + groupPrefix + loadingPrefix + progressPrefix;
         curLinePrefix = linePrefix;
       }
 
-      out += util.format(format, ...param).replace(/\n/g, "\n" + linePrefix + groupPrefix);
+      out += util
+        .format(format, ...param)
+        .replace(/\n/g, "\n" + linePrefix + groupPrefix + loadingPrefix + progressPrefix);
 
       // 写入回车
       if (lineMode) {
@@ -93,7 +99,7 @@ export const createSuperLogger = (options: {
   const SuperPrinter = (linePrefix: string, writer: $Writer) => {
     const write = Print(linePrefix, writer, false);
     const log = Print(linePrefix, writer, true);
-    const line = WriteLine(write);
+    const line = WriteLine(log);
     const pipeFrom = PipeFrom(writer, write);
     return Object.assign(log, { write, line, pipeFrom });
   };
@@ -109,6 +115,7 @@ export const createSuperLogger = (options: {
     clearScreen = noop,
     clearLine = noop,
   } = options;
+
   const log = SuperPrinter(chalk.cyan(options.logPrefix ?? prefix), stdoutWriter);
   const info = SuperPrinter(chalk.blue(options.infoPrefix ?? prefix), stdinfoWriter);
   const warn = SuperPrinter(chalk.yellow(options.warnPrefix ?? prefix), stdwarnWriter);
@@ -121,6 +128,100 @@ export const createSuperLogger = (options: {
   const groupEnd = () => {
     groupPrefix = groupPrefix.slice(0, -1);
   };
+
+  //#region LOADING
+
+  const loadingFrameIdMap = new Map<string, { frame: number; rafId: number; render: () => void }>();
+  const buildLoadingPrefix = () => {
+    loadingPrefix = "";
+    for (const info of loadingFrameIdMap.values()) {
+      loadingPrefix += FRAMES[info.frame % FRAMES.length] + " ";
+    }
+  };
+  const loadingStart = (id: string = "default") => {
+    id = String(id);
+    if (loadingFrameIdMap.has(id)) {
+      warn(`Label '${id}' already exists for logger.loadingStart()`);
+      return;
+    }
+
+    const renderLoadingFrame = () => {
+      info.frame += 1;
+      buildLoadingPrefix();
+      info.rafId = afm.requestAnimationFrame(renderLoadingFrame);
+    };
+    const info = { frame: -1, rafId: -1, render: renderLoadingFrame };
+    loadingFrameIdMap.set(id, info);
+
+    renderLoadingFrame();
+  };
+  const loadingLog = (id: string, ...args: unknown[]) => {
+    id = String(id);
+    const info = loadingFrameIdMap.get(id);
+    if (info === undefined) {
+      warn(`No such label '${id}' for logger.loadingEnd()`);
+      return;
+    }
+    info.render();
+    log.line(...args);
+  };
+  const loadingEnd = (id: string = "default") => {
+    id = String(id);
+    const info = loadingFrameIdMap.get(id);
+    if (info === undefined) {
+      warn(`No such label '${id}' for logger.loadingEnd()`);
+      return;
+    }
+    afm.cancelAnimationFrame(info.rafId);
+    loadingFrameIdMap.delete(id);
+    buildLoadingPrefix();
+  };
+  //#endregion
+
+  //#region PROGRESS
+
+  const progressFrameIdMap = new Map<string, { total: number; current: number }>();
+  const buildProgressPrefix = () => {
+    progressPrefix = "";
+    for (const info of progressFrameIdMap.values()) {
+      const progress = Math.min(1, Math.max(info.current / info.total || 0, 0));
+      progressPrefix += chalk.magenta((progress * 100).toFixed(2) + "%") + " ";
+    }
+  };
+  const progressStart = (label: string, total: number, current: number = 0) => {
+    label = String(label);
+    if (progressFrameIdMap.has(label)) {
+      warn(`Label '${label}' already exists for logger.progressStart()`);
+      return;
+    }
+
+    const info = { total, current };
+    progressFrameIdMap.set(label, info);
+    buildProgressPrefix();
+  };
+  const progressLog = (label: string, current: number, ...args: unknown[]) => {
+    label = String(label);
+    const info = progressFrameIdMap.get(label);
+    if (info === undefined) {
+      warn(`No such label '${label}' for logger.progressLog()`);
+      return;
+    }
+    info.current = current;
+    buildProgressPrefix();
+    log.line(...args);
+  };
+  const progressEnd = (label: string) => {
+    label = String(label);
+    const info = progressFrameIdMap.get(label);
+    if (info === undefined) {
+      warn(`No such label '${label}' for logger.progressEnd()`);
+      return;
+    }
+    progressFrameIdMap.delete(label);
+    buildProgressPrefix();
+  };
+  //#endregion
+
   return {
     isSuperLogger: true,
     log,
@@ -132,6 +233,13 @@ export const createSuperLogger = (options: {
     groupEnd,
     clearScreen,
     clearLine,
+    loadingStart,
+    loadingLog,
+    loadingEnd,
+    progressStart,
+    // progressUpdate,
+    progressLog,
+    progressEnd,
   } as PKGM.Logger;
 };
 const noop = () => {};

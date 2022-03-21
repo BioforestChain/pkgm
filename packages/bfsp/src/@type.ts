@@ -24,6 +24,13 @@ declare namespace PKGM {
     groupEnd: Console["groupEnd"];
     clearScreen: Clear;
     clearLine: Clear;
+    loadingStart: (label: string) => void;
+    loadingLog: (label: string, ...param: any[]) => void;
+    loadingEnd: (label: string) => void;
+    progressStart: (label: string, total: number, current?: number) => void;
+    // progressUpdate: (label: string, current: number, total: number) => void;
+    progressLog: (label: string, current: number, ...param: any[]) => void;
+    progressEnd: (label: string) => void;
   };
 
   type NormalPrinter = Print & Partial<SuperPrinter>;

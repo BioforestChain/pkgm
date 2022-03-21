@@ -1,18 +1,14 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import cp, { spawn } from "node:child_process";
+import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { folderIO, getBfspVersion } from "../src";
 import { defaultIgnores } from "../src/configs/commonIgnore";
 import { ts } from "./fmt.core";
-import { writeJsonConfig } from "./util";
 import { doInit } from "./init.core";
-import { consoleLogger } from "../src/consoleLogger";
+import { writeJsonConfig } from "./util";
 
-export const doCreate = async (
-  options: { root: string; name: string; license?: string },
-  logger: PKGM.ConsoleLogger = consoleLogger
-) => {
+export const doCreate = async (options: { root: string; name: string; license?: string }, logger: PKGM.Logger) => {
   const { root, name, license = "MIT" } = options;
   folderIO.tryInit(root);
   const version = getBfspVersion();
