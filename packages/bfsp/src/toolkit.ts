@@ -412,8 +412,10 @@ export class SharedFollower<T> implements AsyncIterator<T> {
 
 export const toPosixPath = (windowsPath: string) => {
   const somepath = windowsPath.replace(/^(\w):|\\+/g, "/$1");
-  if (somepath[0] !== "/" && somepath[0] !== ".") {
-    return "./" + somepath;
+  if (somepath.length > 1) {
+    if (somepath[0] !== "/" && somepath[0] !== "." && somepath[1] !== "/") {
+      return "./" + somepath;
+    }
   }
   return somepath;
 };

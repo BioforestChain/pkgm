@@ -27,7 +27,7 @@ if (localWatchmanVersion === undefined) {
       if (LD_LIBRARY_PATH === undefined || LD_LIBRARY_PATH === "") {
         process.env["LD_LIBRARY_PATH"] = `${libPath}}`;
       } else {
-        process.env["LD_LIBRARY_PATH"] = `${LD_LIBRARY_PATH};${libPath}}`;
+        process.env["LD_LIBRARY_PATH"] = `${LD_LIBRARY_PATH}:${libPath}}`;
       }
     }
   } else {
