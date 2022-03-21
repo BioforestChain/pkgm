@@ -46,7 +46,7 @@ let createViteLogger = (bundlePanel: BundlePanel, level: LogLevel = "info", opti
         bundlePanel.writeViteLog("error", msgStringify(msg), opts);
       },
       clearScreen() {
-        bundlePanel.clearViteLog();
+        bundlePanel.clearViteLogScreen();
       },
       hasErrorLogged(error) {
         return bundlePanel.hasErrorLogged(error);
@@ -55,9 +55,10 @@ let createViteLogger = (bundlePanel: BundlePanel, level: LogLevel = "info", opti
 
     _viteLogger = logger;
 
-    const writeLine = bundlePanel.logger.log.line;
-    const clearLine = bundlePanel.logger.clearLine;
-    defineViteStdoutApis({ writeLine, clearLine });
+    defineViteStdoutApis({
+      writeLine: bundlePanel.viteLogger.log.line,
+      clearLine: bundlePanel.viteLogger.clearLine,
+    });
   }
   return _viteLogger;
 };
@@ -66,9 +67,16 @@ export type $TscLogger = {
   write: (s: string) => void;
   clear: () => void;
 };
-let createTscLogger = (): $TscLogger => {
-  const tscPanel = getTui().getPanel("Tsc");
-  return tscPanel;
+let _tscLogger: $TscLogger | undefined;
+let createTscLogger = () => {
+  if (_tscLogger === undefined) {
+    const tscPanel = getTui().getPanel("Tsc");
+    _tscLogger = {
+      write: tscPanel.writeTscLog.bind(tscPanel),
+      clear: tscPanel.clearTscLog.bind(tscPanel),
+    };
+  }
+  return _tscLogger;
 };
 
 if (!useScreen) {

@@ -229,15 +229,18 @@ export class ProfileMap {
               continue;
             }
           }
-          /// 1. 使用少即是多的原则进行排序
-          /// 2. 根据文件名字顺序进行匹配
-          pInfoList.sort((a, b) => {
-            if (a.profiles.length === b.profiles.length) {
-              return a.sourcePath.localeCompare(b.sourcePath);
-            }
-            return a.profiles.length - b.profiles.length;
-          });
-          profilePaths.add(pInfoList[0].sourcePath);
+
+          if (pInfoList.length > 0) {
+            /// 1. 使用少即是多的原则进行排序
+            /// 2. 根据文件名字顺序进行匹配
+            pInfoList.sort((a, b) => {
+              if (a.profiles.length === b.profiles.length) {
+                return a.sourcePath.localeCompare(b.sourcePath);
+              }
+              return a.profiles.length - b.profiles.length;
+            });
+            profilePaths.add(pInfoList[0].sourcePath);
+          }
         }
       }
 

@@ -90,18 +90,62 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     this._render();
   }
 
-  protected $elLogWrite(s: string) {
-    this.elLog.setContent(this.elLog.getContent() + s);
+  //#region 日志输出
+  /**
+   * 日志输出提供了极高的可拓展性
+   * 1. 这里默认提供了一个强大的默认输出面板（logger），开发者可以自己修改这个面板的输出行为
+   *    1. 可以自定义 write
+   *    1. 可以自定义 clearLine
+   *    1. 可以自定义 clearScreen
+   *    1. 可以自定义 logger 的生成
+   * 1. 但也可以扩展自己的输出面板，最终再将两个面板混合起来输出
+   *    1. 重写 $renderLog 来定义最终的输出内容
+   *    1. 使用 $queueRenderLog 来调度输出指令
+   */
+
+  protected $logAllContent = "";
+  protected $logLastContent = "";
+  write(s: string) {
+    this.$logAllContent += this.$logLastContent = s;
+    this.$queueRenderLog();
+  }
+  clearLine() {
+    if (this.$logLastContent.length === 0) {
+      return;
+    }
+    this.$logAllContent = this.$logAllContent.slice(0, -this.$logLastContent.length);
+    this.$logLastContent = "";
+    this.$logAllContent;
+  }
+  clearScreen() {
+    this.$logLastContent = "";
+    this.$logAllContent = "";
+    this.$queueRenderLog();
   }
 
-  protected $getLoggerWriter() {
-    return (s: string) => this.$elLogWrite(s);
+  private _rendering = false;
+  protected $queueRenderLog() {
+    if (this._rendering) {
+      return;
+    }
+    this._rendering = true;
+    queueMicrotask(() => {
+      this._rendering = false;
+      this.$renderLog();
+    });
   }
-  protected $getLoggerClearScreen() {
-    return () => {};
+  protected $renderLog() {
+    this.elLog.setContent(this.$logAllContent);
   }
-  protected $getLoggerClearLine() {
-    return () => {};
+
+  private $getLoggerWriter() {
+    return this.write.bind(this);
+  }
+  private $getLoggerClearScreen() {
+    return this.clearScreen.bind(this);
+  }
+  private $getLoggerClearLine() {
+    return this.clearLine.bind(this);
   }
   private _logger?: PKGM.Logger;
   get logger() {
@@ -121,6 +165,7 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     }
     return this._logger;
   }
+  //#endregion
 }
 export type StatusChangeCallback = (s: PanelStatus, ctx: BFSP.TUI.Panel) => void;
 export type PanelStatus = "success" | "error" | "warn" | "loading" | "info";

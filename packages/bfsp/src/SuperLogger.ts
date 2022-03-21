@@ -7,6 +7,11 @@ export const createSuperLogger = (options: {
   prefix: string;
   stdoutWriter: $Writer;
   stderrWriter: $Writer;
+
+  stdinfoWriter?: $Writer;
+  stdsuccWriter?: $Writer;
+  stdwarnWriter?: $Writer;
+
   logPrefix?: string;
   infoPrefix?: string;
   warnPrefix?: string;
@@ -92,12 +97,23 @@ export const createSuperLogger = (options: {
     const pipeFrom = PipeFrom(writer, write);
     return Object.assign(log, { write, line, pipeFrom });
   };
-  const { prefix, stderrWriter, stdoutWriter, clearScreen = noop, clearLine = noop } = options;
-  const log = SuperPrinter(chalk.cyan(options.logPrefix ?? prefix), stderrWriter);
-  const info = SuperPrinter(chalk.blue(options.infoPrefix ?? prefix), stderrWriter);
-  const warn = SuperPrinter(chalk.yellow(options.warnPrefix ?? prefix), stdoutWriter);
-  const success = SuperPrinter(chalk.green(options.successPrefix ?? prefix), stderrWriter);
-  const error = SuperPrinter(chalk.red(options.errorPrefix ?? prefix), stdoutWriter);
+  const {
+    prefix,
+    stderrWriter,
+    stdoutWriter,
+
+    stdinfoWriter = stdoutWriter,
+    stdsuccWriter = stdoutWriter,
+    stdwarnWriter = stderrWriter,
+
+    clearScreen = noop,
+    clearLine = noop,
+  } = options;
+  const log = SuperPrinter(chalk.cyan(options.logPrefix ?? prefix), stdoutWriter);
+  const info = SuperPrinter(chalk.blue(options.infoPrefix ?? prefix), stdinfoWriter);
+  const warn = SuperPrinter(chalk.yellow(options.warnPrefix ?? prefix), stdwarnWriter);
+  const success = SuperPrinter(chalk.green(options.successPrefix ?? prefix), stdsuccWriter);
+  const error = SuperPrinter(chalk.red(options.errorPrefix ?? prefix), stderrWriter);
   const group = (...labels: any[]) => {
     log(...labels);
     groupPrefix += "\t";
