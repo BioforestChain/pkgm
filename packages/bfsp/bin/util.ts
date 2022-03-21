@@ -23,7 +23,7 @@ export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) 
 
 export async function writeJsonConfig(filepath: string, config: any) {
   await folderIO.tryInit(path.dirname(filepath));
-  await fileIO.set(filepath, Buffer.from(JSON.stringify(config, null, 2)));
+  await fileIO.set(filepath, Buffer.from(JSON.stringify(config, null, 2)), true);
 }
 export interface TreeNode<T> {
   data: T;

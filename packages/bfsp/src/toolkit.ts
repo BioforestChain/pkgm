@@ -62,7 +62,7 @@ abstract class CacheWritter<K, V> extends CacheGetter<K, V> {
     const now = Date.now();
     if (!force) {
       if (
-        (cache !== undefined && now - cache.time < this.cacheTime) ||
+        (cache !== undefined && now - cache.time < this.cacheTime && cache.value !== val) ||
         (this.has(key) && this.isEqual(key, val, await this.get(key)))
       ) {
         log("ignore write file", key);
