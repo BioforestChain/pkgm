@@ -146,6 +146,7 @@ const buildSingle = async (options: {
   /// 将 package.json 的 types 路径进行修改
   const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1, {
     packageTemplateJson: thePackageJson,
+    customTypesRoot: "./source/isolated",
   });
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
   //#region 安装依赖
