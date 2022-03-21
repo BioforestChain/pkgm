@@ -167,7 +167,7 @@ const buildSingle = async (options: {
   Reflect.deleteProperty(packageJson, "scripts");
   Reflect.deleteProperty(packageJson, "private");
   await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
-  success(`writed package.json`);
+  success(`wrote package.json`);
   //#endregion
 
   //#region 编译typescript，生成 typings
@@ -242,7 +242,6 @@ const buildSingle = async (options: {
         onwarn: (err) => warn(err),
       },
     },
-    logLevel: "warn", // 防止vite干扰tui界面， @todo: 劫持console或者process
     mode: "production",
     customLogger: viteLogger,
   });
