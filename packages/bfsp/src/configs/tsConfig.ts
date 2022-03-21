@@ -340,7 +340,9 @@ export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<s
     lists.profileMap.removeProfileInfo(filepath);
   }
 };
-
+const getTsconfigFiles = (list: TsFilesLists, field: keyof Omit<TsFilesLists, "profileMap">) => {
+  return list[field].toArray().filter((filepath) => list.profileMap.unuseFiles.has(filepath) === false);
+};
 export const generateTsConfig = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
@@ -424,9 +426,7 @@ export const generateTsConfig = async (
       noEmit: false,
       emitDeclarationOnly: false,
     },
-    files: tsFilesLists.isolatedFiles
-      .toArray()
-      .filter((filepath) => tsFilesLists.profileMap.unuseFiles.has(filepath) === false),
+    files: getTsconfigFiles(tsFilesLists, "isolatedFiles"),
     references: [
       {
         path: "./tsconfig.typings.json",
@@ -442,9 +442,7 @@ export const generateTsConfig = async (
       outDir: TscTypingsOutRootPath(options.outDirRoot, options.outDirName),
       noEmit: false,
     },
-    files: tsFilesLists.typeFiles
-      .toArray()
-      .filter((filepath) => tsFilesLists.profileMap.unuseFiles.has(filepath) === false),
+    files: getTsconfigFiles(tsFilesLists, "typeFiles"),
     references: [],
   };
 
@@ -555,8 +553,8 @@ export const watchTsConfig = (
       }
 
       // tsConfig.json.files = tsFilesLists.notestFiles.toArray();
-      tsConfig.isolatedJson.files = tsFilesLists.isolatedFiles.toArray();
-      tsConfig.typingsJson.files = tsFilesLists.typeFiles.toArray();
+      tsConfig.isolatedJson.files = getTsconfigFiles(tsFilesLists, "isolatedFiles");
+      tsConfig.typingsJson.files = getTsconfigFiles(tsFilesLists, "typeFiles");
     }
 
     const paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);

@@ -175,7 +175,7 @@ const buildSingle = async (options: {
         onExit: resolve,
         watch: true,
         onErrorFound: (count) => {
-          warn(`please fix the ${count} errors. then build will continue.`);
+          warn(`found ${count} error(s), fix them to continue.`);
         },
         onSuccess: () => {
           tsc.stop();
