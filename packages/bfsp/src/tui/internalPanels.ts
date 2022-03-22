@@ -3,7 +3,7 @@ import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import type { LogErrorOptions, LogLevel, LogType } from "@bfchain/pkgm-base/lib/vite";
 import { createSuperLogger } from "../SuperLogger";
 import { LogLevels } from "./const";
-import { Panel } from "./Panel";
+import { Panel, PanelContext } from "./Panel";
 
 export class TscPanel extends Panel<"Tsc"> {
   protected $tscLogAllContent = "";
@@ -155,6 +155,13 @@ export class WorkspacesPanel extends BundlePanel<"Workspaces"> {}
 export class DepsPanel extends Panel<"Deps"> {
   private _depsAllContent = "";
   private _depsLastContent = "";
+  // 初始化时状态设为success，修复依赖为空时一直处于loading状态
+  constructor(_ctx: PanelContext, orderKey: number, readonly name: "Deps") {
+    super(_ctx, orderKey, "Deps");
+    super.deactivate();
+    super.updateStatus("success");
+  }
+
   writeDepsLog(s: string) {
     this._depsAllContent += this._depsLastContent = s;
     this.$queueRenderLog();
