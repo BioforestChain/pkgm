@@ -48,7 +48,7 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
     "worker_threads",
     "zlib",
   ]);
-  const yarnList = execSync("yarn list --prod --json")
+  const yarnList = execSync("yarn list --prod --json",{stdio:['pipe','pipe','ignore']})
     .toString()
     .split("\n")
     .map((line) => {

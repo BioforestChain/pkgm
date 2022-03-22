@@ -1,3 +1,4 @@
+import chalk from "chalk";
 import path from "node:path";
 import { cpr, getTui } from "../src";
 import { getBfspBuildService } from "../src/buildService";
@@ -16,6 +17,5 @@ export const doNpm = async (options: { root: string }) => {
   const npmPath = path.join(root, consts.NpmRootPath);
   const buildPath = path.join(root, consts.BuildOutRootPath);
   await cpr(buildPath, npmPath);
-
-  b.writeViteLog("info", `npm files ready at: ${npmPath}`);
+  b.logger.info(`\nnpm files ready at: ${chalk.blue(npmPath)}`);
 };
