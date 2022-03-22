@@ -19,7 +19,7 @@ const walkFiles = (dir: string) => {
         fileContent =
           `function stdoutClearLine () { process.stdout.clearLine(0); process.stdout.cursorTo(0); };\n` +
           fileContent.replace(
-            /process\.stdout\.clearLine\(0\);[\s\n]*process\.stdout\.cursorTo\(0\);/,
+            /process\.stdout\.clearLine\(0\);[\s\n]*process\.stdout\.cursorTo\(0\);/g,
             "(globalThis.viteClearLine||stdoutClearLine)()"
           );
         changed = true;
