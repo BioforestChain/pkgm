@@ -1,62 +1,75 @@
 import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { chalk, supportsColor } from "@bfchain/pkgm-base/lib/chalk";
-import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
 import { afm } from "./animtion";
-import { TuiStyle, W_MAIN_N } from "./const";
-import { BuildPanel, DepsPanel, DevPanel, TscPanel, WorkspacesPanel } from "./internalPanels";
+import {
+  BuildPanel,
+  CenterMainPanelGroup,
+  DepsPanel,
+  DevPanel,
+  RightSidePanelGroup,
+  TscPanel,
+  WorkspacesPanel,
+} from "./internalPanels";
 import { StatusBar } from "./StatusBar";
 
 export class Tui {
-  private _focusedKey: number = -1;
-  private _panels = new Map<BFSP.TUI.Panel.Name, BFSP.TUI.Panel.Any>();
-  private _panelOrderedList: BFSP.TUI.Panel.Any[] = [];
-  private _screen!: Widgets.Screen;
-  status!: StatusBar;
-  readonly nav: Widgets.BoxElement;
+  private _focusedKeyShort: string = "";
+  private _screen = blessed.screen({
+    smartCSR: true,
+    useBCE: true,
+    debug: true,
+    sendFocus: true,
+    terminal: supportsColor && supportsColor.has256 ? "xterm-256color" : "xterm",
+    fullUnicode: true,
+    title: process.env["PKGM_MODE"] + " - powered by @bfchain/pkgm",
+  });
+  private _mainPanels = new CenterMainPanelGroup();
+  private _sidePanels = new RightSidePanelGroup();
+  private _allPanelOrderedList: BFSP.TUI.Panel.Any[] = [];
+  readonly status = new StatusBar();
+  // readonly nav: Widgets.BoxElement;
   constructor() {
-    const screen = (this._screen = blessed.screen({
-      smartCSR: true,
-      useBCE: true,
-      debug: true,
-      sendFocus: true,
-      terminal: supportsColor && supportsColor.has256 ? "xterm-256color" : "xterm",
-      fullUnicode: true,
-      title: process.env["PKGM_MODE"] + " - powered by @bfchain/pkgm",
-    }));
+    const screen = this._screen;
+
+    /// 初始化布局
     {
-      const nav = (this.nav = blessed.box(TuiStyle.nav));
-      screen.append(nav);
-      // 左右导航
-      screen.key(["left", "right"], (ch, key) => {
-        const allPanels = this._panelOrderedList;
-        let index = allPanels.findIndex((p) => p.orderKey === this._focusedKey);
-        if (key.name === "left") {
-          index--;
-          if (index < 0) {
-            index += allPanels.length;
-          }
-        } else if (key.name === "right") {
-          index++;
-          if (index >= allPanels.length) {
-            index -= allPanels.length;
-          }
-        }
-        this._focusedKey = allPanels[index]!.orderKey;
-        this._updateSelected();
-      });
+      screen.append(this._mainPanels.view);
+      screen.append(this._sidePanels.view);
+      screen.append(this.status.view);
+      screen.render();
     }
 
+    /// 初始化按键绑定
     {
-      const statusBar = blessed.box(TuiStyle.statusBar);
-      screen.append(statusBar);
-      const status = (this.status = new StatusBar(statusBar));
+      /// 快捷键导航
+      screen.on("keypress", (ch, key) => {
+        // if (key.meta) {
+        for (const panel of this._allPanelOrderedList) {
+          if (panel.keyShort === ch) {
+            this._updateFocus(panel);
+            break;
+            // }
+          }
+        }
+      });
+      /// 左右导航
+      screen.key(["left", "right"], (ch, key) => {
+        const allPanels = this._allPanelOrderedList;
+        const oldIndex = allPanels.findIndex((p) => p.keyShort === this._focusedKeyShort);
+        const inc = key.name === "left" ? -1 : 1;
+        const newIndex = (oldIndex + inc + allPanels.length) % allPanels.length;
+
+        const selectedPanel = allPanels[newIndex]!;
+        this._focusedKeyShort = selectedPanel.keyShort;
+        this._updateFocus(selectedPanel);
+      });
     }
 
     /// 绑定动画帧的回调
     afm.onAnimationFrame = () => this._screen.render();
 
+    /// 关闭进程的交互
     queueMicrotask(() => {
-      //// 关闭进程的交互
       let asking = false;
       let dangerQuestion: Widgets.QuestionElement | undefined;
       function initDangerQuestion() {
@@ -98,8 +111,18 @@ export class Tui {
   getPanel<N extends BFSP.TUI.Panel.Name>(name: N) {
     return this._forceGetPanel(name) as BFSP.TUI.Panel.GetByName<N>;
   }
+
+  private _allPanels() {
+    return [...this._mainPanels.values(), ...this._sidePanels.values()];
+  }
   private _forceGetPanel<N extends BFSP.TUI.Panel.Name>(name: N) {
-    let panel = this._panels.get(name);
+    let panel: BFSP.TUI.Panel.Any | undefined;
+    if (this._mainPanels.belong(name)) {
+      panel = this._mainPanels.get(name);
+    } else if (this._sidePanels.belong(name)) {
+      panel = this._sidePanels.get(name);
+    }
+
     if (panel === undefined) {
       switch (name) {
         case "Tsc":
@@ -116,70 +139,56 @@ export class Tui {
           break;
         case "Workspaces":
           panel = new WorkspacesPanel(this, -1, name);
+          (globalThis as any).wp = panel;
           break;
         default:
           throw new Error(`unknown panel name: ${name}`);
       }
-      /// 开始重新计算布局
-      const { nav, _screen: screen } = this;
-      // 先移除所有的导航元素
-      const allOldPanels = [...this._panels.values()];
-      for (const panel of allOldPanels) {
-        nav.remove(panel.elMenu);
-        screen.remove(panel.elLog);
-        screen.unkey(`${panel.orderKey}`, this._onKeyEventMap.forceGet(panel));
-      }
 
-      this._panels.set(name, panel);
-      const allPanels = [...this._panels.values()];
-      allPanels.forEach((panel) => (panel.orderKey = panelKeyOrder.indexOf(panel.name)));
-      allPanels.sort((a, b) => a.orderKey - b.orderKey); // 升序
-      allPanels.forEach((panel, index) => (panel.orderKey = index + 1));
+      // 尝试保存到某一个集合中，直到成功为止
+      this._mainPanels.trySet(panel) ||
+        //
+        this._sidePanels.trySet(panel);
 
-      // 重新添加所有的导航元素
-      const unitWidth = Math.round(W_MAIN_N / allPanels.length);
-      for (const [index, panel] of allPanels.entries()) {
-        panel.elMenu.width = `${unitWidth}%`;
-        panel.elMenu.left = `${index * unitWidth}%`;
-        nav.append(panel.elMenu);
-        screen.append(panel.elLog);
-        screen.key(`${panel.orderKey}`, this._onKeyEventMap.forceGet(panel));
-      }
-      this._panelOrderedList = allPanels;
+      /**导出所有的面板，并为其进行排序 */
+      const allPanels = [...this._mainPanels.values(), ...this._sidePanels.values()];
+      const allPanelOrderedMap = new Map(
+        [...this._mainPanels.panelKeyOrder, ...this._sidePanels.panelKeyOrder].map((name, index) => [name, index])
+      );
+      allPanels.sort((a, b) => allPanelOrderedMap.get(a.name)! - allPanelOrderedMap.get(b.name)!);
+      this._allPanelOrderedList = allPanels;
 
       /// 强制聚焦第一个面板
       const firstPanel = allPanels[0];
-      this._focusedKey = firstPanel.orderKey;
-      this._updateSelected();
+      this._updateFocus(firstPanel);
     }
     return panel;
   }
-  private _onKeyEventMap = EasyMap.from({
-    creater: (panel: BFSP.TUI.Panel.Any) => {
-      return () => {
-        if (panel.orderKey === this._focusedKey) {
-          return;
+
+  /**
+   * 更新聚焦的面板
+   */
+  private _updateFocus(selectedPanel?: BFSP.TUI.Panel.Any) {
+    if (selectedPanel === undefined) {
+      for (const panel of this._allPanelOrderedList) {
+        if (panel.keyShort === this._focusedKeyShort) {
+          selectedPanel = panel;
+          break;
         }
-        this._focusedKey = panel.orderKey;
-        this._updateSelected();
-      };
-    },
-  });
+      }
+    }
+    if (selectedPanel !== undefined) {
+      this._focusedKeyShort = selectedPanel.keyShort;
+      selectedPanel.activate();
+    }
+    this._screen.render();
+  }
 
   destory() {
     this._screen.destroy();
   }
+  private _i = 0;
   debug(...args: unknown[]) {
-    this._screen.debug(...(args as any));
-  }
-  private _updateSelected() {
-    this._panels.forEach((x) => {
-      x.deactivate();
-      if (x.orderKey === this._focusedKey) {
-        x.activate();
-      }
-    });
-    this._screen.render();
+    this._screen.debug(this._i++ + ":", ...(args as any));
   }
 }
-const panelKeyOrder: BFSP.TUI.Panel.Name[] = ["Build", "Tsc", "Dev", "Deps", "Workspaces"];

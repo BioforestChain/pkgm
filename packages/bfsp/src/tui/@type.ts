@@ -6,7 +6,6 @@ declare namespace BFSP.TUI {
   namespace Panel {
     interface AllMap {
       Tsc: import("./internalPanels").TscPanel;
-      // Bundle: import("./internalPanels").BundlePanel;
       Workspaces: import("./internalPanels").WorkspacesPanel;
       Dev: import("./internalPanels").DevPanel;
       Build: import("./internalPanels").BuildPanel;

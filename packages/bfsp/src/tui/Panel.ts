@@ -1,8 +1,9 @@
+import { blessed } from "@bfchain/pkgm-base/lib/blessed";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
-import { afm } from "./animtion";
-import { FRAMES, getBaseWidgetOptions, H_LOG, H_NAV, TuiStyle, T_NAV, W_MAIN } from "./const";
 import { createSuperLogger } from "../SuperLogger";
+import { jsonClone } from "../toolkit.util";
+import { afm } from "./animtion";
+import { FRAMES, TuiStyle } from "./const";
 
 export interface PanelContext {
   debug(log: string): void;
@@ -14,17 +15,30 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     public orderKey: K,
     readonly name: N
   ) {
-    this.deactivate();
     this.updateStatus(this._status);
+
+    /// 如果聚焦元素改变，那么需要重新渲染样式
+    this.elLog.on("blur", () => {
+      this._isActive = false;
+      this._ctx.debug("blur " + this.name);
+      this.$queueRenderTab();
+    });
   }
-  private _status: PanelStatus = "loading";
+  private _status: PanelStatus = "info"; // "loading";
   get status() {
     return this._status;
   }
   private _loadingFrameId = 0;
   private _isActive = true;
-  readonly elLog = blessed.log(TuiStyle.logPanel);
-  readonly elMenu = blessed.box({});
+  readonly elLog = blessed.log(this.$elLogStyle);
+  protected get $elLogStyle() {
+    return jsonClone(TuiStyle.logWithBorder);
+  }
+  readonly elTab = blessed.box(this.$elTabStyle);
+  protected get $elTabStyle() {
+    return {};
+  }
+
   onStatusChange?: StatusChangeCallback;
   updateStatus(s: PanelStatus) {
     if (s === this._status) {
@@ -32,62 +46,93 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     }
     this._status = s;
     this.onStatusChange?.(s, this);
-    this._render();
+    this.$queueRenderTab();
+  }
+
+  private _renderingTab = false;
+  protected $queueRenderTab() {
+    if (this._renderingTab) {
+      return;
+    }
+    this._renderingTab = true;
+    queueMicrotask(() => {
+      /// update loading
+      {
+        if (this._status === "loading") {
+          this._loadingFrameId++;
+          if (this._ani_pid === undefined) {
+            this._ani_pid = afm.requestAnimationFrame(() => {
+              this._ani_pid = undefined;
+              this.$queueRenderTab();
+            });
+          }
+        } else {
+          this._loadingFrameId = 0;
+          if (this._ani_pid !== undefined) {
+            afm.cancelAnimationFrame(this._ani_pid);
+            this._ani_pid = undefined;
+          }
+        }
+      }
+      /// build tab content
+      {
+        let c = "";
+        // state
+        if (this._status === "loading") {
+          c += FRAMES[this._loadingFrameId % FRAMES.length];
+        } else if (this._status === "warn") {
+          c += chalk.yellow.bold("!");
+        } else if (this._status === "success") {
+          c += chalk.green.bold("✓");
+        } else if (this._status === "error") {
+          c += chalk.red.bold("x");
+        }
+
+        c += " ";
+        // content
+        if (this._isActive) {
+          c += chalk.bgWhiteBright(
+            chalk.bold(chalk.cyan.underline(`[${this.keyShort}]`) + " " + chalk.black(this.name))
+          );
+        } else {
+          c += chalk.cyan.underline(`[${this.keyShort}]`) + " " + this.name;
+        }
+        if (c !== this.elTab.content) {
+          this.elTab.content = c;
+        }
+      }
+
+      this._renderingTab = false;
+    });
   }
   private _ani_pid?: number;
-  private _render() {
-    if (this._status === "loading") {
-      this._loadingFrameId++;
-      if (this._ani_pid === undefined) {
-        this._ani_pid = afm.requestAnimationFrame(() => {
-          this._ani_pid = undefined;
-          this._render();
-        });
-      }
-    } else {
-      this._loadingFrameId = 0;
-      if (this._ani_pid !== undefined) {
-        afm.cancelAnimationFrame(this._ani_pid);
-        this._ani_pid = undefined;
-      }
-    }
-    this.elMenu.content = this._buildMenuContent();
-  }
-  private _buildMenuContent() {
-    let c = "";
-    // state
-    if (this._status === "loading") {
-      c += FRAMES[this._loadingFrameId % FRAMES.length];
-    } else if (this._status === "warn") {
-      c += chalk.yellow.bold("!");
-    } else if (this._status === "success") {
-      c += chalk.green.bold("✓");
-    } else if (this._status === "error") {
-      c += chalk.red.bold("x");
-    }
 
-    c += " ";
-    // content
-    if (this._isActive) {
-      c += chalk.bgWhiteBright(chalk.bold(chalk.cyan.underline(`[${this.orderKey}]`) + " " + chalk.black(this.name)));
-    } else {
-      c += chalk.cyan.underline(`[${this.orderKey}]`) + " " + this.name;
-    }
-    return c;
+  get keyShort() {
+    return this.orderKey.toString();
   }
   clear() {
     this.elLog.setContent("");
   }
+  group?: PanelGroup;
   activate() {
-    this._isActive = true;
+    if (this.group) {
+      for (const panel of this.group.values()) {
+        if (panel.name !== this.name) {
+          panel.deactivate();
+        }
+      }
+    }
     this.elLog.show();
     this.elLog.focus();
-    this._render();
+    this._isActive = true;
+    this._ctx.debug("show " + this.name);
+    this.$queueRenderTab();
   }
   deactivate() {
-    this._isActive = false;
     this.elLog.hide();
-    this._render();
+    this._isActive = false;
+    this._ctx.debug("hide " + this.name);
+    this.$queueRenderTab();
   }
 
   //#region 日志输出
@@ -123,14 +168,14 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     this.$queueRenderLog();
   }
 
-  private _rendering = false;
+  private _renderingLog = false;
   protected $queueRenderLog() {
-    if (this._rendering) {
+    if (this._renderingLog) {
       return;
     }
-    this._rendering = true;
+    this._renderingLog = true;
     queueMicrotask(() => {
-      this._rendering = false;
+      this._renderingLog = false;
       this.$renderLog();
     });
   }
@@ -169,3 +214,78 @@ export abstract class Panel<N extends string, K extends number = number> impleme
 }
 export type StatusChangeCallback = (s: PanelStatus, ctx: BFSP.TUI.Panel) => void;
 export type PanelStatus = "success" | "error" | "warn" | "loading" | "info";
+
+export class PanelGroup<N extends BFSP.TUI.Panel.Name = BFSP.TUI.Panel.Name> {
+  readonly view = blessed.box(this.$viewStyle);
+  protected get $viewStyle() {
+    return {};
+  }
+  readonly navBar = blessed.box({
+    ...jsonClone(TuiStyle.navBar),
+    parent: this.view,
+  });
+  readonly container = blessed.box({
+    ...jsonClone(TuiStyle.container),
+    parent: this.view,
+  });
+
+  // readonly container = blessed.
+  constructor(names: Iterable<N>) {
+    for (const name of names) {
+      this.names.add(name);
+    }
+  }
+  private names = new Set<BFSP.TUI.Panel.Name>();
+  belong(name: BFSP.TUI.Panel.Name): name is N {
+    return this.names.has(name);
+  }
+  private items = new Map<N, BFSP.TUI.Panel.GetByName<N>>();
+
+  trySet(panel: BFSP.TUI.Panel.Any) {
+    if (this.belong(panel.name)) {
+      if (this.items.has(panel.name) === false) {
+        this.set(panel.name, panel as any);
+        return true;
+      }
+    }
+    return false;
+  }
+  set<NAME extends N>(name: NAME, panel: BFSP.TUI.Panel.GetByName<NAME>) {
+    this.items.set(name, panel);
+    panel.group = this;
+    this.navBar.append(panel.elTab);
+    this.container.append(panel.elLog);
+
+    const allPanels = [...this.values()];
+
+    /// 更新顺序与索引
+    allPanels.forEach((panel) => (panel.orderKey = this.panelKeyOrder.indexOf(panel.name)));
+    allPanels.sort((a, b) => a.orderKey - b.orderKey); // 升序
+    allPanels.forEach((panel, index) => (panel.orderKey = index + 1));
+
+    /// 更新计算布局
+    const unitWidth = Math.round(100 / allPanels.length);
+    for (const [index, panel] of allPanels.entries()) {
+      panel.elTab.width = `${unitWidth}%`;
+      panel.elTab.left = `${index * unitWidth}%`;
+    }
+    // 激活渲染
+    panel.activate();
+  }
+  readonly panelKeyOrder: readonly BFSP.TUI.Panel.Name[] = [];
+  get<NAME extends N>(name: NAME) {
+    return this.items.get(name) as BFSP.TUI.Panel.GetByName<NAME> | undefined;
+  }
+  has<NAME extends N>(name: NAME) {
+    return this.items.has(name);
+  }
+  keys() {
+    return this.items.keys();
+  }
+  values() {
+    return this.items.values();
+  }
+  entries() {
+    return this.items.entries();
+  }
+}

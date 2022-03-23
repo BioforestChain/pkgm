@@ -11,5 +11,9 @@
   "dependencies": {
     "@bfchain/pkgm-bfsp": "^2.5.19",
     "@bfchain/pkgm-bfsw": "^2.5.19"
+  },
+  "devDependencies": {
+    "@bfchain/pkgm-bfsp": "link:../bfsp",
+    "@bfchain/pkgm-bfsw": "link:../bfsw"
   }
 }

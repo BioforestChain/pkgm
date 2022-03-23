@@ -1,16 +1,14 @@
-import type { Widgets } from "@bfchain/pkgm-base/lib/blessed";
+import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
+import { jsonClone } from "../toolkit.util";
 import { afm } from "./animtion";
-import { FRAMES } from "./const";
+import { FRAMES, TuiStyle } from "./const";
 
 export class StatusBar {
-  private _el!: Widgets.BoxElement;
+  readonly view = blessed.box(jsonClone(TuiStyle.leftBottomBar));
   private _currentMsg = "";
   private _loadingMsg = "";
   private _loadingFrameId = 0;
   private _loadingEnabled = false;
-  constructor(el: Widgets.BoxElement) {
-    this._el = el;
-  }
   private _buildContent() {
     let c = "";
     if (this._loadingEnabled) {
@@ -51,7 +49,7 @@ export class StatusBar {
         this._ani_sid = undefined;
       }
     }
-    this._el.content = this._buildContent();
+    this.view.content = this._buildContent();
   }
 
   setMsg(msg: string, loading?: boolean | number) {

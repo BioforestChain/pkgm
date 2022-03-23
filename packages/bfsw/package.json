@@ -10,18 +10,15 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/main/index.mjs"
-    },
-    "./bin": {
-      "import": "./dist/main/bin.mjs"
+      "import": "./dist/main/src/index.mjs"
     },
     "./bfsw": {
-      "import": "./dist/main/bfsw.bin.mjs"
+      "import": "./dist/main/src/bfsw.bin.mjs"
     },
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsw": "./dist/main/bfsw.bin.mjs"
+    "bfsw": "./dist/main/src/bfsw.bin.mjs"
   },
   "files": [
     "dist",

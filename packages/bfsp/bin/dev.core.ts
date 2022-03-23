@@ -33,7 +33,6 @@ export const doDevBfsp = (args: {
   let abortable: ReturnType<typeof Closeable>;
 
   abortable = Closeable<string, string>("bin:dev", async (reasons) => {
-    debugger
     /**防抖，避免不必要的多次调用 */
     const closeSign = new PromiseOut<unknown>();
     (async () => {

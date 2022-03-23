@@ -1,10 +1,13 @@
 import { DevLogger, doDevBfsp, getTui } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
-export const doDevBfsw = async (options: { workspaceConfig: WorkspaceConfig; format?: Bfsp.Format }) => {
+export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format?: Bfsp.Format }) => {
   const debug = DevLogger("bfsw:bin/dev");
   const workspacePanel = getTui().getPanel("Workspaces");
-  const { workspaceConfig } = options;
+  const { logger } = workspacePanel;
+  logger.info("hi~~~");
+
+  const { workspaceConfig } = args;
   type $DevBfsp = ReturnType<typeof doDevBfsp>;
 
   const devBfspMap = new Map<string, { devBfsp: $DevBfsp; stop: Function }>();
@@ -13,7 +16,7 @@ export const doDevBfsw = async (options: { workspaceConfig: WorkspaceConfig; for
     stoped = true;
     for (const [projectRoot, devBfsp] of devBfspMap) {
       devBfsp.stop();
-      workspacePanel.logger.info("stoped dev project in %s", path.relative(workspaceConfig.root, projectRoot));
+      logger.info("stoped dev project in %s", path.relative(workspaceConfig.root, projectRoot));
     }
     devBfspMap.clear();
   };
@@ -32,15 +35,15 @@ export const doDevBfsw = async (options: { workspaceConfig: WorkspaceConfig; for
         }
         const devBfsp = doDevBfsp({
           root: projectRoot,
-          format: options.format,
+          format: args.format,
           subStreams: projectConfigStreams,
         });
-        workspacePanel.logger.success("started dev project in %s", path.relative(workspaceConfig.root, projectRoot));
+        logger.success("started dev project in %s", path.relative(workspaceConfig.root, projectRoot));
         devBfspMap.set(projectRoot, {
           devBfsp,
           stop() {
             devBfsp.abortable.close();
-            workspacePanel.logger.info("stoped dev project in %s", path.relative(workspaceConfig.root, projectRoot));
+            logger.info("stoped dev project in %s", path.relative(workspaceConfig.root, projectRoot));
           },
         });
       }

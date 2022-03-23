@@ -17,14 +17,15 @@ import {
   watchPackageJson,
   watchTsConfig,
   watchViteConfig,
+  watchGitIgnore,
+  watchNpmIgnore,
 } from "@bfchain/pkgm-bfsp";
-import { watchGitIgnore } from "@bfchain/pkgm-bfsp/src/configs/gitIgnore";
-import { watchNpmIgnore } from "@bfchain/pkgm-bfsp/src/configs/npmIgnore";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import bfswTsconfigContent from "../assets/tsconfig.bfsw.json?raw";
+// import bfswTsconfigContent from "../../assets/tsconfig.bfsw.json?raw";
+const bfswTsconfigContent = '{}'
 import { consts } from "../consts";
 import { States } from "./states";
 import { WorkspacePackageJson } from "./workspacePackageJson";

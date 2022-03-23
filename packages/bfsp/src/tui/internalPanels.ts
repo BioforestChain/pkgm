@@ -1,9 +1,10 @@
+import { Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import type { LogErrorOptions, LogLevel, LogType } from "@bfchain/pkgm-base/lib/vite";
 import { createSuperLogger } from "../SuperLogger";
-import { LogLevels } from "./const";
-import { Panel, PanelContext } from "./Panel";
+import { LogLevels, TuiStyle } from "./const";
+import { Panel, PanelContext, PanelGroup } from "./Panel";
 
 export class TscPanel extends Panel<"Tsc"> {
   protected $tscLogAllContent = "";
@@ -151,15 +152,17 @@ export class BuildPanel extends BundlePanel<"Build"> {
     }
   }
 }
-export class WorkspacesPanel extends BundlePanel<"Workspaces"> {}
+export class WorkspacesPanel extends Panel<"Workspaces"> {
+  get keyShort(): string {
+    return "w";
+  }
+}
 export class DepsPanel extends Panel<"Deps"> {
   private _depsAllContent = "";
   private _depsLastContent = "";
   // 初始化时状态设为success，修复依赖为空时一直处于loading状态
   constructor(_ctx: PanelContext, orderKey: number, readonly name: "Deps") {
-    super(_ctx, orderKey, "Deps");
-    super.deactivate();
-    super.updateStatus("success");
+    super(_ctx, orderKey, name);
   }
 
   writeDepsLog(s: string) {
@@ -202,3 +205,24 @@ export class DepsPanel extends Panel<"Deps"> {
     this.elLog.setContent(this._depsAllContent + this.$logAllContent);
   }
 }
+
+export class CenterMainPanelGroup extends PanelGroup<"Build" | "Deps" | "Dev" | "Tsc"> {
+  constructor() {
+    super(["Build", "Deps", "Dev", "Tsc"]);
+  }
+  protected override get $viewStyle() {
+    return TuiStyle.leftMain;
+  }
+  readonly panelKeyOrder = ["Build", "Tsc", "Dev", "Deps"] as const;
+}
+
+export class RightSidePanelGroup extends PanelGroup<"Workspaces"> {
+  constructor() {
+    super(["Workspaces"]);
+  }
+  protected override get $viewStyle() {
+    return TuiStyle.rightSide;
+  }
+  readonly panelKeyOrder = ["Workspaces"] as const;
+}
+// export const panelKeyOrder: BFSP.TUI.Panel.Name[] = ["Build", "Tsc", "Dev", "Deps", "Workspaces"];

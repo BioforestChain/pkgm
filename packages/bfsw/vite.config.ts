@@ -27,13 +27,16 @@ export default defineConfig((info) => {
 
   return {
     build: {
-      target: "es2020",
+      target: "node16",
+      polyfillModulePreload: false,
       outDir: "dist/" + inputConfig.outDir,
       rollupOptions: {
         preserveEntrySignatures: "strict",
         external: getExternalOption(__dirname),
         input: inputConfig.input,
+        preserveModules: true,
         output: {
+          manualChunks: undefined,
           entryFileNames: `[name]${extension}`,
           chunkFileNames: `chunk/[name]${extension}`,
           format: libFormat,
