@@ -1,6 +1,6 @@
-import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
+import { defineCommand } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
-import { workspaceInit } from "./workspace";
+// import { workspaceInit } from "./workspace";
 
 export const npmCommand = defineCommand(
   "npm",
@@ -24,6 +24,6 @@ export const npmCommand = defineCommand(
       root = path.resolve(root, maybeRoot);
     }
 
-    await workspaceInit({ root, mode: "npm" });
+    // await workspaceInit({ root, mode: "npm" });
   }
 );

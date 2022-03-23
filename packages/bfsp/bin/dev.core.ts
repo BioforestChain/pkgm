@@ -3,7 +3,6 @@ import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { isDeepStrictEqual } from "node:util";
 import { watchBfspProjectConfig } from "../src/bfspConfig";
-import { BuildService } from "../src/buildService";
 import { createViteLogger, DevLogger } from "../src/logger";
 import { Closeable } from "../src/toolkit";
 import type { RollupWatcher } from "@bfchain/pkgm-base/lib/rollup";
@@ -13,18 +12,15 @@ import { getTui } from "../src/tui";
 
 type DevEventCallback = (name: string) => BFChainUtil.PromiseMaybe<void>;
 
-export const doDev = async (options: {
-  root?: string;
+export const doDevBfsp = (args: {
+  root: string;
   format?: Bfsp.Format;
-  buildService: BuildService;
   subStreams: ReturnType<typeof watchBfspProjectConfig>;
 }) => {
   const debug = DevLogger("bfsp:bin/dev");
   const devPanel = getTui().getPanel("Dev");
-
-  // const cwd = process.cwd();
-  // const maybeRoot = path.join(cwd, process.argv.filter((a) => a.startsWith(".")).pop() || "");
-  const { root = process.cwd(), format, buildService, subStreams } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
+  const { logger } = devPanel;
+  const { root = process.cwd(), format, subStreams } = args;
 
   debug("root", root);
 
@@ -37,6 +33,7 @@ export const doDev = async (options: {
   let abortable: ReturnType<typeof Closeable>;
 
   abortable = Closeable<string, string>("bin:dev", async (reasons) => {
+    debugger
     /**防抖，避免不必要的多次调用 */
     const closeSign = new PromiseOut<unknown>();
     (async () => {
@@ -52,13 +49,12 @@ export const doDev = async (options: {
       const tsConfig = await subStreams.tsConfigStream.getCurrent();
 
       const viteConfigBuildOptions = {
-        buildService,
         userConfig: userConfig.userConfig,
         projectDirpath: root,
         viteConfig,
         tsConfig,
         format: format ?? userConfig.userConfig.formats?.[0],
-        logger: devPanel.logger,
+        logger,
       };
       if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
         return;
@@ -69,6 +65,7 @@ export const doDev = async (options: {
       debug("running bfsp build!");
       //#region vite
       const viteLogger = createViteLogger(devPanel);
+      getTui().debug("start vite");
       const dev = (await buildBfsp({
         ...viteBuildConfig,
         build: {
@@ -124,6 +121,31 @@ export const doDev = async (options: {
       closeSign.resolve(reason);
     };
   });
+
+  /// 开始监听并触发编译
+  subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
+  subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
+  subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
+  subStreams.depsInstallStream.onNext((state) => {
+    switch (state) {
+      case "start":
+        /// 开始安装依赖时，暂停编译，解除文件占用
+        abortable.close(); // @todo pause
+        break;
+      case "success": /// 依赖安装成功
+        abortable.restart("deps installed");
+        break;
+      case "fail":
+        /// 依赖安装失败时，文件缺失，暂停编译
+        abortable.close(); // @todo pause
+        break;
+    }
+  });
+
+  /// 如果配置齐全，那么直接开始
+  if (subStreams.viteConfigStream.hasCurrent() && subStreams.depsInstallStream.current === "success") {
+    abortable.start();
+  }
 
   return {
     abortable: abortable!,

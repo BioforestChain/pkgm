@@ -165,10 +165,15 @@ export const generatePackageJson = async (
     packageJson[key] = userConfigPackageJson[key];
   }
 
-  return packageJson as typeof import("../../assets/package.template.json");
+  return packageJson as $PackageJson;
 };
 
-export type $PackageJson = Awaited<ReturnType<typeof generatePackageJson>>;
+export type $PackageJson = typeof import("../../assets/package.template.json") & {
+  dependencies: Bfsp.Dependencies;
+  devDependencies: Bfsp.Dependencies;
+  peerDependencies: Bfsp.Dependencies;
+  optionalDependencies: Bfsp.Dependencies;
+};
 export const writePackageJson = (projectDirpath: string, packageJson: $PackageJson) => {
   return writeJsonConfig(path.resolve(projectDirpath, "package.json"), packageJson);
 };

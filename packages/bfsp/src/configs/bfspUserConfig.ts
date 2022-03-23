@@ -1,18 +1,17 @@
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { build } from "@bfchain/pkgm-base/lib/esbuild";
 import { createHash } from "node:crypto";
-import { existsSync, unlinkSync, writeFileSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
-import { BuildService } from "../buildService";
-import { DevLogger } from "../logger";
 import * as consts from "../consts";
+import { DevLogger } from "../logger";
 import {
   fileIO,
   folderIO,
-  Loopable,
   parseExtensionAndFormat,
   SharedAsyncIterable,
   SharedFollower,
@@ -168,7 +167,7 @@ export const createTsconfigForEsbuild = (content: string) => {
 
 const bfspTsconfigFilepath = createTsconfigForEsbuild(bfspTsconfigContent);
 
-export const _readFromMjs = async <T>(filename: string, refresh?: boolean) => {
+export const $readFromMjs = async <T>(filename: string, refresh?: boolean) => {
   const url = pathToFileURL(filename);
   if (refresh) {
     url.searchParams.append("_", Date.now().toString());
@@ -181,8 +180,10 @@ export const readUserConfig = async (
   dirname: string,
   options: {
     refresh?: boolean;
+    single?: AbortSignal;
+    watch?: (config: Bfsp.UserConfig) => void;
   }
-) => {
+): Promise<Bfsp.UserConfig | undefined> => {
   for (const filename of await folderIO.get(dirname)) {
     if (filename === "#bfsp.ts" || filename === "#bfsp.mts" || filename === "#bfsp.mtsx") {
       const cache_filename = `#bfsp-${createHash("md5").update(`${Date.now()}`).digest("hex")}.mjs`;
@@ -193,7 +194,7 @@ export const readUserConfig = async (
       const cache_filepath = resolve(bfspDir, cache_filename);
       try {
         debug("complie #bfsp");
-        await build({
+        const buildResult = await build({
           entryPoints: [filename],
           absWorkingDir: dirname,
           bundle: false,
@@ -202,8 +203,25 @@ export const readUserConfig = async (
           write: true,
           outfile: cache_filepath,
           tsconfig: bfspTsconfigFilepath,
+          watch: options.watch && {
+            onRebuild: async (error, result) => {
+              if (!error) {
+                options.watch!(await $readFromMjs<Bfsp.UserConfig>(cache_filepath, options.refresh));
+              }
+            },
+          },
         });
-        return await _readFromMjs<Bfsp.UserConfig>(cache_filepath, options.refresh);
+        const { single } = options;
+        if (single) {
+          if (single.aborted) {
+            return;
+          }
+          if (buildResult.stop) {
+            single.addEventListener("abort", buildResult.stop.bind(buildResult));
+          }
+        }
+        return await $readFromMjs<Bfsp.UserConfig>(cache_filepath, options.refresh);
+      } catch (err) {
       } finally {
         existsSync(cache_filepath) && unlinkSync(cache_filepath);
       }
@@ -223,64 +241,91 @@ export const getBfspUserConfig = async (
   dirname = process.cwd(),
   options: {
     refresh?: boolean;
+    single?: AbortSignal;
+    watch?: (config: $BfspUserConfig) => void;
   } = {}
 ) => {
-  const userConfig = await readUserConfig(dirname, options);
+  const userConfig = await readUserConfig(dirname, {
+    ...options,
+    watch:
+      options.watch &&
+      ((userConfig) => {
+        options.watch!($getBfspUserConfig(userConfig));
+      }),
+  });
   if (userConfig === undefined) {
     throw new Error("no found #bfsp project");
   }
-  return _getBfspUserConfig(userConfig);
+  return $getBfspUserConfig(userConfig);
 };
-const _getBfspUserConfig = (userConfig: Bfsp.UserConfig) => {
+export const $getBfspUserConfig = (userConfig: Bfsp.UserConfig): $BfspUserConfig => {
   return {
     userConfig,
     exportsDetail: parseExports(userConfig.exports),
     formatExts: parseFormats(userConfig.formats),
+    extendsService: new ExtendsService(),
   };
 };
 
-export type $BfspUserConfig = Awaited<ReturnType<typeof getBfspUserConfig>>;
+// ProjectConfig
+export type $BfspUserConfig = {
+  userConfig: Bfsp.UserConfig;
+  exportsDetail: ReturnType<typeof parseExports>;
+  formatExts: ReturnType<typeof parseFormats>;
+  extendsService: ExtendsService;
+};
+class ExtendsService {
+  tsRefs: BFChainUtil.PromiseMaybe<{ path: string }[]> = [];
+}
 
 export const watchBfspUserConfig = (
   projectDirpath: string,
-  buildService: BuildService,
   options: {
     bfspUserConfigInitPo?: BFChainUtil.PromiseMaybe<$BfspUserConfig>;
-  } = {}
+    logger: PKGM.Logger;
+  }
 ) => {
   const follower = new SharedFollower<$BfspUserConfig>();
+  const { logger } = options;
 
   let curBfspUserConfig: $BfspUserConfig | undefined;
+  const abortController = new AbortController();
+  const abortSingle = abortController.signal;
 
-  const looper = Loopable("watch bfsp user config", async () => {
+  (async () => {
     if (curBfspUserConfig === undefined) {
       // 初始的值 放出来
-      follower.push((curBfspUserConfig = await (options.bfspUserConfigInitPo ?? getBfspUserConfig(projectDirpath))));
+      if (options.bfspUserConfigInitPo) {
+        follower.push((curBfspUserConfig = await options.bfspUserConfigInitPo));
+      }
     }
 
     if (!existsSync(projectDirpath)) {
-      debug("unable to read bfsp user config: project maybe removed");
+      logger.error("unable to read bfsp user config: '%s' maybe removed", chalk.blue(projectDirpath));
       return;
     }
-    const userConfig = await readUserConfig(projectDirpath, {
-      refresh: true,
-    });
-    if (userConfig !== undefined) {
+    const tryPushUserConfig = (userConfig: Bfsp.UserConfig) => {
       if (isDeepStrictEqual(curBfspUserConfig?.userConfig, userConfig)) {
         return;
       }
       debug("bfspuserConfig changed!!");
-      follower.push((curBfspUserConfig = _getBfspUserConfig(userConfig)));
-    }
-  });
-  buildService.watcher.watchUserConfig(projectDirpath, (p, type) => {
-    if (type === "add" || type === "change") {
-      looper.loop();
-    }
-  });
-  buildService.updateUserConfigStream(looper);
+      follower.push((curBfspUserConfig = $getBfspUserConfig(userConfig)));
+    };
 
-  looper.loop();
+    const userConfig = await readUserConfig(projectDirpath, {
+      refresh: true,
+      single: abortSingle,
+      watch: tryPushUserConfig,
+    });
+    if (userConfig !== undefined) {
+      tryPushUserConfig(userConfig);
+    }
+  })();
 
-  return new SharedAsyncIterable<$BfspUserConfig>(follower);
+  /// 转成异步迭代器
+  const sai = new SharedAsyncIterable<$BfspUserConfig>(follower);
+  sai.onStop(() => {
+    abortController.abort();
+  }, true);
+  return sai;
 };

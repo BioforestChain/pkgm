@@ -1,7 +1,7 @@
-import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { defineCommand } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
-import { doCreate } from "./create.core";
-import chalk from "chalk";
+import { doCreateBfsw } from "./create.core";
 
 export const createCommand = defineCommand(
   "create",
@@ -32,6 +32,6 @@ export const createCommand = defineCommand(
       return;
     }
 
-    return doCreate({ root: projectRoot, name: projectName, license: params.license }, ctx.logger);
+    await doCreateBfsw({ root: projectRoot, name: projectName, license: params.license }, ctx.logger);
   }
 );

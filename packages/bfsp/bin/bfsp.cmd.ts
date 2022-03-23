@@ -5,7 +5,7 @@ import { initCommand } from "./init.bin";
 import { testCommand } from "./test.bin";
 import { versionCommand } from "./version.bin";
 import { createCommand } from "./create.bin";
-import { npmCommand } from "./npm.bin";
+// import { npmCommand } from "./npm.bin";
 // import {} from "./fmt.bin";
 import { defineHelpCommand } from "./help.bin";
 
@@ -17,5 +17,5 @@ defineHelpCommand([
   testCommand,
   versionCommand,
   createCommand,
-  npmCommand,
+  // npmCommand,
 ]);

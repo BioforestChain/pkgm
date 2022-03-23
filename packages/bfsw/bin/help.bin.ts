@@ -1,4 +1,4 @@
-import { defineCommand, defineDefaultCommand, CommandInfo } from "@bfchain/pkgm-bfsp/bin";
+import { CommandInfo, defineCommand, defineDefaultCommand } from "@bfchain/pkgm-bfsp";
 export const defineHelpCommand = (commandInfoList: readonly CommandInfo[]) => {
   const helpCommand = defineCommand(
     "help",

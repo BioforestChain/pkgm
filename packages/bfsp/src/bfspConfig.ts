@@ -1,10 +1,10 @@
-import { BuildService } from "./buildService";
 import { getBfspUserConfig, watchBfspUserConfig } from "./configs/bfspUserConfig";
 import { $GitIgnore, generateGitIgnore, watchGitIgnore, writeGitIgnore } from "./configs/gitIgnore";
 import { $NpmIgnore, generateNpmIgnore, watchNpmIgnore, writeNpmIgnore } from "./configs/npmIgnore";
 import { $PackageJson, generatePackageJson, watchPackageJson, writePackageJson } from "./configs/packageJson";
 import { $TsConfig, generateTsConfig, watchTsConfig, writeTsConfig } from "./configs/tsConfig";
 import { generateViteConfig, watchViteConfig } from "./configs/viteConfig";
+import { doWatchDeps } from "./deps";
 
 export const getBfspProjectConfig = async (dirname = process.cwd()) => {
   const bfspUserConfig = await getBfspUserConfig(dirname);
@@ -17,14 +17,10 @@ export const getBfspProjectConfig = async (dirname = process.cwd()) => {
 };
 export type $BfspProjectConfig = Awaited<ReturnType<typeof getBfspProjectConfig>>;
 
-export const writeBfspProjectConfig = async (
-  projectConfig: $BfspProjectConfig,
-  buildService: BuildService,
-  options: { logger?: PKGM.Logger } = {}
-) => {
+export const writeBfspProjectConfig = async (projectConfig: $BfspProjectConfig, options: { logger: PKGM.Logger }) => {
   const { projectDirpath, bfspUserConfig } = projectConfig;
 
-  const tsConfig = await generateTsConfig(projectDirpath, bfspUserConfig, buildService, options);
+  const tsConfig = await generateTsConfig(projectDirpath, bfspUserConfig, options);
   const viteConfig = await generateViteConfig(projectDirpath, bfspUserConfig, tsConfig);
 
   const gitIgnorePo = generateGitIgnore(projectDirpath, bfspUserConfig.userConfig);
@@ -43,20 +39,24 @@ export const writeBfspProjectConfig = async (
 
 export const watchBfspProjectConfig = (
   projectConfig: $BfspProjectConfig,
-  buildService: BuildService,
   initConfigs: {
     gitIgnore?: BFChainUtil.PromiseMaybe<$GitIgnore>;
     npmIgnore?: BFChainUtil.PromiseMaybe<$NpmIgnore>;
     tsConfig?: BFChainUtil.PromiseMaybe<$TsConfig>;
     packageJson?: BFChainUtil.PromiseMaybe<$PackageJson>;
+  },
+  options: {
+    logger: PKGM.Logger;
   }
 ) => {
   const { projectDirpath, bfspUserConfig } = projectConfig;
 
-  const userConfigStream = watchBfspUserConfig(projectDirpath, buildService, {
+  const userConfigStream = watchBfspUserConfig(projectDirpath, {
+    logger: options.logger,
     bfspUserConfigInitPo: bfspUserConfig,
   });
-  const tsConfigStream = watchTsConfig(projectDirpath, userConfigStream, buildService, {
+  const tsConfigStream = watchTsConfig(projectDirpath, userConfigStream, {
+    logger: options.logger,
     tsConfigInitPo: initConfigs.tsConfig,
     write: true,
   });
@@ -77,6 +77,8 @@ export const watchBfspProjectConfig = (
     write: true,
   });
 
+  const watchDeps = doWatchDeps(projectDirpath, packageJsonStream, { runInstall: true });
+
   return {
     userConfigStream,
     viteConfigStream,
@@ -84,6 +86,7 @@ export const watchBfspProjectConfig = (
     packageJsonStream,
     gitIgnoreStream,
     npmIgnoreStream,
+    depsInstallStream: watchDeps.stream,
     stopAll() {
       userConfigStream.stop();
       viteConfigStream.stop();
@@ -91,6 +94,7 @@ export const watchBfspProjectConfig = (
       packageJsonStream.stop();
       gitIgnoreStream.stop();
       npmIgnoreStream.stop();
+      watchDeps.stop();
     },
   };
 };

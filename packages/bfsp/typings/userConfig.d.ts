@@ -28,12 +28,15 @@ declare namespace Bfsp {
       compilerOptions?: {
         [name: string]: unknown;
       };
+      // references?: TsReference[];
+      // files?: string[];
     };
     internal?: Iterable<string> | InternalPredict;
   }
   type Dependencies = {
     [name: string]: string;
   };
+  type TsReference = { path: string };
 
   type JsFormat = "cjs" | "esm" | "iife";
   type JsExtension = ".cjs" | ".mjs" | ".js";

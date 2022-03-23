@@ -203,13 +203,21 @@ export const folderIO = new ReaddirCache();
 
 export async function* walkFiles(
   dirpath: string,
-  opts: { dirFilter?: (dirpath: string) => BFChainUtil.PromiseMaybe<boolean>; refreshCache?: boolean } = {}
+  opts: {
+    dirFilter?: (dirpath: string) => BFChainUtil.PromiseMaybe<boolean>;
+    refreshCache?: boolean;
+    skipSymLink?: boolean;
+  } = {}
 ): AsyncGenerator<string> {
-  const { dirFilter = () => true } = opts;
+  const { dirFilter = () => true, skipSymLink: skipSymbolicLink = false } = opts;
   for (const basename of await folderIO.get(dirpath, opts.refreshCache)) {
     const somepath = path.resolve(dirpath, basename);
     try {
-      if (statSync(somepath).isFile()) {
+      const stat = statSync(somepath);
+      if (stat.isFile()) {
+        if (skipSymbolicLink && stat.isSymbolicLink() === false) {
+          continue;
+        }
         yield somepath;
       } else if (await dirFilter(somepath)) {
         yield* walkFiles(somepath, opts);
@@ -289,6 +297,9 @@ AGP.toSharable = function () {
 EventEmitter.defaultMaxListeners = 100;
 export class SharedAsyncIterable<T> implements AsyncIterable<T> {
   private _current?: T;
+  get current() {
+    return this._current;
+  }
   constructor(/* private */ source: AsyncIterator<T>) {
     (async () => {
       do {
@@ -309,11 +320,7 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
   private _followers = new Set<SharedFollower<T>>();
   private _ee = new EventEmitter();
   onNext(cb: (value: T) => unknown, once?: boolean) {
-    if (once) {
-      this._ee.once("value", cb);
-    } else {
-      this._ee.addListener("value", cb);
-    }
+    return this._bind("value", cb, once);
   }
   hasCurrent() {
     return this._current !== undefined;
@@ -334,7 +341,19 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
       return false;
     }
     this._loop = false;
+    this._ee.emit("stop");
     return true;
+  }
+  onStop(cb: () => void, once?: boolean) {
+    return this._bind("stop", cb, once);
+  }
+  private _bind(eventname: string, cb: (...args: any[]) => void, once?: boolean) {
+    if (once) {
+      this._ee.once(eventname, cb);
+    } else {
+      this._ee.on(eventname, cb);
+    }
+    return () => this._ee.off(eventname, cb);
   }
 
   /// 每一次for await，都会生成一个新的迭代器，直到被break掉
@@ -405,6 +424,9 @@ export class SharedFollower<T> implements AsyncIterator<T> {
   }
   throw() {
     return this.return();
+  }
+  toAsyncIterator() {
+    return this as AsyncIterator<T>;
   }
 }
 
@@ -507,6 +529,7 @@ export const Closeable = <T1 = unknown, T2 = unknown>(
   title: string,
   fun: (reasons: Set<T1 | undefined>) => BFChainUtil.PromiseMaybe<DoClose<T2>>
 ) => {
+  const debug = DevLogger("bfsp:toolkit/closeable/" + title);
   let aborter: DoClose<T2> | undefined;
   let closing = false;
   let starting = false;
@@ -537,6 +560,7 @@ export const Closeable = <T1 = unknown, T2 = unknown>(
         if (cmd === undefined) {
           break;
         }
+        debug("cmd", cmd, state);
         if (cmd === "open") {
           if (state === "closed") {
             state = "opening";
@@ -593,6 +617,10 @@ export const Closeable = <T1 = unknown, T2 = unknown>(
       cmdQueue.add("open");
       looper.loop([3, reason]);
     },
+    /* @todo 
+    pause
+    remuse
+    */
   };
   return abortable;
 };

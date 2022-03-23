@@ -4,9 +4,8 @@ import { existsSync } from "node:fs";
 import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { inspect } from "node:util";
-import { $BfspUserConfig, getBfspUserConfig, parseExports, parseFormats } from "../src";
+import { $BfspUserConfig, $getBfspUserConfig, getBfspUserConfig, parseExports, parseFormats } from "../src";
 import { writeBfspProjectConfig } from "../src/bfspConfig";
-import { BuildService } from "../src/buildService";
 import { $PackageJson, generatePackageJson } from "../src/configs/packageJson";
 import { generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
@@ -21,11 +20,11 @@ import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
 const debug = DevLogger("bfsp:bin/build");
 
-export const writeBuildConfigs = async (args: { root?: string; buildService: BuildService }) => {
-  const { root = process.cwd(), buildService } = args;
+export const writeBuildConfigs = async (args: { root?: string }, options: { logger: PKGM.Logger }) => {
+  const { root = process.cwd() } = args;
   const bfspUserConfig = await getBfspUserConfig(root);
   const projectConfig = { projectDirpath: root, bfspUserConfig };
-  const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
+  const subConfigs = await writeBfspProjectConfig(projectConfig, options);
   return { subConfigs, bfspUserConfig };
 };
 export const installBuildDeps = async (options: { root: string }) => {
@@ -110,7 +109,6 @@ const buildSingle = async (options: {
   bfspUserConfig: $BfspUserConfig;
 
   buildLogger: BuildLogger;
-  buildService: BuildService;
 }) => {
   const buildPanel = getTui().getPanel("Build");
   const tscLogger = createTscLogger();
@@ -118,23 +116,20 @@ const buildSingle = async (options: {
   const {
     //
     root,
-    buildService,
     thePackageJson,
     buildOutDir,
     bfspUserConfig,
   } = options;
   const buildConfig = bfspUserConfig.userConfig;
-  const { debug, flag, success, info, warn, error } = options.buildLogger;
+  const { debug, flag, success, info, warn, error, logger } = options.buildLogger;
 
-  const userConfig1 = {
-    userConfig: buildConfig,
-    exportsDetail: parseExports(buildConfig.exports),
-    formatExts: parseFormats(buildConfig.formats),
-  };
+  const userConfig1 = $getBfspUserConfig(buildConfig);
+
   flag(`generating tsconfig.json`);
-  const tsConfig1 = await generateTsConfig(root, userConfig1, buildService, {
+  const tsConfig1 = await generateTsConfig(root, userConfig1, {
     outDirRoot: path.relative(root, buildOutDir),
     outDirName: "source",
+    logger,
   });
   tsConfig1.isolatedJson.compilerOptions.emitDeclarationOnly = true;
   flag(`setting tsconfig.json`);
@@ -212,7 +207,6 @@ const buildSingle = async (options: {
   flag(`generating bundle config`);
   const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
   const jsBundleConfig = ViteConfigFactory({
-    buildService,
     userConfig: buildConfig,
     projectDirpath: root,
     viteConfig: viteConfig1,
@@ -293,13 +287,13 @@ class BuildLogger {
   private get _prompt() {
     return this.prompts[this.prompts.length - 1] || "";
   }
-  private _logger = this.bundlePanel.logger;
-  log = this._logger.log.bind(this._logger);
-  info = this._logger.info.bind(this._logger);
-  success = this._logger.success.bind(this._logger);
-  warn = this._logger.warn.bind(this._logger);
-  error = this._logger.error.bind(this._logger);
-  clearScreen = this._logger.clearScreen.bind(this._logger);
+  readonly logger = this.bundlePanel.logger;
+  log = this.logger.log.bind(this.logger);
+  info = this.logger.info.bind(this.logger);
+  success = this.logger.success.bind(this.logger);
+  warn = this.logger.warn.bind(this.logger);
+  error = this.logger.error.bind(this.logger);
+  clearScreen = this.logger.clearScreen.bind(this.logger);
   flag = (msg: string, loading = true) => {
     this.statusBar.setMsg(`${this._prompt} ${msg}`, loading);
   };
@@ -311,13 +305,8 @@ class BuildLogger {
   };
 }
 
-export const doBuild = async (options: {
-  root?: string;
-  format?: Bfsp.Format;
-  buildService: BuildService;
-  cfgs: Awaited<ReturnType<typeof writeBuildConfigs>>;
-}) => {
-  const { root = process.cwd(), format, buildService, cfgs } = options; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
+export const doBuild = async (args: { root?: string; cfgs: Awaited<ReturnType<typeof writeBuildConfigs>> }) => {
+  const { root = process.cwd(), cfgs } = args; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
   const { subConfigs, bfspUserConfig } = cfgs;
   const buildLogger = new BuildLogger([bfspUserConfig.userConfig.name]);
 
@@ -366,10 +355,9 @@ export const doBuild = async (options: {
 
           /// 服务
           buildLogger,
-          buildService,
         });
 
-        await buildService.afterSingleBuild({ buildOutDir, config: userConfig });
+        // await buildService.afterSingleBuild({ buildOutDir, config: userConfig });
       }
 
       const buildTimeSpan = chalk.cyan("+" + (Date.now() - startTime) + "ms");

@@ -3,13 +3,9 @@ import type { InlineConfig } from "@bfchain/pkgm-base/lib/vite";
 import { getExternalOption } from "@bfchain/pkgm-base/vite-config-helper";
 import fs from "node:fs";
 import path from "node:path";
-import { inspect } from "node:util";
-import { getTui } from "../../src";
-import { BuildService } from "../../src/buildService";
 import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
 import { $TsConfig } from "../../src/configs/tsConfig";
 import type { $ViteConfig } from "../../src/configs/viteConfig";
-import { consoleLogger } from "../../src/consoleLogger";
 import { DevLogger } from "../../src/logger";
 import { parseExtensionAndFormat } from "../../src/toolkit";
 const debug = DevLogger("bfsp:config/vite");
@@ -19,7 +15,6 @@ export const ViteConfigFactory = (options: {
   projectDirpath: string;
   viteConfig: $ViteConfig;
   tsConfig: $TsConfig;
-  buildService: BuildService;
   format?: Bfsp.Format;
   profiles?: string[];
   outDir?: string;
@@ -61,45 +56,6 @@ export const ViteConfigFactory = (options: {
                 }
               }
             : getExternalOption(projectDirpath, userConfig.name),
-        /*    (source, importer, isResolved) => {
-                log("external", source);
-                if (source.startsWith("#")) {
-                  // profile
-                  return false;
-                }
-
-                // 通过编译服务确定包是否应标记为外部
-                const { rollup } = options.buildService;
-                if (rollup) {
-                  if (rollup.isExternal(source, importer, isResolved)) {
-                    return true;
-                  }
-                }
-
-                // 用户声明为internal的包（通常是子包），要打包进去
-                const internal = options.userConfig.internal;
-                if (internal) {
-                  if (typeof internal === "function") {
-                    return !internal(source);
-                  } else {
-                    return ![...internal].some((x) => x === source);
-                  }
-                }
-                if (source.startsWith("node:")) {
-                  return true;
-                }
-                if (source === "@bfchain/pkgm-bfsp" || source.startsWith("@bfchain/pkgm-bfsp/")) {
-                  return true;
-                }
-                if (
-                  !source.startsWith(".") &&
-                  existsSync(`node_modules/${source}`) &&
-                  statSync(`node_modules/${source}`).isDirectory()
-                ) {
-                  return true;
-                }
-                return false;
-              } */
         input: viteConfig.viteInput,
         output: {
           entryFileNames: `[name]${extension}`,

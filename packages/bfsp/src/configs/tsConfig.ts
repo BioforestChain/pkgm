@@ -2,7 +2,6 @@ import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { existsSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { writeJsonConfig } from "../../bin/util";
-import { BuildService } from "../buildService";
 import { consoleLogger } from "../consoleLogger";
 import { TscIsolatedOutRootPath, TscOutRootPath, TscTypingsOutRootPath } from "../consts";
 import { DevLogger } from "../logger";
@@ -12,6 +11,7 @@ import {
   folderIO,
   getExtname,
   getTwoExtnames,
+  getWatcher,
   List,
   ListArray,
   ListSet,
@@ -21,6 +21,7 @@ import {
   SharedAsyncIterable,
   SharedFollower,
   toPosixPath,
+  walkFiles,
 } from "../toolkit";
 import { getTui } from "../tui";
 import type { $BfspUserConfig } from "./bfspUserConfig";
@@ -100,7 +101,7 @@ export class ProfileMap {
       return pInfo;
     }
   };
-  constructor(private logger: PKGM.ConsoleLogger = consoleLogger) {}
+  constructor(private logger: PKGM.ConsoleLogger) {}
 
   private _privatepathMap = new Map<
     /* #filepath */ string,
@@ -346,13 +347,12 @@ const getTsconfigFiles = (list: TsFilesLists, field: keyof Omit<TsFilesLists, "p
 export const generateTsConfig = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
-  buildService: BuildService,
-  options: { outDirRoot?: string; outDirName?: string; logger?: PKGM.Logger } = {}
+  options: { outDirRoot?: string; outDirName?: string; logger: PKGM.Logger }
 ) => {
-  const allTsFileList = await buildService
-    .walkFiles(projectDirpath, {
-      dirFilter: async (fullDirpath) => await notGitIgnored(fullDirpath),
-    })
+  const allTsFileList = await walkFiles(projectDirpath, {
+    dirFilter: async (fullDirpath) => await notGitIgnored(fullDirpath),
+    skipSymLink: true,
+  })
     .map((fullFilepath) => PathInfoParser(projectDirpath, fullFilepath, true))
     .filter((pathInfo) => isTsFile(pathInfo))
     .map((pathInfo) => toPosixPath(pathInfo.relative))
@@ -371,7 +371,7 @@ export const generateTsConfig = async (
 
   // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
   // const tsRefs = await multi.getReferences(projectDirpath);
-  const depRefs = await buildService.calculateRefsByPath(projectDirpath);
+  const depRefs = await bfspUserConfig.extendsService.tsRefs; // await buildService.calculateRefsByPath(projectDirpath);
   const tsConfig = {
     compilerOptions: {
       composite: true,
@@ -505,13 +505,13 @@ export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserC
 export const watchTsConfig = (
   projectDirpath: string,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
-  buildService: BuildService,
   options: {
     tsConfigInitPo?: BFChainUtil.PromiseMaybe<$TsConfig>;
     write?: boolean;
-  } = {}
+    logger: PKGM.Logger;
+  }
 ) => {
-  const { write = false } = options;
+  const { write = false, logger } = options;
   const follower = new SharedFollower<$TsConfig>();
 
   let tsConfig: $TsConfig | undefined;
@@ -523,7 +523,7 @@ export const watchTsConfig = (
     // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
     if (tsConfig === undefined) {
       follower.push(
-        (tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig, buildService)))
+        (tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig, options)))
       );
     }
 
@@ -559,7 +559,7 @@ export const watchTsConfig = (
 
     const paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);
     tsConfig.json.compilerOptions.paths = paths;
-    const depRefs = await buildService.calculateRefsByPath(projectDirpath);
+    const depRefs = await bfspUserConfig.extendsService.tsRefs;
 
     const refs = [
       {
@@ -598,15 +598,49 @@ export const watchTsConfig = (
     debug("tsconfig changed!!");
     follower.push(tsConfig);
   });
-  buildService.watcher.watchTs(projectDirpath, async (p, type) => {
-    if (await isTsFile(PathInfoParser(projectDirpath, p))) {
-      if (type === "change") {
-        return;
+  (async () => {
+    const watcher = await getWatcher(projectDirpath);
+    await watcher.doWatch(
+      {
+        expression: [
+          "allof",
+          [
+            "anyof",
+            ["match", "**/*.ts", "wholename"],
+            ["match", "**/*.tsx", "wholename"],
+            ["match", "**/*.cts", "wholename"],
+            ["match", "**/*.mts", "wholename"],
+            ["match", "**/*.ctsx", "wholename"],
+            ["match", "**/*.mtsx", "wholename"],
+          ],
+          ["not", ["match", "**/node_modules/**", "wholename"]],
+          ["not", ["match", "build/**", "wholename"]],
+          ["not", ["match", "dist/**", "wholename"]],
+          ["not", ["match", "**/.*/**", "wholename"]],
+        ],
+        chokidar: [
+          ["assets/**/*.json", "**/*.ts", "**/*.tsx", "**/*.cts", "**/*.mts", "**/*.ctsx", "**/*.mtsx"],
+          {
+            cwd: projectDirpath,
+            ignoreInitial: false,
+            followSymlinks: true,
+            ignored: ["*.d.ts", ".bfsp", "#bfsp.ts", "node_modules"],
+          },
+        ],
+      },
+      async (p, type) => {
+        if (await isTsFile(PathInfoParser(projectDirpath, p))) {
+          if (type === "change") {
+            return;
+          }
+          debug(`${type} file`, p);
+          cachedEventList.set(p, type);
+          looper.loop(`${type} file`, 200);
+        }
       }
-      debug(`${type} file`, p);
-      cachedEventList.set(p, type);
-      looper.loop(`${type} file`, 200);
-    }
+    );
+  })().catch((err) => {
+    logger.error("WATCH TS FILES FAIL:", err);
   });
 
   type EventType = "add" | "unlink";
@@ -614,7 +648,6 @@ export const watchTsConfig = (
 
   //#region 监听依赖配置来触发更新
   bfspUserConfigStream.onNext(() => looper.loop("bfsp user config changed"));
-  buildService.updateTsConfigStream(looper);
   //#endregion
 
   /// 初始化，使用400ms时间来进行防抖

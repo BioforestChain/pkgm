@@ -1,12 +1,10 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import path from "node:path";
 import { defineCommand } from "../bin";
-import { getTui, watchBfspProjectConfig, doWatchDeps, writeBfspProjectConfig } from "../src";
-import { getBfspBuildService } from "../src/buildService";
+import { getTui, watchBfspProjectConfig, writeBfspProjectConfig } from "../src";
 import { ALLOW_FORMATS, getBfspUserConfig } from "../src/configs/bfspUserConfig";
 import { createTscLogger, DevLogger } from "../src/logger";
-import { watchSingle } from "../src/watcher";
-import { doDev as doDevBundle } from "./dev.core";
+import { doDevBfsp } from "./dev.core";
 import { helpOptions } from "./help.core";
 import { runTsc } from "./tsc/runner";
 
@@ -47,14 +45,13 @@ export const devCommand = defineCommand(
 
     const tscLogger = createTscLogger();
 
-    const buildService = getBfspBuildService(watchSingle());
-
     const bfspUserConfig = await getBfspUserConfig(root);
     const projectConfig = { projectDirpath: root, bfspUserConfig };
-    const subConfigs = await writeBfspProjectConfig(projectConfig, buildService);
-    const configStreams = watchBfspProjectConfig(projectConfig, buildService, subConfigs);
-    // const { stream: depStream,onSt }
-    const wathDeps = doWatchDeps(root, configStreams.packageJsonStream, { runInstall: true });
+    /**使用特殊定制的logger */
+    const options = { logger: getTui().getPanel("Dev").logger };
+
+    const subConfigs = await writeBfspProjectConfig(projectConfig, options);
+    const configStreams = watchBfspProjectConfig(projectConfig, subConfigs, options);
 
     /* const tscStoppable = */
     runTsc({
@@ -64,23 +61,10 @@ export const devCommand = defineCommand(
       onClear: () => tscLogger.clear(),
     });
 
-    const devBundle = await doDevBundle({
+    doDevBfsp({
       root,
       format: format as Bfsp.Format,
-      buildService,
       subStreams: configStreams,
     });
-    const { abortable } = devBundle;
-    /// 开始监听并触发编译
-    configStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
-    configStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
-    configStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
-    wathDeps.stream.onNext(() => abortable.restart("deps installed"));
-    wathDeps.onStartInstall = () => {
-      abortable.close();
-    };
-    if (configStreams.viteConfigStream.hasCurrent()) {
-      abortable.start();
-    }
   }
 );

@@ -1,17 +1,9 @@
-import chalk from "chalk";
-import { spawn } from "node:child_process";
+import { defaultIgnores, doCreateBfsp, folderIO, ts, writeJsonConfig } from "@bfchain/pkgm-bfsp";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { folderIO, getBfswVersion } from "@bfchain/pkgm-bfsp";
-import { defaultIgnores } from "@bfchain/pkgm-bfsp";
-import { ts } from "@bfchain/pkgm-bfsp";
-import { writeJsonConfig } from "@bfchain/pkgm-bfsp";
-import { doInit } from "./init.core";
+import { joinMonoName } from "../src/util";
 
-export const doCreate = async (
-  options: { root: string; name: string; license?: string },
-  logger: PKGM.ConsoleLogger
-) => {
+export const doCreateBfsw = async (options: { root: string; name: string; license?: string }, logger: PKGM.Logger) => {
   const { root, name, license = "MIT" } = options;
 
   folderIO.tryInit(root);
@@ -24,68 +16,74 @@ export const doCreate = async (
 
   const bfswTsFile = ts`
   import { defineWorkspace } from "@bfchain/pkgm-bfsw";
-  import project from "./${name}/#bfsp";
+  import typingsProject from "./packages/typings/#bfsp";
   export default defineWorkspace(() => {
     const config: Bfsw.Workspace = {
-      projects: [project],
+      projects: [typingsProject],
     };
     return config;
   });
   `;
   await writeFile(path.join(root, "#bfsw.ts"), bfswTsFile);
-  const version = getBfswVersion();
   await writeJsonConfig(path.join(root, "package.json"), {
-    name: "bfsp-workspace",
+    name: `${name}~workspace`,
     private: true,
-    workspaces: [],
-    devDependencies: {
-      "@bfchain/pkgm-bfsw": `${version}`,
-    },
+    workspaces: ["packages/*"],
   });
   await writeFile(path.join(root, ".gitignore"), [...defaultIgnores.values()].join("\n"));
 
-  folderIO.tryInit(path.join(root, name));
-
-  const packageJson = {
-    name,
-    version: "1.0.0",
-    license,
-    scripts: {
-      dev: "bfsw dev",
+  await doCreateBfsp(
+    {
+      ...options,
+      name: joinMonoName(name, "typings"),
+      root: path.join(root, "packages/typings"),
+      skipGit: true,
     },
-  };
-  logger.log(`creating files`);
-  await writeJsonConfig(path.join(root, name, "package.json"), packageJson);
-  const bfspTsFile = ts`
-  import { defineConfig } from "@bfchain/pkgm-bfsp";
-  export default defineConfig((info) => {
-    const config: Bfsp.UserConfig = {
-      name: "${name}",
-      exports: {
-        ".": "./index.ts",
-      },
-    };
-    return config;
-  });
-  `;
-  await writeFile(path.join(root, name, "index.ts"), `export {}`);
-  await writeFile(path.join(root, name, ".gitignore"), [...defaultIgnores.values()].join("\n"));
-  await writeFile(path.join(root, name, "#bfsp.ts"), bfspTsFile);
+    logger
+  );
 
-  const g = spawn("git", ["init"], { cwd: root });
-  if (logger.isSuperLogger) {
-    g.stdout && logger.warn.pipeFrom!(g.stdout);
-    g.stderr && logger.error.pipeFrom!(g.stderr);
-  } else {
-    g.stdout?.pipe(process.stdout);
-    g.stderr?.pipe(process.stderr);
-  }
-  await doInit({ root }, logger);
-  logger.log(`workspace inited, run the following commands to start dev\n`);
-  const relative_path = path.relative(process.cwd(), root);
-  if (relative_path) {
-    logger.log!(chalk.blue(`cd ${relative_path}`));
-  }
-  logger.log(chalk.blue(`bfsw dev`));
-  process.exit(0);
+  // folderIO.tryInit(path.join(root, name));
+
+  // const packageJson = {
+  //   name,
+  //   version: "1.0.0",
+  //   license,
+  //   scripts: {
+  //     dev: "bfsw dev",
+  //   },
+  // };
+  // logger.log(`creating files`);
+  // await writeJsonConfig(path.join(root, name, "package.json"), packageJson);
+  // const bfspTsFile = ts`
+  // import { defineConfig } from "@bfchain/pkgm-bfsp";
+  // export default defineConfig((info) => {
+  //   const config: Bfsp.UserConfig = {
+  //     name: "${name}",
+  //     exports: {
+  //       ".": "./index.ts",
+  //     },
+  //   };
+  //   return config;
+  // });
+  // `;
+  // await writeFile(path.join(root, name, "index.ts"), `export {}`);
+  // await writeFile(path.join(root, name, ".gitignore"), [...defaultIgnores.values()].join("\n"));
+  // await writeFile(path.join(root, name, "#bfsp.ts"), bfspTsFile);
+
+  // const g = spawn("git", ["init"], { cwd: root });
+  // if (logger.isSuperLogger) {
+  //   g.stdout && logger.warn.pipeFrom!(g.stdout);
+  //   g.stderr && logger.error.pipeFrom!(g.stderr);
+  // } else {
+  //   g.stdout?.pipe(process.stdout);
+  //   g.stderr?.pipe(process.stderr);
+  // }
+  // await doInit({ root }, logger);
+  // logger.log(`workspace inited, run the following commands to start dev\n`);
+  // const relative_path = path.relative(process.cwd(), root);
+  // if (relative_path) {
+  //   logger.log!(chalk.blue(`cd ${relative_path}`));
+  // }
+  // logger.log(chalk.blue(`bfsw dev`));
+  // process.exit(0);
 };

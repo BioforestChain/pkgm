@@ -8,6 +8,20 @@ import { getTui } from "./tui";
 const debug = DevLogger("bfsp:deps");
 type DepsEventCallback = () => unknown;
 
+const comparablePackageJsonDependencies = (packageJson: $PackageJson) => {
+  const Deps: Bfsp.Dependencies = {};
+  const combine = (deps: any, prefix: string) => {
+    for (const key in deps) {
+      Deps[prefix + key] = deps[key];
+    }
+  };
+  combine(packageJson.dependencies, "prd:");
+  combine(packageJson.devDependencies, "dev:");
+  combine(packageJson.peerDependencies, "peer:");
+  combine(packageJson.optionalDependencies, "opt:");
+  return Deps;
+};
+
 export const doWatchDeps = (
   projectDirpath: string,
   packageJsonStream: SharedAsyncIterable<$PackageJson>,
@@ -15,18 +29,22 @@ export const doWatchDeps = (
 ) => {
   const depsPanel = getTui().getPanel("Deps");
   let startInstallCb: DepsEventCallback | undefined;
-  let curDeps = {};
-  const follower = new SharedFollower<boolean>();
+  let preDeps: ReturnType<typeof comparablePackageJsonDependencies> = {};
+  type InstallDepsStates = "start" | "success" | "fail";
+  const follower = new SharedFollower<InstallDepsStates>();
   let stoppable: { stop: () => void } | undefined;
   const loopable = Loopable("watch deps", async () => {
     const packageJson = await packageJsonStream.getCurrent();
-    if (isDeepStrictEqual(packageJson.dependencies, curDeps)) {
+    const curDeps = comparablePackageJsonDependencies(packageJson);
+    if (isDeepStrictEqual(curDeps, preDeps)) {
       return;
     }
-    curDeps = packageJson.dependencies;
+    preDeps = curDeps;
     if (options?.runInstall) {
       startInstallCb && (await startInstallCb());
       debug(`deps changed: ${projectDirpath}`);
+
+      follower.push("start");
       depsPanel.updateStatus("loading");
       const yarnTask = runYarn({
         root: projectDirpath,
@@ -34,10 +52,11 @@ export const doWatchDeps = (
       });
       stoppable = yarnTask;
       const isSuccess = await yarnTask.afterDone;
-      follower.push(isSuccess);
+
+      follower.push(isSuccess ? "success" : "fail");
       depsPanel.updateStatus(isSuccess ? "success" : "error");
     } else {
-      follower.push(true);
+      follower.push("success");
     }
   });
 
@@ -51,14 +70,14 @@ export const doWatchDeps = (
   });
   //#endregion
 
+  const stream = new SharedAsyncIterable<InstallDepsStates>(follower);
   return {
-    loopable,
-    stream: new SharedAsyncIterable<boolean>(follower),
-    get onStartInstall() {
-      return startInstallCb;
-    },
-    set onStartInstall(cb: typeof startInstallCb) {
-      startInstallCb = cb;
+    stream,
+    stop() {
+      stream.stop();
+      if (stoppable) {
+        stoppable.stop();
+      }
     },
   };
 };

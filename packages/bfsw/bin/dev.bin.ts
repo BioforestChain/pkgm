@@ -1,7 +1,7 @@
-import { ALLOW_FORMATS, DevLogger } from "@bfchain/pkgm-bfsp";
-import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
+import { ALLOW_FORMATS, defineCommand, DevLogger, getTui } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
-import { workspaceInit } from "./workspace";
+import { WorkspaceConfig } from "../src";
+// import { workspaceInit } from "./workspace";
 
 export const devCommand = defineCommand(
   "dev",
@@ -35,7 +35,7 @@ export const devCommand = defineCommand(
     ],
     description: "enable bfsw project developmer mode, monitor code modifications in real-time.",
   } as const,
-  (params, args) => {
+  async (params, args) => {
     const debug = DevLogger("bfsp:bin/dev");
     let { format } = params;
     if (format !== undefined && ALLOW_FORMATS.has(format as any) === false) {
@@ -54,6 +54,9 @@ export const devCommand = defineCommand(
       root = path.resolve(root, maybeRoot);
     }
 
-    workspaceInit({ root, mode: "dev", watcherLimit: params?.limit });
+    const logger = getTui().getPanel("Workspaces").logger;
+    const workspaceConfig = WorkspaceConfig.from(root, logger);
+
+    // workspaceInit({ root, mode: "dev", watcherLimit: params?.limit });
   }
 );

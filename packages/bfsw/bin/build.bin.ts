@@ -1,7 +1,6 @@
-import { DevLogger } from "@bfchain/pkgm-bfsp";
-import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
+import { DevLogger,defineCommand } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
-import { workspaceInit } from "./workspace";
+// import { workspaceInit } from "./workspace";
 
 export const buildCommand = defineCommand(
   "build",
@@ -27,6 +26,6 @@ export const buildCommand = defineCommand(
       root = path.resolve(root, maybeRoot);
     }
 
-    workspaceInit({ root, mode: "build" });
+    // workspaceInit({ root, mode: "build" });
   }
 );

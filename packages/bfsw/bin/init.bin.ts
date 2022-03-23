@@ -1,5 +1,5 @@
-import { defineCommand } from "@bfchain/pkgm-bfsp/bin";
-import chalk from "chalk";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { defineCommand } from "@bfchain/pkgm-bfsp";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { doInit } from "./init.core";
