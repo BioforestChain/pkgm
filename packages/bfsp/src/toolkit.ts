@@ -215,7 +215,7 @@ export async function* walkFiles(
     try {
       const stat = statSync(somepath);
       if (stat.isFile()) {
-        if (skipSymbolicLink && stat.isSymbolicLink() === false) {
+        if (skipSymbolicLink && stat.isSymbolicLink() === true) {
           continue;
         }
         yield somepath;
