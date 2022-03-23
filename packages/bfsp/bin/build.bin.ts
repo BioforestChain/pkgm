@@ -32,7 +32,7 @@ export const buildCommand = defineCommand(
     }
 
     /// 先确保将 pkgm 的包安置好
-    await linkBFChainPkgmModules(root);
+    linkBFChainPkgmModules(root);
 
     const buildService = getBfspBuildService(watchSingle());
     const cfgs = await writeBuildConfigs({ root, buildService });

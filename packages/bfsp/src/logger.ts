@@ -2,7 +2,7 @@ import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { debug as D } from "@bfchain/pkgm-base/lib/debug";
 import { defineViteStdoutApis, Logger, LoggerOptions, LogLevel } from "@bfchain/pkgm-base/lib/vite";
 import util from "node:util";
-import type { RollupError } from "rollup";
+import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import { consoleLogger } from "./consoleLogger";
 import { getTui } from "./tui/index";
 import { BundlePanel } from "./tui/internalPanels";

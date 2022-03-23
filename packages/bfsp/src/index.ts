@@ -4,7 +4,6 @@ export * from "../bin";
 export { doBuild, installBuildDeps, writeBuildConfigs } from "../bin/build.core";
 export { doDev } from "../bin/dev.core";
 export * from "../bin/fmt.core";
-export * from "../bin/shim";
 export * from "../bin/terser/runner";
 export * from "../bin/tsc/runner";
 export * from "../bin/util";

@@ -1,4 +1,3 @@
-// import type { InputOption } from "rollup";
 const inputMap = new Map<string, InputConfig>();
 /**
  * 输入与输出

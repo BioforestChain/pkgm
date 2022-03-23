@@ -74,8 +74,8 @@ export const runYarn = (opts: RunYarnOption) => {
     afterDone: donePo.promise,
   };
 
-  (async () => {
-    const yarnPath = await getYarnPath();
+  (() => {
+    const yarnPath = getYarnPath();
     if (killed) {
       return;
     }
@@ -175,9 +175,9 @@ export const runYarn = (opts: RunYarnOption) => {
     proc.stdout?.on("data", onJsonLines);
     proc.stderr?.on("data", onJsonLines);
 
-    proc.on("exit", async (e) => {
+    proc.on("exit", () => {
       /// 将 @bfchain/pkgm 的所有包 link 到对应目录下
-      await linkBFChainPkgmModules(opts.root);
+      linkBFChainPkgmModules(opts.root);
       donePo.resolve(yarnRunSuccess);
       opts.onExit?.(yarnRunSuccess);
     });

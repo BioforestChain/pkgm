@@ -6,7 +6,7 @@ import {
   getShebangPlugin,
   libFormat,
 } from "@bfchain/pkgm-base/vite-config-helper";
-import { defineConfig } from "vite";
+import { defineConfig } from "@bfchain/pkgm-base/lib/vite";
 
 defineInputConfig({
   outDir: "main",

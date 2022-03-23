@@ -31,7 +31,7 @@ const walkFiles = (dir: string) => {
   }
 };
 walkFiles(path.dirname(path.dirname(require.resolve("vite"))));
-export const { build } = require("vite") as typeof import("vite");
+export const { build, defineConfig } = require("vite") as typeof import("vite");
 
 export const defineViteStdoutApis = (apis: { writeLine: (log: string) => void; clearLine: () => void }) => {
   Reflect.set(globalThis, "viteWriteLine", apis.writeLine);

@@ -8,7 +8,7 @@ import { copyFile, readdir, readFile, unlink, writeFile } from "node:fs/promises
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 //#endregion
-import type { ModuleFormat } from "rollup";
+import type { ModuleFormat } from "@bfchain/pkgm-base/lib/rollup";
 import { DevLogger } from "./logger";
 export * from "./toolkit.require";
 export * from "./toolkit.watcher";

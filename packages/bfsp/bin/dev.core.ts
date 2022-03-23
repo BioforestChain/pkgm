@@ -6,8 +6,8 @@ import { watchBfspProjectConfig } from "../src/bfspConfig";
 import { BuildService } from "../src/buildService";
 import { createViteLogger, DevLogger } from "../src/logger";
 import { Closeable } from "../src/toolkit";
-import type { RollupWatcher } from "./shim";
-import { buildBfsp } from "./shim";
+import type { RollupWatcher } from "@bfchain/pkgm-base/lib/rollup";
+import { build as buildBfsp } from "@bfchain/pkgm-base/lib/vite";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { getTui } from "../src/tui";
 

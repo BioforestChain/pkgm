@@ -38,7 +38,7 @@ export const createCommand = defineCommand(
     const logger = ctx.logger;
 
     /// 先确保将 pkgm 的包安置好
-    await linkBFChainPkgmModules(projectRoot);
+    linkBFChainPkgmModules(projectRoot);
 
     /// 创建核心文件
     await doCreateBfsp({ root: projectRoot, name: projectName, license: params.license }, logger);
