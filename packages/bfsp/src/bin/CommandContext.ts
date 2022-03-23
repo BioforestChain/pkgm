@@ -64,7 +64,7 @@ export class CommandContext {
       }
     } while (true);
   }
-  readonly chalk = chalk as unknown as typeof import("chalk").default;
+  readonly chalk = chalk as unknown as typeof chalk;
   private _logger?: PKGM.Logger;
   get logger() {
     if (this._logger === undefined) {

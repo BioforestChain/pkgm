@@ -1,4 +1,4 @@
-import chalk from "chalk";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import path from "node:path";
 import { cpr, getTui } from "../src";
 import { getBfspBuildService } from "../src/buildService";
