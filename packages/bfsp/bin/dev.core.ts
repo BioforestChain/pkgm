@@ -8,18 +8,25 @@ import { Closeable } from "../src/toolkit";
 import type { RollupWatcher } from "@bfchain/pkgm-base/lib/rollup";
 import { build as buildBfsp } from "@bfchain/pkgm-base/lib/vite";
 import { ViteConfigFactory } from "./vite/configFactory";
-import { getTui } from "../src/tui";
+import { $LoggerKit, getTui } from "../src/tui";
 
 type DevEventCallback = (name: string) => BFChainUtil.PromiseMaybe<void>;
 
-export const doDevBfsp = (args: {
-  root: string;
-  format?: Bfsp.Format;
-  subStreams: ReturnType<typeof watchBfspProjectConfig>;
-}) => {
+export const doDevBfsp = (
+  args: {
+    root: string;
+    format?: Bfsp.Format;
+    subStreams: ReturnType<typeof watchBfspProjectConfig>;
+  },
+  options: {
+    // logger?: PKGM.Logger;
+    loggerKit?: $LoggerKit;
+  } = {}
+) => {
   const debug = DevLogger("bfsp:bin/dev");
+  const { loggerKit = getTui().getPanel("Dev").viteLoggerKit } = options;
+  const logger = loggerKit.logger;
   const devPanel = getTui().getPanel("Dev");
-  const { logger } = devPanel;
   const { root = process.cwd(), format, subStreams } = args;
 
   debug("root", root);
@@ -63,7 +70,7 @@ export const doDevBfsp = (args: {
 
       debug("running bfsp build!");
       //#region vite
-      const viteLogger = createViteLogger(devPanel);
+      const viteLogger = createViteLogger(loggerKit);
       getTui().debug("start vite");
       const dev = (await buildBfsp({
         ...viteBuildConfig,
@@ -105,6 +112,7 @@ export const doDevBfsp = (args: {
           event.result.close();
           viteLogger.info(`${chalk.green("√")} package ${name} build complete`);
           devPanel.updateStatus("success");
+          await sleep(2000)
           successCb && (await successCb(name));
           return;
         }

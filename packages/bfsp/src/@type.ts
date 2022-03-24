@@ -10,9 +10,11 @@ declare namespace NodeJS {
 
 declare namespace PKGM {
   type Print = (format?: any, ...param: any[]) => void;
+  type Pin = (label: string, format?: any, ...param: any[]) => void;
+  type UnPin = (label: string) => void;
   type Clear = () => void;
   type PipeFrom = (stream: import("node:stream").Readable) => void;
-  type SuperPrinter = Print & { write: Print; line: Print; pipeFrom: PipeFrom };
+  type SuperPrinter = Print & { write: Print; pin: Pin; unpin: UnPin; pipeFrom: PipeFrom };
   type Logger = {
     isSuperLogger: true;
     log: SuperPrinter;
@@ -22,11 +24,13 @@ declare namespace PKGM {
     success: SuperPrinter;
     group: Console["group"];
     groupEnd: Console["groupEnd"];
-    clearScreen: Clear;
-    clearLine: Clear;
+    // clearScreen: Clear;
+    // clearLine: Clear;
+    clear: Clear;
     loadingStart: (label: string) => void;
     loadingLog: (label: string, ...param: any[]) => void;
     loadingEnd: (label: string) => void;
+    hasLoading: (label: string) => boolean;
     progressStart: (label: string, total: number, current?: number) => void;
     // progressUpdate: (label: string, current: number, total: number) => void;
     progressLog: (label: string, current: number, ...param: any[]) => void;
@@ -39,8 +43,9 @@ declare namespace PKGM {
     warn: NormalPrinter;
     error: NormalPrinter;
     info: NormalPrinter;
-    clearScreen: Clear;
-    clearLine: Clear;
+    clear: Clear;
+    // clearScreen: Clear;
+    // clearLine: Clear;
   };
   type ConsoleLogger = SimpleLogger & Partial<Omit<Logger, keyof SimpleLogger>>;
 

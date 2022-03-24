@@ -178,7 +178,7 @@ export class ProfileMap {
       return profile as Bfsp.Profile;
     });
 
-    this.logger.clearScreen();
+    this.logger.clear();
 
     for (const [privatePath, map] of this._privatepathMap) {
       const profilePaths = new Set<string>();

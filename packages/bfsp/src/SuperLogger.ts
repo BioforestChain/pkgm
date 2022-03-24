@@ -4,6 +4,7 @@ import util from "node:util";
 import { afm } from "./tui/animtion";
 import { FRAMES } from "./tui/const";
 
+import { setTimeout as sleep } from "node:timers/promises";
 type $Writer = (s: string) => void;
 export const createSuperLogger = (options: {
   prefix: string;
@@ -20,7 +21,7 @@ export const createSuperLogger = (options: {
   errorPrefix?: string;
   successPrefix?: string;
   clearScreen?: () => void;
-  clearLine?: () => void;
+  clearLine?: (line: string) => void;
 }) => {
   /**
    * 在 line  模式意思是：下一次打印从新的一行开始。
@@ -38,39 +39,58 @@ export const createSuperLogger = (options: {
    */
   let curLinePrefix: string | undefined;
   /**
-   * 上一次是否是writeLine模式
+   * 上一次打印是否是writeLine模式
    * 每一次print都会被重置状态成false
+   * 是否有 pin📌 的内容
+   * pin 是指将内容钉在底部
    */
-  let preWriteLine = false;
+  let pinContent = "";
+
   let groupPrefix = "";
-  let loadingPrefix = "";
-  let progressPrefix = "";
-  const Print = (linePrefix: string, writer: $Writer, lineMode: boolean) => {
+  const Format = (linePrefix: string, lineMode: boolean) => {
     if (linePrefix.length > 0) {
       linePrefix += " ";
     }
     return (format?: any, ...param: any[]) => {
-      preWriteLine = false;
       let out: string = "";
       // 如果前缀改变了，那么强制换行
       if (linePrefix !== curLinePrefix) {
-        out += linePrefix + groupPrefix + loadingPrefix + progressPrefix;
+        out += linePrefix + groupPrefix;
         curLinePrefix = linePrefix;
       }
 
-      out += util
-        .format(format, ...param)
-        .replace(/\n/g, "\n" + linePrefix + groupPrefix + loadingPrefix + progressPrefix);
+      out += util.format(format, ...param).replace(/\n/g, "\n" + linePrefix + groupPrefix);
 
       // 写入回车
       if (lineMode) {
         out += "\n";
         curLinePrefix = "";
       }
-      writer(out);
+
+      return out;
     };
   };
-  const PipeFrom = (writer: $Writer, print: PKGM.Print) => {
+  const Print = (linePrefix: string, writer: $Writer, lineMode: boolean) => {
+    const formatter = Format(linePrefix, lineMode);
+    return Object.assign(
+      (format?: any, ...param: any[]) => {
+        if (pinContent.length > 0) {
+          clearLine(pinContent);
+        }
+
+        writer(formatter(format, ...param));
+
+        if (pinContent.length > 0) {
+          writer(pinContent);
+        }
+      },
+      {
+        formatter,
+      }
+    );
+  };
+  type $Print = ReturnType<typeof Print>;
+  const PipeFrom = (writer: $Writer, print: $Print) => {
     return (input: Readable) => {
       let hasOutput = false;
       const onData = (chunk: any) => {
@@ -86,22 +106,48 @@ export const createSuperLogger = (options: {
       });
     };
   };
-  const WriteLine = (print: PKGM.Print) => {
-    const line: PKGM.Print = (...args) => {
-      if (preWriteLine) {
-        clearLine();
+  const pinMap = new Map<string, string>();
+  const Pin = (print: $Print, writer: $Writer) => {
+    const pin: PKGM.Print = (label: string, ...args: unknown[]) => {
+      pinMap.set(label, print.formatter(...args));
+      if (pinContent.length > 0) {
+        clearLine(pinContent);
       }
-      print(...args);
-      preWriteLine = true;
+
+      pinContent = [...pinMap.values()].join("");
+
+      if (pinContent.length > 0) {
+        writer(pinContent);
+      }
     };
-    return line;
+    return pin;
   };
+  const UnPin = (writer: $Writer) => {
+    const unpin: PKGM.Print = (label: string) => {
+      if (pinMap.has(label) === false) {
+        return;
+      }
+      pinMap.delete(label);
+
+      if (pinContent.length > 0) {
+        clearLine(pinContent);
+      }
+      pinContent = [...pinMap.values()].join("");
+
+      if (pinContent.length > 0) {
+        writer(pinContent);
+      }
+    };
+    return unpin;
+  };
+
   const SuperPrinter = (linePrefix: string, writer: $Writer) => {
     const write = Print(linePrefix, writer, false);
     const log = Print(linePrefix, writer, true);
-    const line = WriteLine(log);
+    const pin = Pin(log, writer);
+    const unpin = UnPin(writer);
     const pipeFrom = PipeFrom(writer, write);
-    return Object.assign(log, { write, line, pipeFrom });
+    return Object.assign(log, { write, pin, unpin, pipeFrom });
   };
   const {
     prefix,
@@ -131,13 +177,11 @@ export const createSuperLogger = (options: {
 
   //#region LOADING
 
-  const loadingFrameIdMap = new Map<string, { frame: number; rafId: number; render: () => void }>();
-  const buildLoadingPrefix = () => {
-    loadingPrefix = "";
-    for (const info of loadingFrameIdMap.values()) {
-      loadingPrefix += FRAMES[info.frame % FRAMES.length] + " ";
-    }
-  };
+  const loadingFrameIdMap = new Map<
+    string,
+    { pinLabel: string; frame: number; rafId: number; render: () => void; lastArgs: unknown[] }
+  >();
+
   const loadingStart = (id: string = "default") => {
     id = String(id);
     if (loadingFrameIdMap.has(id)) {
@@ -145,15 +189,27 @@ export const createSuperLogger = (options: {
       return;
     }
 
-    const renderLoadingFrame = () => {
-      info.frame += 1;
-      buildLoadingPrefix();
-      info.rafId = afm.requestAnimationFrame(renderLoadingFrame);
+    const pinLabel = `#loading:${id}`;
+    const render = () => {
+      const loadingSymbol = FRAMES[info.frame % FRAMES.length] + " ";
+      if (typeof info.lastArgs[0] === "string") {
+        const args = info.lastArgs.slice();
+        args[0] = loadingSymbol + " " + args[0];
+        log.pin(pinLabel, ...args);
+      } else {
+        log.pin(pinLabel, loadingSymbol, ...info.lastArgs);
+      }
     };
-    const info = { frame: -1, rafId: -1, render: renderLoadingFrame };
+    const info = { pinLabel, frame: -1, rafId: -1, render, lastArgs: [] as any[] };
+    /// 持续打印
+    (async () => {
+      do {
+        info.frame += 1;
+        render();
+        await afm.nextFrame();
+      } while (hasLoading(id));
+    })();
     loadingFrameIdMap.set(id, info);
-
-    renderLoadingFrame();
   };
   const loadingLog = (id: string, ...args: unknown[]) => {
     id = String(id);
@@ -162,8 +218,8 @@ export const createSuperLogger = (options: {
       warn(`No such label '${id}' for logger.loadingEnd()`);
       return;
     }
+    info.lastArgs = args;
     info.render();
-    log.line(...args);
   };
   const loadingEnd = (id: string = "default") => {
     id = String(id);
@@ -174,30 +230,52 @@ export const createSuperLogger = (options: {
     }
     afm.cancelAnimationFrame(info.rafId);
     loadingFrameIdMap.delete(id);
-    buildLoadingPrefix();
+    log.unpin(info.pinLabel);
+  };
+  const hasLoading = (id: string = "default") => {
+    id = String(id);
+    return loadingFrameIdMap.has(id);
   };
   //#endregion
 
   //#region PROGRESS
 
-  const progressFrameIdMap = new Map<string, { total: number; current: number }>();
-  const buildProgressPrefix = () => {
-    progressPrefix = "";
-    for (const info of progressFrameIdMap.values()) {
-      const progress = Math.min(1, Math.max(info.current / info.total || 0, 0));
-      progressPrefix += chalk.magenta((progress * 100).toFixed(2) + "%") + " ";
-    }
-  };
-  const progressStart = (label: string, total: number, current: number = 0) => {
-    label = String(label);
-    if (progressFrameIdMap.has(label)) {
-      warn(`Label '${label}' already exists for logger.progressStart()`);
+  const progressFrameIdMap = new Map<
+    string,
+    { pinLabel: string; frame: number; total: number; current: number; render: () => void; lastArgs: unknown[] }
+  >();
+  const progressStart = (id: string, total: number, current: number = 0) => {
+    id = String(id);
+    if (progressFrameIdMap.has(id)) {
+      warn(`Label '${id}' already exists for logger.progressStart()`);
       return;
     }
+    const pinLabel = `#loading:${id}`;
+    const render = () => {
+      const progress = Math.min(1, Math.max(info.current / info.total || 0, 0));
+      const progressSymbol = chalk.magenta(
+        (".".repeat(info.frame % 3) + (progress * 100).toFixed(2) + "%").padEnd(10, ".")
+      );
+      if (typeof info.lastArgs[0] === "string") {
+        const args = info.lastArgs.slice();
+        args[0] = progressSymbol + " " + args[0];
+        log.pin(pinLabel, ...args);
+      } else {
+        log.pin(pinLabel, progressSymbol, ...info.lastArgs);
+      }
+    };
 
-    const info = { total, current };
-    progressFrameIdMap.set(label, info);
-    buildProgressPrefix();
+    const info = { pinLabel, frame: -1, total, current, render, lastArgs: [] as unknown[] };
+    /// 持续打印
+    (async () => {
+      do {
+        info.frame += 1;
+        render();
+        await afm.nextFrame();
+      } while (hasLoading(id));
+    })();
+
+    progressFrameIdMap.set(id, info);
   };
   const progressLog = (label: string, current: number, ...args: unknown[]) => {
     label = String(label);
@@ -207,8 +285,8 @@ export const createSuperLogger = (options: {
       return;
     }
     info.current = current;
-    buildProgressPrefix();
-    log.line(...args);
+    info.lastArgs = args;
+    info.render();
   };
   const progressEnd = (label: string) => {
     label = String(label);
@@ -218,7 +296,7 @@ export const createSuperLogger = (options: {
       return;
     }
     progressFrameIdMap.delete(label);
-    buildProgressPrefix();
+    log.unpin(info.pinLabel);
   };
   //#endregion
 
@@ -231,11 +309,12 @@ export const createSuperLogger = (options: {
     error,
     group,
     groupEnd,
-    clearScreen,
-    clearLine,
+    clear: clearScreen,
+    // clearLine,
     loadingStart,
     loadingLog,
     loadingEnd,
+    hasLoading,
     progressStart,
     // progressUpdate,
     progressLog,

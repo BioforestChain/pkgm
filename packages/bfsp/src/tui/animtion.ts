@@ -39,6 +39,18 @@ export class AnimationFrameManager {
       process.emit("uncaughtException", err as Error);
     });
   }
+  private _nextFrame?: Promise<number>;
+  nextFrame() {
+    if (this._nextFrame === undefined) {
+      this._nextFrame = new Promise<number>((cb) => {
+        this.requestAnimationFrame((now) => {
+          this._nextFrame = undefined;
+          cb(now);
+        });
+      });
+    }
+    return this._nextFrame;
+  }
   requestAnimationFrame(cb: FrameCallback) {
     const id = this._cb_id_acc[0]++;
     this._funs.set(id, cb);

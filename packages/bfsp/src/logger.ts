@@ -1,10 +1,17 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { debug as D } from "@bfchain/pkgm-base/lib/debug";
-import { defineViteStdoutApis, Logger, LoggerOptions, LogLevel } from "@bfchain/pkgm-base/lib/vite";
+import {
+  defineViteStdoutApis,
+  LogErrorOptions,
+  Logger,
+  LoggerOptions,
+  LogLevel,
+  LogType,
+} from "@bfchain/pkgm-base/lib/vite";
 import util from "node:util";
 import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import { consoleLogger } from "./consoleLogger";
-import { getTui, hasTui } from "./tui/index";
+import { $LoggerKit, getTui, hasTui } from "./tui/index";
 import { BundlePanel } from "./tui/internalPanels";
 
 export const LogLevels: Record<LogLevel, number> = {
@@ -16,9 +23,75 @@ export const LogLevels: Record<LogLevel, number> = {
 const useScreen = true;
 
 let _viteLogger: Logger | undefined;
-let createViteLogger = (bundlePanel: BundlePanel, level: LogLevel = "info", options: LoggerOptions = {}) => {
+let _viteLogoContent: string | undefined;
+let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", options: LoggerOptions = {}) => {
   if (_viteLogger === undefined) {
     const warnedMessages = new Set<unknown>();
+
+    const $formatViteMsg = (type: LogType, msg: string, options: LogErrorOptions) => {
+      if (options.timestamp) {
+        return `${chalk.dim(new Date().toLocaleTimeString())} ${msg}`;
+      } else {
+        return msg;
+      }
+    };
+
+    const $viteLogThresh = LogLevels[level];
+    const $viteLoggedErrors = new WeakSet<Error | RollupError>();
+    let $viteLastMsgType: LogType | undefined;
+    let $viteLastMsg: string | undefined;
+    let $viteSameCount = 0;
+    let $viteLogoContent: string | undefined;
+    // const hasErrorLogged = (error: Error | RollupError) => {
+    //   return $viteLoggedErrors.has(error);
+    // };
+
+    const writeViteLog = (type: LogType, msg: string, options: LogErrorOptions = {}) => {
+      /// 移除 logo
+      if (_viteLogoContent === undefined) {
+        if (msg.includes("vite")) {
+          const blankMsg = msg.replace(
+            /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
+            ""
+          );
+          const viteVersion = blankMsg.match(/^vite v[\d\.]+/);
+          if (viteVersion) {
+            _viteLogoContent = msg;
+          }
+        }
+      }
+      if (_viteLogoContent === msg) {
+        viteLoggerKit.debug(msg);
+        return;
+      }
+
+      if ($viteLogThresh >= LogLevels[type]) {
+        if (options.error) {
+          $viteLoggedErrors.add(options.error);
+        }
+
+        const { content } = viteLoggerKit;
+        if (options.clear && type === $viteLastMsgType && msg === $viteLastMsg) {
+          $viteSameCount++;
+          content.all =
+            content.all.slice(0, -content.last.length) +
+            (content.last = $formatViteMsg(type, msg, options) + ` ${chalk.yellow(`(x${$viteSameCount + 1})`)}\n`);
+        } else {
+          $viteSameCount = 0;
+          $viteLastMsg = msg;
+          $viteLastMsgType = type;
+          content.all = content.all + (content.last = $formatViteMsg(type, msg, options) + `\n`);
+        }
+        viteLoggerKit.render();
+
+        /**
+         * @TODO 这里需要修改updateStatus的行为，应该改成 addStatus(flag,type) 。从而允许多个实例同时操作这个status
+         */
+        if (type !== "info") {
+          // this.updateStatus(type);
+        }
+      }
+    };
 
     const msgStringify = (msg: unknown) => {
       if (typeof msg === "string") {
@@ -29,35 +102,38 @@ let createViteLogger = (bundlePanel: BundlePanel, level: LogLevel = "info", opti
     const logger: Logger = {
       hasWarned: false,
       info(msg, opts) {
-        bundlePanel.writeViteLog("info", msgStringify(msg), opts);
+        writeViteLog("info", msgStringify(msg), opts);
       },
       warn(msg, opts) {
         logger.hasWarned = true;
-        bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
+        writeViteLog("warn", msgStringify(msg), opts);
       },
       warnOnce(msg, opts) {
         if (warnedMessages.has(msg)) return;
         logger.hasWarned = true;
-        bundlePanel.writeViteLog("warn", msgStringify(msg), opts);
+        writeViteLog("warn", msgStringify(msg), opts);
         warnedMessages.add(msg);
       },
       error(msg, opts) {
         logger.hasWarned = true;
-        bundlePanel.writeViteLog("error", msgStringify(msg), opts);
+        writeViteLog("error", msgStringify(msg), opts);
       },
       clearScreen() {
-        bundlePanel.clearViteLogScreen();
+        $viteLastMsg = undefined;
+        $viteLastMsgType = undefined;
+        $viteSameCount = 0;
+        viteLoggerKit.clearScreen();
       },
       hasErrorLogged(error) {
-        return bundlePanel.hasErrorLogged(error);
+        return $viteLoggedErrors.has(error);
       },
     };
 
     _viteLogger = logger;
 
     defineViteStdoutApis({
-      writeLine: bundlePanel.viteLogger.log.line,
-      clearLine: bundlePanel.viteLogger.clearLine,
+      writeLine: (log: string) => viteLoggerKit.logger.log.pin("#line", log),
+      clearLine: () => viteLoggerKit.logger.log.unpin("#line"),
     });
   }
   return _viteLogger;

@@ -53,52 +53,8 @@ export class BundlePanel<N extends string = string> extends Panel<N> {
     }
   };
   private _viteLoggerKit?: $LoggerKit;
-  private get viteLoggerKit() {
+  get viteLoggerKit() {
     return (this._viteLoggerKit ??= this.createLoggerKit({ name: "vite", order: 9 }));
-  }
-  writeViteLog(type: LogType, msg: string, options: LogErrorOptions = {}) {
-    /// 移除 logo
-    if (this.$viteLogoContent === undefined) {
-      if (msg.includes("vite")) {
-        const blankMsg = msg.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "");
-        const viteVersion = blankMsg.match(/^vite v[\d\.]+/);
-        if (viteVersion) {
-          this.$viteLogoContent = msg;
-          this._ctx.debug(msg);
-          return;
-        }
-      }
-    } else if (this.$viteLogoContent === msg) {
-      return;
-    }
-
-    if (this.$viteLogThresh >= LogLevels[type]) {
-      if (options.error) {
-        this.$viteLoggedErrors.add(options.error);
-      }
-
-      const { content } = this.viteLoggerKit;
-      if (options.clear && type === this.$viteLastMsgType && msg === this.$viteLastMsg) {
-        this.$viteSameCount++;
-        content.all =
-          content.all.slice(0, -content.last.length) +
-          (content.last =
-            this.$formatViteMsg(type, msg, options) + ` ${chalk.yellow(`(x${this.$viteSameCount + 1})`)}\n`);
-      } else {
-        this.$viteSameCount = 0;
-        this.$viteLastMsg = msg;
-        this.$viteLastMsgType = type;
-        content.all = content.all + (content.last = this.$formatViteMsg(type, msg, options) + `\n`);
-      }
-      this.$queueRenderLog();
-
-      /**
-       * @TODO 这里需要修改updateStatus的行为，应该改成 addStatus(flag,type) 。从而允许多个实例同时操作这个status
-       */
-      if (type !== "info") {
-        this.updateStatus(type);
-      }
-    }
   }
   getViteLogAllContent() {
     return this.viteLoggerKit.content.all;
@@ -111,9 +67,6 @@ export class BundlePanel<N extends string = string> extends Panel<N> {
     this.viteLoggerKit.clearScreen();
   }
   clearViteLogLine() {
-    // this.$viteLastMsg = undefined;
-    // this.$viteLastMsgType = undefined;
-    // this.$viteSameCount = 0;
     this.viteLoggerKit.clearLine();
   }
   get viteLogger() {

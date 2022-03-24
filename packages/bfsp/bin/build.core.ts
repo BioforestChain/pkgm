@@ -110,9 +110,9 @@ const buildSingle = async (options: {
 
   buildLogger: BuildLogger;
 }) => {
-  const buildPanel = getTui().getPanel("Build");
   const tscLogger = createTscLogger();
-  const viteLogger = createViteLogger(buildPanel);
+  const { viteLoggerKit } = getTui().getPanel("Build");
+  const viteLogger = createViteLogger(viteLoggerKit);
   const {
     //
     root,
@@ -212,7 +212,7 @@ const buildSingle = async (options: {
     viteConfig: viteConfig1,
     tsConfig: tsConfig1,
     outRoot: buildOutDir,
-    logger: buildPanel.viteLogger,
+    logger: viteLoggerKit.logger,
   });
   const distDir = jsBundleConfig.build!.outDir!;
 
@@ -232,8 +232,9 @@ const buildSingle = async (options: {
     mode: "production",
     customLogger: viteLogger,
   });
-  success(buildPanel.getViteLogAllContent().trim());
-  buildPanel.clearViteLogScreen();
+  success(viteLoggerKit.content.all.trim());
+  viteLoggerKit.clearScreen();
+
   success(`bundled javascript codes`);
 
   //#endregion
@@ -288,12 +289,12 @@ class BuildLogger {
     return this.prompts[this.prompts.length - 1] || "";
   }
   readonly logger = this.bundlePanel.logger;
-  log = this.logger.log.bind(this.logger);
-  info = this.logger.info.bind(this.logger);
-  success = this.logger.success.bind(this.logger);
-  warn = this.logger.warn.bind(this.logger);
-  error = this.logger.error.bind(this.logger);
-  clearScreen = this.logger.clearScreen.bind(this.logger);
+  log = this.logger.log;
+  info = this.logger.info;
+  success = this.logger.success;
+  warn = this.logger.warn;
+  error = this.logger.error;
+  clearScreen = this.logger.clear;
   flag = (msg: string, loading = true) => {
     this.statusBar.setMsg(`${this._prompt} ${msg}`, loading);
   };

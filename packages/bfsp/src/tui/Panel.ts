@@ -6,8 +6,9 @@ import { jsonClone } from "../toolkit.util";
 import { afm } from "./animtion";
 import { FRAMES, TuiStyle } from "./const";
 
+type Debug = (log: string) => void;
 export interface PanelContext {
-  debug(log: string): void;
+  debug: Debug;
 }
 export abstract class Panel<N extends string, K extends number = number> implements BFSP.TUI.Panel<N, K> {
   constructor(
@@ -169,43 +170,43 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     this.elLog.setContent(allContent);
   }
   protected $allOrderedLoggerKitList: $LoggerKit[] = [];
-  createLoggerKit(args: {
-    name: string;
-    order: number;
-    prefix?: string;
-    infoPrefix?: string;
-    warnPrefix?: string;
-    errorPrefix?: string;
-    successPrefix?: string;
-  }) {
-    let info = this.$loggerInfoMap.tryGet(args);
-    if (info === undefined) {
-      info = this.$loggerInfoMap.forceGet(args);
-      /// 重新排序
-      const allKitList = [...this.$loggerInfoMap.values()].sort((a, b) => {
-        if (a.order === b.order) {
-          return a.name.localeCompare(b.name);
-        }
-        return a.order - b.order;
-      });
-      this.$allOrderedLoggerKitList = allKitList;
-    }
-    return info;
+  /**重新排序 */
+  private _reOrderAllLoggerKitList() {
+    const allKitList = [...this.$loggerInfoMap.values()].sort((a, b) => {
+      if (a.order === b.order) {
+        return a.name.localeCompare(b.name);
+      }
+      return a.order - b.order;
+    });
+    this.$allOrderedLoggerKitList = allKitList;
   }
+  createLoggerKit<C = {}>(args: $CreateLoggerKitArgs<C>) {
+    let info = this.$loggerInfoMap.tryGet(args as unknown as $CreateLoggerKitArgs);
+    if (info === undefined) {
+      info = this.$loggerInfoMap.forceGet(args as unknown as $CreateLoggerKitArgs);
+      this._reOrderAllLoggerKitList();
+    }
+    return info as unknown as $LoggerKit<C>;
+  }
+
   protected $loggerInfoMap = EasyMap.from({
     transformKey: (args: $CreateLoggerKitArgs) => {
       return args.name;
     },
     creater: (args, name) => {
-      const content = {
-        all: "",
-        last: "",
-      };
+      const content = Object.assign(
+        {
+          all: "",
+          last: "",
+        },
+        args.extendsContent
+      );
       const writer = (s: string) => {
         content.all += content.last = s;
         this.$queueRenderLog();
       };
       const clearLine = () => {
+        args.extendsClearLine?.(content);
         if (content.last.length === 0) {
           return;
         }
@@ -214,16 +215,20 @@ export abstract class Panel<N extends string, K extends number = number> impleme
         this.$queueRenderLog();
       };
       const clearScreen = () => {
+        args.extendsClearScreen?.(content);
         content.last = "";
         content.all = "";
         this.$queueRenderLog();
       };
+
+      const { prefix } = args;
+      const join_prefix = prefix ? (suffix: string) => prefix + " " + suffix : (suffix: string) => suffix;
       const logger: PKGM.TuiLogger = createSuperLogger({
-        prefix: args.prefix ?? "",
-        infoPrefix: args.infoPrefix ?? "i",
-        warnPrefix: args.warnPrefix ?? "⚠",
-        errorPrefix: args.errorPrefix ?? "X",
-        successPrefix: args.successPrefix ?? "✓",
+        prefix: prefix ?? "",
+        infoPrefix: args.infoPrefix ?? join_prefix("i"),
+        warnPrefix: args.warnPrefix ?? join_prefix("⚠"),
+        errorPrefix: args.errorPrefix ?? join_prefix("X"),
+        successPrefix: args.successPrefix ?? join_prefix("✓"),
         stdoutWriter: writer,
         stderrWriter: writer,
         clearScreen: clearScreen,
@@ -231,15 +236,30 @@ export abstract class Panel<N extends string, K extends number = number> impleme
       });
       logger.panel = this;
 
+      const destroy = () => {
+        this.$loggerInfoMap.delete(name);
+        this._reOrderAllLoggerKitList();
+        this.$queueRenderLog();
+      };
+      const debug = (log: string) => {
+        this._ctx.debug(`${name}: ${log}`);
+      };
+      const render = () => {
+        this.$queueRenderLog();
+      };
+
       return {
-        name: args.name,
+        name,
         order: args.order,
         content,
         writer,
         clearLine,
         clearScreen,
         logger,
-      };
+        destroy,
+        debug,
+        render,
+      } as $LoggerKit;
     },
   });
 
@@ -253,7 +273,7 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     return this.loggerKit.logger;
   }
 }
-export type $CreateLoggerKitArgs = {
+export type $CreateLoggerKitArgs<C = {}> = {
   name: string;
   prefix?: string;
   order: number;
@@ -261,8 +281,28 @@ export type $CreateLoggerKitArgs = {
   warnPrefix?: string;
   errorPrefix?: string;
   successPrefix?: string;
+  extendsContent?: C;
+  extendsClearScreen?: (contentRef: $LoggerKit.Content<C>) => void;
+  extendsClearLine?: (contentRef: $LoggerKit.Content<C>) => void;
 };
-export type $LoggerKit = ReturnType<Panel<any>["createLoggerKit"]>;
+export type $LoggerKit<C = {}> = {
+  name: string;
+  order: number;
+  content: $LoggerKit.Content<C>;
+  writer: (s: string) => void;
+  clearLine: () => void;
+  clearScreen: () => void;
+  logger: PKGM.TuiLogger;
+  destroy: () => void;
+  debug: (log: string) => void;
+  render: () => void;
+};
+export namespace $LoggerKit {
+  export type Content<C> = {
+    all: string;
+    last: string;
+  } & C;
+}
 
 export type StatusChangeCallback = (s: PanelStatus, ctx: BFSP.TUI.Panel) => void;
 export type PanelStatus = "success" | "error" | "warn" | "loading" | "info";

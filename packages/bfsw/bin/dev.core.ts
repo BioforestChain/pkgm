@@ -5,10 +5,6 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
   const debug = DevLogger("bfsw:bin/dev");
   const workspacePanel = getTui().getPanel("Workspaces");
   const { logger } = workspacePanel;
-  logger.info("hi~~~");
-  logger.clearScreen = ()=>{
-    debugger
-  }
 
   const { workspaceConfig } = args;
   type $DevBfsp = ReturnType<typeof doDevBfsp>;
@@ -25,6 +21,7 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
   };
 
   (async () => {
+    const devPanel = getTui().getPanel("Dev");
     listening: for await (const projectConfigStreamsMap of workspaceConfig.projectConfigStreamsMapStream) {
       if (stoped) {
         break listening;
@@ -36,17 +33,38 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
         if (devBfspMap.has(projectRoot)) {
           continue;
         }
-        const devBfsp = doDevBfsp({
-          root: projectRoot,
-          format: args.format,
-          subStreams: projectConfigStreams,
+
+        const relativePath = path.relative(workspaceConfig.root, projectRoot);
+        const bfspLoggerKit = workspacePanel.createLoggerKit({ name: relativePath, prefix: relativePath, order: 0 });
+        /// 开始执行编译
+        const devBfsp = doDevBfsp(
+          {
+            root: projectRoot,
+            format: args.format,
+            subStreams: projectConfigStreams,
+          },
+          {
+            loggerKit: devPanel.createLoggerKit({ name: relativePath, prefix: relativePath, order: 0 }),
+          }
+        );
+        const bfspLogger = bfspLoggerKit.logger;
+        devBfsp.onStart(async () => {
+          bfspLogger.loadingStart("doDev");
         });
-        logger.success("started dev project in %s", path.relative(workspaceConfig.root, projectRoot));
+        devBfsp.onSuccess(() => {
+          bfspLogger.loadingEnd("doDev");
+          bfspLogger.success("build finished");
+        });
+        devBfsp.onError(() => {
+          bfspLogger.loadingEnd("doDev");
+          bfspLogger.error("build failed");
+        });
+
         devBfspMap.set(projectRoot, {
           devBfsp,
           stop() {
             devBfsp.abortable.close();
-            logger.info("stoped dev project in %s", path.relative(workspaceConfig.root, projectRoot));
+            bfspLoggerKit.destroy();
           },
         });
       }
