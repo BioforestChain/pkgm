@@ -4,7 +4,7 @@ import { defineViteStdoutApis, Logger, LoggerOptions, LogLevel } from "@bfchain/
 import util from "node:util";
 import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import { consoleLogger } from "./consoleLogger";
-import { getTui } from "./tui/index";
+import { getTui, hasTui } from "./tui/index";
 import { BundlePanel } from "./tui/internalPanels";
 
 export const LogLevels: Record<LogLevel, number> = {
@@ -142,10 +142,10 @@ function DebugFactory(level: "info" | "warn" | "error" = "info", label: string) 
         args[0] = chalk.red(args[0]);
       }
       D.formatArgs.call(d, args);
-      if (!useScreen) {
-        console.log(...args);
-      } else {
+      if (hasTui()) {
         getTui().debug(...args);
+      } else {
+        consoleLogger.log(...args);
       }
     },
     { enabled: level === "info" ? d.enabled : true }

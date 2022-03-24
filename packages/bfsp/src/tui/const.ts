@@ -27,6 +27,7 @@ const BASE_STYLE: Widgets.BoxOptions = {
   },
 } as Widgets.BoxOptions;
 const SCROLLABLE_STYLE: Widgets.BoxOptions = {
+  keys: true,
   keyable: true,
   mouse: true,
   scrollable: true,
@@ -46,13 +47,37 @@ const SCROLLABLE_STYLE: Widgets.BoxOptions = {
 const T_SAFE_AREA = 0;
 const H_NAV = 1;
 const H_STATUSBAR = 3;
-const W_SIDE_N = 30;
-const W_MAIN_N = process.env["PKGM_MODE"] === "bfsw" ? 100 - W_SIDE_N : 100;
-const W_MAIN = `${W_MAIN_N}%`;
+const W_R_SIDE = 30;
+
 export const TuiStyle = {
+  //#region layout 1
+
+  leftSide: {
+    top: T_SAFE_AREA,
+    width: `100%`,
+    height: `100%-${T_SAFE_AREA}`,
+    left: 0,
+  } as Widgets.BoxOptions,
+  rightSide: {
+    top: T_SAFE_AREA,
+    width: 0,
+    height: `100%-${T_SAFE_AREA}`,
+    right: 0,
+  } as Widgets.BoxOptions,
+
+  leftSide1: {
+    width: `${100 - W_R_SIDE}%`,
+  } as Widgets.BoxOptions,
+  rightSide1: {
+    width: `${W_R_SIDE}%`,
+  } as Widgets.BoxOptions,
+  //#endregion
+
+  //#region layout 2
+
   leftMain: {
     top: T_SAFE_AREA,
-    width: W_MAIN,
+    width: `100%`,
     height: `100%-${H_STATUSBAR}`,
     left: 0,
   } as Widgets.BoxOptions,
@@ -60,14 +85,11 @@ export const TuiStyle = {
     ...BASE_STYLE,
     top: `100%-${H_STATUSBAR}`,
     height: H_STATUSBAR,
-    width: W_MAIN,
+    width: `100%`,
   } as Widgets.BoxOptions,
-  rightSide: {
-    top: T_SAFE_AREA,
-    width: `${W_SIDE_N}%`,
-    height: "100%",
-    right: 0,
-  } as Widgets.BoxOptions,
+  //#endregion
+
+  //#region layout 3
 
   navBar: {
     top: 0,
@@ -92,4 +114,5 @@ export const TuiStyle = {
     height: "100%",
     ...SCROLLABLE_STYLE,
   } as Widgets.BoxOptions,
+  //#endregion
 };

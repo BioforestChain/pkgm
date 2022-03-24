@@ -1,5 +1,6 @@
 import { blessed } from "@bfchain/pkgm-base/lib/blessed";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
 import { createSuperLogger } from "../SuperLogger";
 import { jsonClone } from "../toolkit.util";
 import { afm } from "./animtion";
@@ -144,29 +145,9 @@ export abstract class Panel<N extends string, K extends number = number> impleme
    *    1. 可以自定义 clearScreen
    *    1. 可以自定义 logger 的生成
    * 1. 但也可以扩展自己的输出面板，最终再将两个面板混合起来输出
-   *    1. 重写 $renderLog 来定义最终的输出内容
+   *    1. 重写 $orderLoggers 来定义最终的输出内容的顺序
    *    1. 使用 $queueRenderLog 来调度输出指令
    */
-
-  protected $logAllContent = "";
-  protected $logLastContent = "";
-  write(s: string) {
-    this.$logAllContent += this.$logLastContent = s;
-    this.$queueRenderLog();
-  }
-  clearLine() {
-    if (this.$logLastContent.length === 0) {
-      return;
-    }
-    this.$logAllContent = this.$logAllContent.slice(0, -this.$logLastContent.length);
-    this.$logLastContent = "";
-    this.$logAllContent;
-  }
-  clearScreen() {
-    this.$logLastContent = "";
-    this.$logAllContent = "";
-    this.$queueRenderLog();
-  }
 
   private _renderingLog = false;
   protected $queueRenderLog() {
@@ -179,39 +160,110 @@ export abstract class Panel<N extends string, K extends number = number> impleme
       this.$renderLog();
     });
   }
-  protected $renderLog() {
-    this.elLog.setContent(this.$logAllContent);
-  }
 
-  private $getLoggerWriter() {
-    return this.write.bind(this);
+  protected $renderLog() {
+    let allContent = "";
+    for (const kit of this.$allOrderedLoggerKitList) {
+      allContent += kit.content.all;
+    }
+    this.elLog.setContent(allContent);
   }
-  private $getLoggerClearScreen() {
-    return this.clearScreen.bind(this);
+  protected $allOrderedLoggerKitList: $LoggerKit[] = [];
+  createLoggerKit(args: {
+    name: string;
+    order: number;
+    prefix?: string;
+    infoPrefix?: string;
+    warnPrefix?: string;
+    errorPrefix?: string;
+    successPrefix?: string;
+  }) {
+    let info = this.$loggerInfoMap.tryGet(args);
+    if (info === undefined) {
+      info = this.$loggerInfoMap.forceGet(args);
+      /// 重新排序
+      const allKitList = [...this.$loggerInfoMap.values()].sort((a, b) => {
+        if (a.order === b.order) {
+          return a.name.localeCompare(b.name);
+        }
+        return a.order - b.order;
+      });
+      this.$allOrderedLoggerKitList = allKitList;
+    }
+    return info;
   }
-  private $getLoggerClearLine() {
-    return this.clearLine.bind(this);
-  }
-  private _logger?: PKGM.Logger;
-  get logger() {
-    if (this._logger === undefined) {
-      const writer = this.$getLoggerWriter();
-      this._logger = createSuperLogger({
-        prefix: "",
-        infoPrefix: "i",
-        warnPrefix: "⚠",
-        errorPrefix: "X",
-        successPrefix: "✓",
+  protected $loggerInfoMap = EasyMap.from({
+    transformKey: (args: $CreateLoggerKitArgs) => {
+      return args.name;
+    },
+    creater: (args, name) => {
+      const content = {
+        all: "",
+        last: "",
+      };
+      const writer = (s: string) => {
+        content.all += content.last = s;
+        this.$queueRenderLog();
+      };
+      const clearLine = () => {
+        if (content.last.length === 0) {
+          return;
+        }
+        content.all = content.all.slice(0, -content.last.length);
+        content.last = "";
+        this.$queueRenderLog();
+      };
+      const clearScreen = () => {
+        content.last = "";
+        content.all = "";
+        this.$queueRenderLog();
+      };
+      const logger: PKGM.TuiLogger = createSuperLogger({
+        prefix: args.prefix ?? "",
+        infoPrefix: args.infoPrefix ?? "i",
+        warnPrefix: args.warnPrefix ?? "⚠",
+        errorPrefix: args.errorPrefix ?? "X",
+        successPrefix: args.successPrefix ?? "✓",
         stdoutWriter: writer,
         stderrWriter: writer,
-        clearScreen: this.$getLoggerClearScreen(),
-        clearLine: this.$getLoggerClearLine(),
+        clearScreen: clearScreen,
+        clearLine: clearLine,
       });
-    }
-    return this._logger;
-  }
+      logger.panel = this;
+
+      return {
+        name: args.name,
+        order: args.order,
+        content,
+        writer,
+        clearLine,
+        clearScreen,
+        logger,
+      };
+    },
+  });
+
   //#endregion
+
+  private _loggerKit?: $LoggerKit;
+  get loggerKit() {
+    return (this._loggerKit ??= this.createLoggerKit({ name: "default", order: 100 }));
+  }
+  get logger() {
+    return this.loggerKit.logger;
+  }
 }
+export type $CreateLoggerKitArgs = {
+  name: string;
+  prefix?: string;
+  order: number;
+  infoPrefix?: string;
+  warnPrefix?: string;
+  errorPrefix?: string;
+  successPrefix?: string;
+};
+export type $LoggerKit = ReturnType<Panel<any>["createLoggerKit"]>;
+
 export type StatusChangeCallback = (s: PanelStatus, ctx: BFSP.TUI.Panel) => void;
 export type PanelStatus = "success" | "error" | "warn" | "loading" | "info";
 

@@ -1,6 +1,8 @@
 import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { chalk, supportsColor } from "@bfchain/pkgm-base/lib/chalk";
+import { jsonClone } from "../toolkit.util";
 import { afm } from "./animtion";
+import { TuiStyle } from "./const";
 import {
   BuildPanel,
   CenterMainPanelGroup,
@@ -24,7 +26,8 @@ export class Tui {
     title: process.env["PKGM_MODE"] + " - powered by @bfchain/pkgm",
   });
   private _mainPanels = new CenterMainPanelGroup();
-  private _sidePanels = new RightSidePanelGroup();
+  private _leftSideView = blessed.box({ ...jsonClone(TuiStyle.leftSide) });
+  private _rsidePanels = new RightSidePanelGroup();
   private _allPanelOrderedList: BFSP.TUI.Panel.Any[] = [];
   readonly status = new StatusBar();
   // readonly nav: Widgets.BoxElement;
@@ -33,9 +36,14 @@ export class Tui {
 
     /// 初始化布局
     {
-      screen.append(this._mainPanels.view);
-      screen.append(this._sidePanels.view);
-      screen.append(this.status.view);
+      const { _leftSideView } = this;
+
+      screen.append(this._rsidePanels.view);
+      screen.append(_leftSideView);
+
+      _leftSideView.append(this._mainPanels.view);
+      _leftSideView.append(this.status.view);
+
       screen.render();
     }
 
@@ -112,15 +120,19 @@ export class Tui {
     return this._forceGetPanel(name) as BFSP.TUI.Panel.GetByName<N>;
   }
 
-  private _allPanels() {
-    return [...this._mainPanels.values(), ...this._sidePanels.values()];
-  }
   private _forceGetPanel<N extends BFSP.TUI.Panel.Name>(name: N) {
     let panel: BFSP.TUI.Panel.Any | undefined;
     if (this._mainPanels.belong(name)) {
       panel = this._mainPanels.get(name);
-    } else if (this._sidePanels.belong(name)) {
-      panel = this._sidePanels.get(name);
+    } else if (this._rsidePanels.belong(name)) {
+      panel = this._rsidePanels.get(name);
+
+      /**
+       * 触发动态布局
+       * @TODO 改进触发机制
+       */
+      Object.assign(this._rsidePanels.view, TuiStyle.rightSide1);
+      Object.assign(this._leftSideView, TuiStyle.leftSide1);
     }
 
     if (panel === undefined) {
@@ -139,7 +151,6 @@ export class Tui {
           break;
         case "Workspaces":
           panel = new WorkspacesPanel(this, -1, name);
-          (globalThis as any).wp = panel;
           break;
         default:
           throw new Error(`unknown panel name: ${name}`);
@@ -148,12 +159,12 @@ export class Tui {
       // 尝试保存到某一个集合中，直到成功为止
       this._mainPanels.trySet(panel) ||
         //
-        this._sidePanels.trySet(panel);
+        this._rsidePanels.trySet(panel);
 
       /**导出所有的面板，并为其进行排序 */
-      const allPanels = [...this._mainPanels.values(), ...this._sidePanels.values()];
+      const allPanels = [...this._mainPanels.values(), ...this._rsidePanels.values()];
       const allPanelOrderedMap = new Map(
-        [...this._mainPanels.panelKeyOrder, ...this._sidePanels.panelKeyOrder].map((name, index) => [name, index])
+        [...this._mainPanels.panelKeyOrder, ...this._rsidePanels.panelKeyOrder].map((name, index) => [name, index])
       );
       allPanels.sort((a, b) => allPanelOrderedMap.get(a.name)! - allPanelOrderedMap.get(b.name)!);
       this._allPanelOrderedList = allPanels;

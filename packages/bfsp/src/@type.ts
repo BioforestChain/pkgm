@@ -43,4 +43,8 @@ declare namespace PKGM {
     clearLine: Clear;
   };
   type ConsoleLogger = SimpleLogger & Partial<Omit<Logger, keyof SimpleLogger>>;
+
+  type TuiLogger = Logger & {
+    panel?: import("./tui").Panel<any>;
+  };
 }

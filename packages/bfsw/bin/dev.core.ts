@@ -6,6 +6,9 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
   const workspacePanel = getTui().getPanel("Workspaces");
   const { logger } = workspacePanel;
   logger.info("hi~~~");
+  logger.clearScreen = ()=>{
+    debugger
+  }
 
   const { workspaceConfig } = args;
   type $DevBfsp = ReturnType<typeof doDevBfsp>;

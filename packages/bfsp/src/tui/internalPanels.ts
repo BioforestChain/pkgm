@@ -4,12 +4,16 @@ import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import type { LogErrorOptions, LogLevel, LogType } from "@bfchain/pkgm-base/lib/vite";
 import { createSuperLogger } from "../SuperLogger";
 import { LogLevels, TuiStyle } from "./const";
-import { Panel, PanelContext, PanelGroup } from "./Panel";
+import { $LoggerKit, Panel, PanelContext, PanelGroup } from "./Panel";
 
 export class TscPanel extends Panel<"Tsc"> {
+  private _tscLoggerKit?: $LoggerKit;
+  get tscLoggerKit() {
+    return (this._tscLoggerKit ??= this.createLoggerKit({ name: "tsc", order: 9 }));
+  }
   protected $tscLogAllContent = "";
   writeTscLog(text: string) {
-    this.$tscLogAllContent += text;
+    this.tscLoggerKit.writer(text);
 
     const foundErrors = text.match(/Found (\d+) error/);
     if (foundErrors !== null) {
@@ -22,14 +26,9 @@ export class TscPanel extends Panel<"Tsc"> {
     } else {
       this.updateStatus("loading");
     }
-    this.$queueRenderLog();
   }
   clearTscLog() {
-    this.$tscLogAllContent = "";
-    this.$queueRenderLog();
-  }
-  protected override $renderLog() {
-    this.elLog.setContent(this.$tscLogAllContent + this.$logAllContent);
+    this.tscLoggerKit.clearScreen();
   }
 }
 export class BundlePanel<N extends string = string> extends Panel<N> {
@@ -37,8 +36,6 @@ export class BundlePanel<N extends string = string> extends Panel<N> {
   protected $viteLastMsgType: LogType | undefined;
   protected $viteLastMsg: string | undefined;
   protected $viteSameCount = 0;
-  protected $viteLastContent = "";
-  protected $viteAllContent = "";
   protected $viteLogoContent?: string;
   protected $viteLogThresh = LogLevels.info; // 默认打印所有的日志等级
 
@@ -55,6 +52,10 @@ export class BundlePanel<N extends string = string> extends Panel<N> {
       return msg;
     }
   };
+  private _viteLoggerKit?: $LoggerKit;
+  private get viteLoggerKit() {
+    return (this._viteLoggerKit ??= this.createLoggerKit({ name: "vite", order: 9 }));
+  }
   writeViteLog(type: LogType, msg: string, options: LogErrorOptions = {}) {
     /// 移除 logo
     if (this.$viteLogoContent === undefined) {
@@ -76,18 +77,18 @@ export class BundlePanel<N extends string = string> extends Panel<N> {
         this.$viteLoggedErrors.add(options.error);
       }
 
+      const { content } = this.viteLoggerKit;
       if (options.clear && type === this.$viteLastMsgType && msg === this.$viteLastMsg) {
         this.$viteSameCount++;
-        this.$viteAllContent =
-          this.$viteAllContent.slice(0, -this.$viteLastContent.length) +
-          (this.$viteLastContent =
+        content.all =
+          content.all.slice(0, -content.last.length) +
+          (content.last =
             this.$formatViteMsg(type, msg, options) + ` ${chalk.yellow(`(x${this.$viteSameCount + 1})`)}\n`);
       } else {
         this.$viteSameCount = 0;
         this.$viteLastMsg = msg;
         this.$viteLastMsgType = type;
-        this.$viteAllContent =
-          this.$viteAllContent + (this.$viteLastContent = this.$formatViteMsg(type, msg, options) + `\n`);
+        content.all = content.all + (content.last = this.$formatViteMsg(type, msg, options) + `\n`);
       }
       this.$queueRenderLog();
 
@@ -100,56 +101,37 @@ export class BundlePanel<N extends string = string> extends Panel<N> {
     }
   }
   getViteLogAllContent() {
-    return this.$viteAllContent;
-  }
-  clearViteLogScreen() {
-    this.$viteAllContent = "";
-    this.$viteLastContent = "";
-    this.$viteLastMsg = undefined;
-    this.$viteLastMsgType = undefined;
-    this.$viteSameCount = 0;
-    this.$queueRenderLog();
-  }
-  clearViteLogLine() {
-    this.$viteAllContent = this.$viteAllContent.slice(0, -this.$viteLastContent.length);
-    this.$viteLastContent = "";
-    this.$viteLastMsg = undefined;
-    this.$viteLastMsgType = undefined;
-    this.$viteSameCount = 0;
-    this.$queueRenderLog();
-  }
-  private _viteLogger?: PKGM.Logger;
-  get viteLogger() {
-    if (this._viteLogger === undefined) {
-      this._viteLogger = createSuperLogger({
-        prefix: "",
-        infoPrefix: "i",
-        warnPrefix: "⚠",
-        errorPrefix: "X",
-        successPrefix: "✓",
-        stdoutWriter: (s) => this.writeViteLog("info", s),
-        stderrWriter: (s) => this.writeViteLog("error", s),
-        stdwarnWriter: (s) => this.writeViteLog("warn", s),
-        clearScreen: this.clearViteLogScreen.bind(this),
-        clearLine: this.clearViteLogLine.bind(this),
-      });
-    }
-    return this._viteLogger;
+    return this.viteLoggerKit.content.all;
   }
 
-  protected override $renderLog(): void {
-    this.elLog.setContent(this.$viteAllContent + this.$logAllContent);
+  clearViteLogScreen() {
+    this.$viteLastMsg = undefined;
+    this.$viteLastMsgType = undefined;
+    this.$viteSameCount = 0;
+    this.viteLoggerKit.clearScreen();
+  }
+  clearViteLogLine() {
+    // this.$viteLastMsg = undefined;
+    // this.$viteLastMsgType = undefined;
+    // this.$viteSameCount = 0;
+    this.viteLoggerKit.clearLine();
+  }
+  get viteLogger() {
+    return this.viteLoggerKit.logger;
   }
 }
 export class DevPanel extends BundlePanel<"Dev"> {}
 export class BuildPanel extends BundlePanel<"Build"> {
   protected override $renderLog(): void {
-    if (this.$viteAllContent.length > 0) {
-      const logWidth = typeof this.elLog.width === "number" ? this.elLog.width - 3 : 4;
-      this.elLog.setContent(this.$logAllContent + chalk.grey("─".repeat(logWidth)) + "\n" + this.$viteAllContent);
-    } else {
-      this.elLog.setContent(this.$logAllContent);
+    let allContent = "";
+    for (const kit of this.$allOrderedLoggerKitList) {
+      if (kit.name === "vite" && kit.content.all.length > 0) {
+        const logWidth = typeof this.elLog.width === "number" ? this.elLog.width - 3 : 4;
+        allContent += chalk.grey("─".repeat(logWidth)) + "\n";
+      }
+      allContent += kit.content.all;
     }
+    this.elLog.setContent(allContent);
   }
 }
 export class WorkspacesPanel extends Panel<"Workspaces"> {
@@ -158,51 +140,18 @@ export class WorkspacesPanel extends Panel<"Workspaces"> {
   }
 }
 export class DepsPanel extends Panel<"Deps"> {
-  private _depsAllContent = "";
-  private _depsLastContent = "";
   // 初始化时状态设为success，修复依赖为空时一直处于loading状态
   constructor(_ctx: PanelContext, orderKey: number, readonly name: "Deps") {
     super(_ctx, orderKey, name);
   }
 
-  writeDepsLog(s: string) {
-    this._depsAllContent += this._depsLastContent = s;
-    this.$queueRenderLog();
-  }
-  clearDepsLogLine() {
-    if (this._depsLastContent.length === 0) {
-      return;
-    }
-    this._depsAllContent = this._depsAllContent.slice(0, -this._depsLastContent.length);
-    this._depsLastContent = "";
-    this._depsAllContent;
-  }
-  clearDepsLogScreen() {
-    this._depsLastContent = "";
-    this._depsAllContent = "";
-    this.$queueRenderLog();
+  private _depsLoggerKit?: $LoggerKit;
+  get depsLoggerKit() {
+    return (this._depsLoggerKit ??= this.createLoggerKit({ name: "deps", order: 9 }));
   }
 
-  private _depsLogger?: PKGM.Logger;
   get depsLogger() {
-    if (this._depsLogger === undefined) {
-      this._depsLogger = createSuperLogger({
-        prefix: "",
-        infoPrefix: "i",
-        warnPrefix: "⚠",
-        errorPrefix: "X",
-        successPrefix: "✓",
-        stdoutWriter: (s) => this.writeDepsLog(s),
-        stderrWriter: (s) => this.writeDepsLog(s),
-        clearScreen: this.clearDepsLogLine.bind(this),
-        clearLine: this.clearDepsLogScreen.bind(this),
-      });
-    }
-    return this._depsLogger;
-  }
-
-  protected override $renderLog(): void {
-    this.elLog.setContent(this._depsAllContent + this.$logAllContent);
+    return this.depsLoggerKit.logger;
   }
 }
 

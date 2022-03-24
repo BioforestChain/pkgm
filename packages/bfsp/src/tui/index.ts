@@ -7,3 +7,5 @@ let tui: Tui | undefined;
 export const getTui = () => {
   return (tui ??= new Tui());
 };
+
+export const hasTui = () => tui !== undefined;

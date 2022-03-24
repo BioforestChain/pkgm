@@ -347,7 +347,7 @@ const getTsconfigFiles = (list: TsFilesLists, field: keyof Omit<TsFilesLists, "p
 export const generateTsConfig = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
-  options: { outDirRoot?: string; outDirName?: string; logger: PKGM.Logger }
+  options: { outDirRoot?: string; outDirName?: string; logger: PKGM.TuiLogger }
 ) => {
   const allTsFileList = await walkFiles(projectDirpath, {
     dirFilter: async (fullDirpath) => await notGitIgnored(fullDirpath),
@@ -364,7 +364,9 @@ export const generateTsConfig = async (
     typeFiles: new ListSet<string>(),
     testFiles: new ListSet<string>(),
     binFiles: new ListSet<string>(),
-    profileMap: new ProfileMap(options.logger ?? getTui().getPanel("Tsc").logger),
+    profileMap: new ProfileMap(
+      options.logger.panel?.createLoggerKit({ name: "profile", order: 11, prefix: "profile:" }).logger ?? options.logger
+    ),
   };
 
   groupTsFilesByAdd(projectDirpath, bfspUserConfig, allTsFileList, tsFilesLists);
