@@ -34,8 +34,8 @@ export default defineConfig((info) => {
         preserveEntrySignatures: "strict",
         external: getExternalOption(__dirname),
         input: inputConfig.input,
-        preserveModules: true,
         output: {
+          preserveModules: true,
           manualChunks: undefined,
           entryFileNames: `[name]${extension}`,
           chunkFileNames: `chunk/[name]${extension}`,

@@ -15,10 +15,7 @@ export interface RunTscOption {
   watch?: boolean;
 }
 export const runTsc = (opts: RunTscOption) => {
-  let workerMjsPath = path.join(getBfspWorkerDir(), "tsc_worker.mjs");
-  if (!existsSync(workerMjsPath)) {
-    workerMjsPath = path.join(getBfspWorkerDir(), "../tsc_worker.mjs");
-  }
+  let workerMjsPath = path.join(getBfspWorkerDir(), "bin/tsc/tsc_worker.mjs");
   const tscWorker = new Worker(workerMjsPath, {
     argv: [opts.projectMode ? "-p" : "--build", opts.tsconfigPath, opts.watch ? "-w" : ""].filter(
       Boolean /* 一定要过滤掉空字符串，否则可能会被识别成文件名 */

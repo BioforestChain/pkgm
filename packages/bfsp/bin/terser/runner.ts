@@ -21,10 +21,7 @@ export const runTerser = async (opts: { sourceDir: string; logError: (log: strin
   rearrange(workerCount, files, (items) => {
     const task = new Promise<{ path: string; success: boolean }[]>((resolve) => {
       /// 多处引用时会发生找不到的情况，原因是runterser会在dist/chunk目录下
-      let workerMjsPath = path.join(getBfspWorkerDir(), "terser_worker.mjs");
-      if(!existsSync(workerMjsPath)) {
-        workerMjsPath = path.join(getBfspWorkerDir(), "../terser_worker.mjs");
-      }
+      let workerMjsPath = path.join(getBfspWorkerDir(), "bin/terser/terser_worker.mjs");
       const worker = new Worker(workerMjsPath);
 
       worker.on("message", (v) => {

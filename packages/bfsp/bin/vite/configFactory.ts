@@ -58,6 +58,8 @@ export const ViteConfigFactory = (options: {
             : getExternalOption(projectDirpath, userConfig.name),
         input: viteConfig.viteInput,
         output: {
+          preserveModules: true,
+          manualChunks: undefined,
           entryFileNames: `[name]${extension}`,
           chunkFileNames: `chunk/[name]${extension}`,
           format: format,
@@ -77,6 +79,10 @@ export const ViteConfigFactory = (options: {
         return {
           name: "tsc.emitDecoratorMetadata",
           load(source: string) {
+            // otherwise modules like 'vite/preload' will cause error
+            if (!path.isAbsolute(source)) {
+              return null;
+            }
             if (!parsedTsConfig?.compilerOptions?.emitDecoratorMetadata) {
               return null;
             }
