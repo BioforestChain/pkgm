@@ -35,6 +35,8 @@ let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", opt
         return msg;
       }
     };
+    const blankMsg = (msg: string) =>
+      msg.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "");
 
     const $viteLogThresh = LogLevels[level];
     const $viteLoggedErrors = new WeakSet<Error | RollupError>();
@@ -46,11 +48,7 @@ let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", opt
       /// 移除 logo
       if (_viteLogoContent === undefined) {
         if (msg.includes("vite")) {
-          const blankMsg = msg.replace(
-            /[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g,
-            ""
-          );
-          const viteVersion = blankMsg.match(/^vite v[\d\.]+/);
+          const viteVersion = blankMsg(msg).match(/^vite v[\d\.]+/);
           if (viteVersion) {
             _viteLogoContent = msg;
           }
@@ -61,40 +59,56 @@ let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", opt
         return;
       }
 
-      if ($viteLogThresh >= LogLevels[type]) {
-        if (options.error) {
-          $viteLoggedErrors.add(options.error);
-        }
+      if ($viteLogThresh < LogLevels[type]) {
+        return;
+      }
 
-        const print =
-          type === "error"
-            ? viteLoggerKit.logger.error
-            : type === "warn"
-            ? viteLoggerKit.logger.warn
-            : viteLoggerKit.logger.info;
-        const piner = viteLoggerKit.logger.info;
+      if (options.error) {
+        $viteLoggedErrors.add(options.error);
+      }
 
-        if (options.clear && type === $viteLastMsgType && msg === $viteLastMsg) {
-          $viteSameCount++;
-          piner.pin("same", `\n ${chalk.yellow(`(x${$viteSameCount + 1})`)}`);
+      const piner = viteLoggerKit.logger.info;
+
+      let print =
+        type === "error"
+          ? viteLoggerKit.logger.error
+          : type === "warn"
+          ? viteLoggerKit.logger.warn
+          : viteLoggerKit.logger.info;
+      if (print === viteLoggerKit.logger.info) {
+        const bmsg = blankMsg(msg);
+        debugger;
+        if (bmsg.startsWith("✓")) {
+          msg = bmsg.replace("✓", "").trimStart();
+          print = viteLoggerKit.logger.success;
+        } else if (bmsg.endsWith("...")) {
+          piner.pin("ing", msg.trim());
+          return;
         } else {
-          if ($viteSameCount !== 0) {
-            print(` ${chalk.yellow(`(x${$viteSameCount + 1})`)}`);
-            piner.unpin("same");
-
-            $viteSameCount = 0;
-            $viteLastMsg = msg;
-            $viteLastMsgType = type;
-          }
-          print($formatViteMsg(type, msg, options));
+          piner.unpin("ing");
         }
+      }
 
-        /**
-         * @TODO 这里需要修改updateStatus的行为，应该改成 addStatus(flag,type) 。从而允许多个实例同时操作这个status
-         */
-        if (type !== "info") {
-          // this.updateStatus(type);
+      if (options.clear && type === $viteLastMsgType && msg === $viteLastMsg) {
+        $viteSameCount++;
+        piner.pin("same", `\n ${chalk.yellow(`(x${$viteSameCount + 1})`)}`);
+      } else {
+        if ($viteSameCount !== 0) {
+          print(` ${chalk.yellow(`(x${$viteSameCount + 1})`)}`);
+          piner.unpin("same");
+
+          $viteSameCount = 0;
+          $viteLastMsg = msg;
+          $viteLastMsgType = type;
         }
+        print($formatViteMsg(type, msg, options));
+      }
+
+      /**
+       * @TODO 这里需要修改updateStatus的行为，应该改成 addStatus(flag,type) 。从而允许多个实例同时操作这个status
+       */
+      if (type !== "info") {
+        // this.updateStatus(type);
       }
     };
 

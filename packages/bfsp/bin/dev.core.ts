@@ -109,7 +109,7 @@ export const doDevBfsp = (
         if (event.code === "BUNDLE_END") {
           // close as https://www.rollupjs.org/guide/en/#rollupwatch suggests
           event.result.close();
-          logger.success(`package ${name} build complete`);
+          logger.success(`package ${chalk.green(name)} build complete`);
           devPanel.updateStatus("success");
           successCb && (await successCb(name));
           return;

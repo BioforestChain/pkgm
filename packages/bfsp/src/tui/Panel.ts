@@ -226,7 +226,7 @@ export abstract class Panel<N extends string, K extends number = number> impleme
       const logger: PKGM.TuiLogger = createSuperLogger({
         prefix: prefix ?? "",
         infoPrefix: args.infoPrefix ?? join_prefix("i"),
-        warnPrefix: args.warnPrefix ?? join_prefix("⚠"),
+        warnPrefix: args.warnPrefix ?? join_prefix("!"), //⚠
         errorPrefix: args.errorPrefix ?? join_prefix("X"),
         successPrefix: args.successPrefix ?? join_prefix("✓"),
         stdoutWriter: writer,
