@@ -2,6 +2,7 @@ import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { defineCommand } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 import { doCreateBfsw } from "./create.core";
+import { doInit } from "./init.core";
 
 export const createCommand = defineCommand(
   "create",
@@ -14,14 +15,14 @@ export const createCommand = defineCommand(
     description: `create a new bfsw project`,
   } as const,
   async (params, args, ctx) => {
-    const projectRoot = path.resolve(process.cwd(), args[0] ?? ".");
-    const projectName = params.name ?? path.basename(projectRoot);
+    const workspaceRoot = path.resolve(process.cwd(), args[0] ?? ".");
+    const workspaceName = params.name ?? path.basename(workspaceRoot);
 
     if (
       (await ctx.question(
         `
-      ${chalk.gray`Project Directory`}: ${chalk.cyan(projectRoot)}
-      ${chalk.gray`Project Name`}: ${chalk.cyan(projectName)}
+      ${chalk.gray`Workspace Directory`}: ${chalk.cyan(workspaceRoot)}
+      ${chalk.gray`Workspace Name`}: ${chalk.cyan(workspaceName)}
       ${chalk.gray`Confirm`}? ${chalk.gray(`[${chalk.cyan.underline`Y`}/n]`)}
     `,
         {
@@ -32,6 +33,7 @@ export const createCommand = defineCommand(
       return;
     }
 
-    await doCreateBfsw({ root: projectRoot, name: projectName, license: params.license }, ctx.logger);
+    await doCreateBfsw({ root: workspaceRoot, name: workspaceName, license: params.license }, ctx.logger);
+    await doInit({ root: workspaceRoot }, ctx.logger);
   }
 );
