@@ -101,7 +101,7 @@ export class ProfileMap {
       return pInfo;
     }
   };
-  constructor(private logger: PKGM.ConsoleLogger) {}
+  constructor(private logger: PKGM.Logger) {}
 
   private _privatepathMap = new Map<
     /* #filepath */ string,
@@ -168,6 +168,7 @@ export class ProfileMap {
       }
     }
   }
+  private _profileErrorLogs: string[] = [];
   toTsPaths(_profileNameList: string[] = ["default"]) {
     const paths: { [key: Bfsp.Profile]: string[] } = {};
     debug("profiles", _profileNameList);
@@ -177,8 +178,7 @@ export class ProfileMap {
       }
       return profile as Bfsp.Profile;
     });
-
-    this.logger.clear();
+    this._profileErrorLogs.length = 0;
 
     for (const [privatePath, map] of this._privatepathMap) {
       const profilePaths = new Set<string>();
@@ -246,7 +246,7 @@ export class ProfileMap {
       }
 
       if (profilePaths.size === 0) {
-        this.logger.error(
+        this._profileErrorLogs.push(
           `no match any profile paths of '${chalk.blue(privatePath)}' with config: ${chalk.red(profileList.join())}`
         );
       }
@@ -272,6 +272,11 @@ export class ProfileMap {
         paths[`#${privatePath.slice(2 /* './' */)}`] = [...profilePaths];
       }
     }
+
+    if (this._profileErrorLogs.length > 0) {
+      this.logger.error.pin("profile", this._profileErrorLogs.join("\n"));
+    }
+
     return paths;
   }
 }

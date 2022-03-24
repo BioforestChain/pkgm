@@ -41,10 +41,6 @@ let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", opt
     let $viteLastMsgType: LogType | undefined;
     let $viteLastMsg: string | undefined;
     let $viteSameCount = 0;
-    let $viteLogoContent: string | undefined;
-    // const hasErrorLogged = (error: Error | RollupError) => {
-    //   return $viteLoggedErrors.has(error);
-    // };
 
     const writeViteLog = (type: LogType, msg: string, options: LogErrorOptions = {}) => {
       /// 移除 logo
@@ -70,19 +66,28 @@ let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", opt
           $viteLoggedErrors.add(options.error);
         }
 
-        const { content } = viteLoggerKit;
+        const print =
+          type === "error"
+            ? viteLoggerKit.logger.error
+            : type === "warn"
+            ? viteLoggerKit.logger.warn
+            : viteLoggerKit.logger.info;
+        const piner = viteLoggerKit.logger.info;
+
         if (options.clear && type === $viteLastMsgType && msg === $viteLastMsg) {
           $viteSameCount++;
-          content.all =
-            content.all.slice(0, -content.last.length) +
-            (content.last = $formatViteMsg(type, msg, options) + ` ${chalk.yellow(`(x${$viteSameCount + 1})`)}\n`);
+          piner.pin("same", `\n ${chalk.yellow(`(x${$viteSameCount + 1})`)}`);
         } else {
-          $viteSameCount = 0;
-          $viteLastMsg = msg;
-          $viteLastMsgType = type;
-          content.all = content.all + (content.last = $formatViteMsg(type, msg, options) + `\n`);
+          if ($viteSameCount !== 0) {
+            print(` ${chalk.yellow(`(x${$viteSameCount + 1})`)}`);
+            piner.unpin("same");
+
+            $viteSameCount = 0;
+            $viteLastMsg = msg;
+            $viteLastMsgType = type;
+          }
+          print($formatViteMsg(type, msg, options));
         }
-        viteLoggerKit.render();
 
         /**
          * @TODO 这里需要修改updateStatus的行为，应该改成 addStatus(flag,type) 。从而允许多个实例同时操作这个status

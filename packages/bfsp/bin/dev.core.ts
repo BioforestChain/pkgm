@@ -19,7 +19,6 @@ export const doDevBfsp = (
     subStreams: ReturnType<typeof watchBfspProjectConfig>;
   },
   options: {
-    // logger?: PKGM.Logger;
     loggerKit?: $LoggerKit;
   } = {}
 ) => {
@@ -110,9 +109,8 @@ export const doDevBfsp = (
         if (event.code === "BUNDLE_END") {
           // close as https://www.rollupjs.org/guide/en/#rollupwatch suggests
           event.result.close();
-          viteLogger.info(`${chalk.green("√")} package ${name} build complete`);
+          logger.success(`package ${name} build complete`);
           devPanel.updateStatus("success");
-          await sleep(2000)
           successCb && (await successCb(name));
           return;
         }

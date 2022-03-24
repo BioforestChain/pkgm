@@ -11,7 +11,7 @@ export class AnimationFrameManager {
     }
     this._looping = true;
     while (this._funs.size > 0) {
-      await sleep(500); // 10fps
+      await sleep(200); // 10fps
       if (this._funs.size === 0) {
         break;
       }

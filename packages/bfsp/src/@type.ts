@@ -24,8 +24,6 @@ declare namespace PKGM {
     success: SuperPrinter;
     group: Console["group"];
     groupEnd: Console["groupEnd"];
-    // clearScreen: Clear;
-    // clearLine: Clear;
     clear: Clear;
     loadingStart: (label: string) => void;
     loadingLog: (label: string, ...param: any[]) => void;
@@ -44,8 +42,6 @@ declare namespace PKGM {
     error: NormalPrinter;
     info: NormalPrinter;
     clear: Clear;
-    // clearScreen: Clear;
-    // clearLine: Clear;
   };
   type ConsoleLogger = SimpleLogger & Partial<Omit<Logger, keyof SimpleLogger>>;
 
