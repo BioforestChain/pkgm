@@ -1,11 +1,13 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { build } from "@bfchain/pkgm-base/lib/esbuild";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { isDeepStrictEqual } from "node:util";
+// import { setFlagsFromString } from "node:v8";
+// setFlagsFromString("experimental-vm-modules");
 import bfspTsconfigContent from "../../assets/tsconfig.bfsp.json?raw";
 import * as consts from "../consts";
 import { DevLogger } from "../logger";
@@ -167,7 +169,51 @@ export const createTsconfigForEsbuild = (content: string) => {
 
 const bfspTsconfigFilepath = createTsconfigForEsbuild(bfspTsconfigContent);
 
-export const $readFromMjs = async <T>(filename: string, refresh?: boolean) => {
+declare module "node:vm" {
+  class Module {
+    context: any;
+    namespace: any;
+    identifier: string;
+    status: "unlinked" | "linking" | "linked" | "evaluated" | "evaluating" | "errored";
+    error?: any;
+    evaluate(options?: { timeout?: number; breakOnSigint?: boolean }): Promise<void>;
+    link(linker: Linker): Promise<void>;
+  }
+
+  type Linker = (specifier: string, referencingModule: Module, extra: {}) => BFChainUtil.PromiseMaybe<Module>;
+  class SourceTextModule extends Module {
+    constructor(code: string, options: { content: any });
+    createCachedData(): Buffer;
+  }
+}
+export const $readFromMjs2 = async <T>(filename: string, logger: PKGM.Logger, refresh?: boolean) => {
+  const { SourceTextModule, createContext, Module } = await import("node:vm");
+
+  /// 简单用logger覆盖console
+  const customConsole = Object.create(console);
+  customConsole.log = logger.log;
+  customConsole.info = logger.info;
+  customConsole.warn = logger.warn;
+  customConsole.error = logger.error;
+
+  const ctx = createContext({
+    console: customConsole,
+  });
+  const script = new SourceTextModule(readFileSync(filename, "utf-8"), { content: ctx });
+  await script.link(async (specifier) => {
+    const context = await import(specifier);
+    const module = new Module();
+    module.context = context;
+    return module;
+    throw new Error(`Unable to resolve dependency: ${specifier}`);
+  });
+  await script.evaluate();
+
+  const { default: config } = script.namespace;
+  return config as T;
+};
+
+export const $readFromMjs = async <T>(filename: string, logger: PKGM.Logger, refresh?: boolean) => {
   const url = pathToFileURL(filename);
   if (refresh) {
     url.searchParams.append("_", Date.now().toString());
@@ -182,6 +228,7 @@ export const readUserConfig = async (
     refresh?: boolean;
     single?: AbortSignal;
     watch?: (config: Bfsp.UserConfig) => void;
+    logger: PKGM.Logger;
   }
 ): Promise<Bfsp.UserConfig | undefined> => {
   for (const filename of await folderIO.get(dirname)) {
@@ -197,7 +244,7 @@ export const readUserConfig = async (
         const buildResult = await build({
           entryPoints: [filename],
           absWorkingDir: dirname,
-          bundle: false,
+          bundle: true,
           platform: "node",
           format: "esm",
           write: true,
@@ -206,12 +253,12 @@ export const readUserConfig = async (
           watch: options.watch && {
             onRebuild: async (error, result) => {
               if (!error) {
-                options.watch!(await $readFromMjs<Bfsp.UserConfig>(cache_filepath, options.refresh));
+                options.watch!(await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, options.refresh));
               }
             },
           },
         });
-        const { single } = options;
+        const { single, logger } = options;
         if (single) {
           if (single.aborted) {
             return;
@@ -220,7 +267,7 @@ export const readUserConfig = async (
             single.addEventListener("abort", buildResult.stop.bind(buildResult));
           }
         }
-        return await $readFromMjs<Bfsp.UserConfig>(cache_filepath, options.refresh);
+        return await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, options.refresh);
       } catch (err) {
       } finally {
         existsSync(cache_filepath) && unlinkSync(cache_filepath);
@@ -243,7 +290,8 @@ export const getBfspUserConfig = async (
     refresh?: boolean;
     single?: AbortSignal;
     watch?: (config: $BfspUserConfig) => void;
-  } = {}
+    logger: PKGM.Logger;
+  }
 ) => {
   const userConfig = await readUserConfig(dirname, {
     ...options,
@@ -316,6 +364,7 @@ export const watchBfspUserConfig = (
       refresh: true,
       single: abortSingle,
       watch: tryPushUserConfig,
+      logger,
     });
     if (userConfig !== undefined) {
       tryPushUserConfig(userConfig);

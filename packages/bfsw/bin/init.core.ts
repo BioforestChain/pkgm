@@ -1,18 +1,20 @@
 import { runYarn } from "@bfchain/pkgm-bfsp";
-export const doInit = async (options: { root: string }, logger: PKGM.Logger) => {
-  const { root } = options;
+import { WorkspaceConfig } from "../src/configs/workspaceConfig";
+export const doInit = async (
+  args: { workspaceConfig: WorkspaceConfig },
+  options: { logger: PKGM.Logger; yarnLogger?: PKGM.Logger }
+) => {
+  const { workspaceConfig } = args;
+  const { logger, yarnLogger = logger } = options;
 
-  // /// 生成配套的配置文件
-  // logger.info("generate config files");
-  // await writeBfswProjectConfig(
-  //   { projectDirpath: root, bfspUserConfig: await getBfswUserConfig(root) },
-  //   { logger, service: getBfswBuildService(watchNoop()) }
-  // );
+  /// 生成配套的配置文件
+
+  logger.info("generate config files");
+  await workspaceConfig.write();
 
   logger.info("linking dependencies");
-
   return runYarn({
-    root,
-    logger,
+    root: workspaceConfig.root,
+    logger: yarnLogger,
   }).afterDone;
 };

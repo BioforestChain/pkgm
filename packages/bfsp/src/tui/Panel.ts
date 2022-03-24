@@ -22,7 +22,6 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     /// 如果聚焦元素改变，那么需要重新渲染样式
     this.elLog.on("blur", () => {
       this._isActive = false;
-      this._ctx.debug("blur " + this.name);
       this.$queueRenderTab();
     });
   }
@@ -127,13 +126,11 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     this.elLog.show();
     this.elLog.focus();
     this._isActive = true;
-    this._ctx.debug("show " + this.name);
     this.$queueRenderTab();
   }
   deactivate() {
     this.elLog.hide();
     this._isActive = false;
-    this._ctx.debug("hide " + this.name);
     this.$queueRenderTab();
   }
 

@@ -1,41 +1,22 @@
-import { build, Loader, Plugin } from "@bfchain/pkgm-base/lib/esbuild";
 import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
 import {
   $BfspUserConfig,
   $getBfspUserConfig,
   $PackageJson,
-  $readFromMjs,
-  createTsconfigForEsbuild,
-  DevLogger,
   doWatchDeps,
-  fileIO,
-  folderIO,
-  getWatcher,
   SharedAsyncIterable,
   SharedFollower,
-  toPosixPath,
+  watchGitIgnore,
+  watchNpmIgnore,
   watchPackageJson,
   watchTsConfig,
   watchViteConfig,
-  watchGitIgnore,
-  watchNpmIgnore,
 } from "@bfchain/pkgm-bfsp";
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, unlinkSync } from "node:fs";
-import path, { resolve } from "node:path";
+import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-// import bfswTsconfigContent from "../../assets/tsconfig.bfsw.json?raw";
-const bfswTsconfigContent = "{}";
-import { consts } from "../consts";
 import { States } from "./states";
 import { WorkspacePackageJson } from "./workspacePackageJson";
 import { WorkspaceTsConfig } from "./workspaceTsConfig";
-
-export const defineWorkspace = (cb: () => Bfsw.Workspace) => {
-  return cb();
-};
-
-const bfswTsconfigFilepath = createTsconfigForEsbuild(bfswTsconfigContent);
 
 export type $ProjectConfigStreams = ReturnType<WorkspaceConfigBase["_createProjectConfigStreams"]>;
 export type $ProjectConfigStreamsMap = Map<string, $ProjectConfigStreams>;
@@ -124,6 +105,9 @@ export class WorkspaceConfigBase {
   protected _projectConfigStreamsMap = EasyMap.from({
     creater: (projectRoot: string) => this._createProjectConfigStreams(projectRoot),
   });
+  /**
+   * 为单个bfsp项目生成配置流
+   */
   protected _createProjectConfigStreams(projectRoot: string) {
     const userConfigFollower = new SharedFollower<$BfspUserConfig>();
     const userConfigStream = new SharedAsyncIterable<$BfspUserConfig>(userConfigFollower);
@@ -169,8 +153,12 @@ export class WorkspaceConfigBase {
     };
   }
 
-  //#region 统一的依赖监听与安装
+  //#region 统一的“依赖”监听与安装
 
+  /**
+   * 这里内存存储的 $PackageJson 是一个假的 package.json
+   * 它的主要作用是收集所有子项目的 package.json，将之统筹后，方便 doWatchDeps 用它自己的方式 判定是否触发更改
+   */
   protected _watchDepsFollower = new SharedFollower<$PackageJson>();
   protected _watchDeps = doWatchDeps(this.root, new SharedAsyncIterable<$PackageJson>(this._watchDepsFollower), {
     runInstall: true,

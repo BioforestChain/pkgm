@@ -7,7 +7,7 @@ export class WorkspacePackageJson {
     const packageJson = {
       name: "bfsp-workspace",
       private: true,
-      packageManager: "yarn@1.22.0",
+      packageManager: "yarn@1.22.18",
       workspaces: [...this._wc.states.paths()],
       devDependencies: {
         // "@bfchain/pkgm-bfsw": `${bfswVersion}`,

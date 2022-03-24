@@ -1,73 +1,94 @@
-import { build, Loader, Plugin } from "@bfchain/pkgm-base/lib/esbuild";
 import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
-import {
-  $BfspUserConfig,
-  $getBfspUserConfig,
-  $PackageJson,
-  $readFromMjs,
-  createTsconfigForEsbuild,
-  DevLogger,
-  doWatchDeps,
-  fileIO,
-  folderIO,
-  getWatcher,
-  SharedAsyncIterable,
-  SharedFollower,
-  toPosixPath,
-  watchPackageJson,
-  watchTsConfig,
-  watchViteConfig,
-  watchGitIgnore,
-  watchNpmIgnore,
-} from "@bfchain/pkgm-bfsp";
-import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, unlinkSync } from "node:fs";
-import path, { resolve } from "node:path";
-import { isDeepStrictEqual } from "node:util";
-// import bfswTsconfigContent from "../../assets/tsconfig.bfsw.json?raw";
-const bfswTsconfigContent = "{}";
-import { consts } from "../consts";
-import { States } from "./states";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
+import { getWatcher, writeBfspProjectConfig } from "@bfchain/pkgm-bfsp";
+import path from "node:path";
 import { WorkspaceConfigBase } from "./WorkspaceConfig.base";
 import { LoadConfig } from "./WorkspaceConfig.loader";
-import { WorkspacePackageJson } from "./workspacePackageJson";
-import { WorkspaceTsConfig } from "./workspaceTsConfig";
+export * from "./WorkspaceConfig.base";
+export * from "./WorkspaceConfig.loader";
+export * from "./WorkspaceConfig.watch";
 
-export const defineWorkspace = (cb: () => Bfsw.Workspace) => {
-  return cb();
-};
-
-const bfswTsconfigFilepath = createTsconfigForEsbuild(bfswTsconfigContent);
-
-export type $ProjectConfigStreams = ReturnType<WorkspaceConfig["_createProjectConfigStreams"]>;
-export type $ProjectConfigStreamsMap = Map<string, $ProjectConfigStreams>;
 export type $WorkspaceWatcher = BFChainUtil.PromiseReturnType<typeof WorkspaceConfig["getWatcher"]>;
 
+export namespace WorkspaceConfig {
+  // export type Options = {
+  //   watch?: boolean;
+  // };
+}
 export class WorkspaceConfig extends WorkspaceConfigBase {
-  static async from(workspaceRoot: string, logger: PKGM.Logger) {
-    const config = await LoadConfig(workspaceRoot);
-    if (config !== undefined) {
-      return new WorkspaceConfig(workspaceRoot, config, logger);
+  static async From(workspaceRoot: string, logger: PKGM.Logger) {
+    const initConfig = await LoadConfig(workspaceRoot, { logger });
+    if (initConfig !== undefined) {
+      const wc = new WorkspaceConfig(workspaceRoot, initConfig, logger);
+      return wc;
     }
   }
+  static WatchFrom(workspaceRoot: string, logger: PKGM.Logger) {
+    const ac = new AbortController();
+    const wcPo = new PromiseOut<WorkspaceConfig>();
+    (async () => {
+      const initConfig = await LoadConfig(workspaceRoot, {
+        single: ac.signal,
+        watch: (newConfig) => {
+          if (wcPo.value === undefined) {
+            const wc = new WorkspaceConfig(workspaceRoot, newConfig, logger);
+            wcPo.resolve(wc);
+          } else {
+            const wc = wcPo.value;
+            wc._reload(newConfig);
+          }
+        },
+        logger,
+      });
 
-  private async _reload() {
-    const config = await LoadConfig(this.root);
-    if (config === undefined) {
-      return false;
-    }
+      if (ac.signal.aborted) {
+        return wcPo.reject(ac.signal);
+      }
 
+      if (initConfig !== undefined) {
+        const wc = new WorkspaceConfig(workspaceRoot, initConfig, logger);
+        wcPo.resolve(wc);
+      }
+    })();
+
+    return {
+      abortController: ac,
+      workspaceConfigAsync: wcPo.promise,
+    };
+  }
+
+  private async _reload(config: Bfsw.Workspace) {
     this.states.clear();
     this._config = config;
     this._refreshProjectConfigStreamsMap(config);
+    this.write();
 
     return true;
   }
 
   /**写入配置文件到磁盘 */
-  async write() {}
+  async write() {
+    await this.packageJson.write();
+    await this.tsConfig.write();
+    // for (const [projectRoot, projectConfigStreams] of await this.projectConfigStreamsMapStream.getCurrent()) {
+    //   writeBfspProjectConfig(
+    //     {
+    //       projectDirpath: projectRoot,
+    //       bfspUserConfig: await projectConfigStreams.userConfigStream.getCurrent(),
+    //     },
+    //     { logger: this._logger }
+    //   );
+    // }
+  }
+
+  private _watching = false;
   /**监听配置，转成流 */
-  async watch() {}
+  async watch() {
+    if (this._watching) {
+      return;
+    }
+    this._watching = true;
+  }
   /**监听配置变动，将新的导出配置写入磁盘 */
   static async getWatcher(workspaceRoot: string) {
     const watcher = await getWatcher(workspaceRoot);

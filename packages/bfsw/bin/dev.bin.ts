@@ -3,6 +3,7 @@ import { ALLOW_FORMATS, defineCommand, DevLogger, getTui } from "@bfchain/pkgm-b
 import path from "node:path";
 import { WorkspaceConfig } from "../src";
 import { doDevBfsw } from "./dev.core";
+import { doInit } from "./init.core";
 // import { workspaceInit } from "./workspace";
 
 export const devCommand = defineCommand(
@@ -56,15 +57,24 @@ export const devCommand = defineCommand(
       root = path.resolve(root, maybeRoot);
     }
 
-    const logger = getTui().getPanel("Workspaces").logger;
-    const workspaceConfig = await WorkspaceConfig.from(root, logger);
-    if (workspaceConfig === undefined) {
-      ctx.logger.error(`no found workspace config file: '${chalk.blue("#bfsw.ts")}'`);
-      return;
+    const TUI = getTui();
+
+    const logger = TUI.getPanel("Workspaces").logger;
+    const workspaceConfig = await WorkspaceConfig.WatchFrom(root, logger).workspaceConfigAsync;
+
+    if (
+      await doInit(
+        { workspaceConfig },
+        {
+          logger,
+          yarnLogger: TUI.getPanel("Deps").depsLogger,
+        }
+      )
+    ) {
+      // 清除 doInit 留下的日志
+      logger.clear();
+      // 开始 bfsw 的开发模式
+      await doDevBfsw({ workspaceConfig });
     }
-
-    await workspaceConfig.write();
-
-    doDevBfsw({ workspaceConfig });
   }
 );

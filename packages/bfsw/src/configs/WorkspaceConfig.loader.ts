@@ -4,15 +4,21 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { consts } from "../consts";
-// import bfswTsconfigContent from "../../assets/tsconfig.bfsw.json?raw";
-const bfswTsconfigContent = "{}";
+import bfswTsconfigContent from "../../assets/tsconfig.bfsw.json?raw";
 const bfswTsconfigFilepath = createTsconfigForEsbuild(bfswTsconfigContent);
 
 export const defineWorkspace = (cb: () => Bfsw.Workspace) => {
   return cb();
 };
 
-export const LoadConfig = async (workspaceRoot: string) => {
+export const LoadConfig = async (
+  workspaceRoot: string,
+  options: {
+    single?: AbortSignal;
+    watch?: (config: Bfsw.Workspace) => void;
+    logger: PKGM.Logger;
+  }
+) => {
   const debug = DevLogger("bfsw:config/load");
 
   const externalMarker: Plugin = {
@@ -71,13 +77,13 @@ export const LoadConfig = async (workspaceRoot: string) => {
           }
 
           if (path.basename(args.path) === "#bfsp") {
-            const bfsp_ = JSON.stringify(toPosixPath(path.join(path.dirname(args.path), "#bfsp#")));
-            const dirname = toPosixPath(path.dirname(args.path));
+            const bfspDirname = toPosixPath(path.dirname(args.path)); //path.resolve(workspaceRoot, path.dirname(args.path));
+            const bfsp_ = JSON.stringify(toPosixPath(path.join(bfspDirname, "#bfsp#")));
             return {
               contents: `
                 import defaultValue from ${bfsp_};
                 export * from ${bfsp_};
-                const newDefault = {...defaultValue,path:"${dirname}"};
+                const newDefault = {...defaultValue,path:${JSON.stringify(bfspDirname)}};
                 export default newDefault;
               `,
               loader: "ts",
@@ -116,7 +122,7 @@ export const LoadConfig = async (workspaceRoot: string) => {
       const cache_filepath = resolve(bfswDir, cache_filename);
       try {
         debug("complie #bfsw");
-        await build({
+        const buildResult = await build({
           entryPoints: [filename],
           absWorkingDir: workspaceRoot,
           bundle: true,
@@ -126,18 +132,39 @@ export const LoadConfig = async (workspaceRoot: string) => {
           outfile: cache_filepath,
           tsconfig: bfswTsconfigFilepath,
           plugins: [externalMarker, bfspWrapper],
+          watch: options.watch && {
+            onRebuild: async (error, result) => {
+              debugger;
+              if (!error) {
+                options.watch!(await $readFromMjs<Bfsw.Workspace>(cache_filepath, logger, true));
+              }
+            },
+          },
         });
-        return await $readFromMjs<Bfsw.Workspace>(cache_filepath, true);
+        const { single, logger } = options;
+        if (single?.aborted) {
+          return;
+        }
+        if (buildResult.stop) {
+          single?.addEventListener("abort", buildResult.stop.bind(buildResult));
+        } else {
+          if (buildResult.warnings) {
+            for (const warn of buildResult.warnings) {
+              logger.warn(warn.text);
+            }
+          }
+          if (buildResult.errors) {
+            for (const err of buildResult.errors) {
+              logger.error(err.text);
+            }
+            return;
+          }
+        }
+
+        return await $readFromMjs<Bfsw.Workspace>(cache_filepath, logger, true);
       } finally {
         existsSync(cache_filepath) && unlinkSync(cache_filepath);
       }
     }
   }
 };
-// export const FromRoot = async (workspaceRoot: string, logger: PKGM.Logger) => {
-//   const config = await LoadConfig(workspaceRoot);
-//   if (config !== undefined) {
-//     const WorkspaceConfig = (await import("./workspaceConfig")).WorkspaceConfig;
-//     return new WorkspaceConfig(workspaceRoot, config, logger);
-//   }
-// };

@@ -43,12 +43,12 @@ export const devCommand = defineCommand(
       root = path.resolve(root, maybeRoot);
     }
 
+    const options = { logger: getTui().getPanel("Dev").logger };
     const tscLogger = createTscLogger();
 
-    const bfspUserConfig = await getBfspUserConfig(root);
+    const bfspUserConfig = await getBfspUserConfig(root, options);
     const projectConfig = { projectDirpath: root, bfspUserConfig };
     /**使用特殊定制的logger */
-    const options = { logger: getTui().getPanel("Dev").logger };
 
     const subConfigs = await writeBfspProjectConfig(projectConfig, options);
     const configStreams = watchBfspProjectConfig(projectConfig, subConfigs, options);

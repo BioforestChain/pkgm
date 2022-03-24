@@ -1,6 +1,7 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { defineCommand } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
+import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 import { doCreateBfsw } from "./create.core";
 import { doInit } from "./init.core";
 
@@ -34,6 +35,11 @@ export const createCommand = defineCommand(
     }
 
     await doCreateBfsw({ root: workspaceRoot, name: workspaceName, license: params.license }, ctx.logger);
-    await doInit({ root: workspaceRoot }, ctx.logger);
+
+    const workspaceConfig = await WorkspaceConfig.From(workspaceRoot, ctx.logger);
+    if (workspaceConfig === undefined) {
+      throw new Error("#bfsw.ts load fail");
+    }
+    await doInit({ workspaceConfig }, ctx);
   }
 );

@@ -22,7 +22,7 @@ const debug = DevLogger("bfsp:bin/build");
 
 export const writeBuildConfigs = async (args: { root?: string }, options: { logger: PKGM.Logger }) => {
   const { root = process.cwd() } = args;
-  const bfspUserConfig = await getBfspUserConfig(root);
+  const bfspUserConfig = await getBfspUserConfig(root, options);
   const projectConfig = { projectDirpath: root, bfspUserConfig };
   const subConfigs = await writeBfspProjectConfig(projectConfig, options);
   return { subConfigs, bfspUserConfig };

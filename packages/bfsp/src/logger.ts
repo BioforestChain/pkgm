@@ -77,7 +77,6 @@ let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", opt
           : viteLoggerKit.logger.info;
       if (print === viteLoggerKit.logger.info) {
         const bmsg = blankMsg(msg);
-        debugger;
         if (bmsg.startsWith("✓")) {
           msg = bmsg.replace("✓", "").trimStart();
           print = viteLoggerKit.logger.success;

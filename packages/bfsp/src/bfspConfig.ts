@@ -6,8 +6,8 @@ import { $TsConfig, generateTsConfig, watchTsConfig, writeTsConfig } from "./con
 import { generateViteConfig, watchViteConfig } from "./configs/viteConfig";
 import { doWatchDeps } from "./deps";
 
-export const getBfspProjectConfig = async (dirname = process.cwd()) => {
-  const bfspUserConfig = await getBfspUserConfig(dirname);
+export const getBfspProjectConfig = async (dirname = process.cwd(), options: { logger: PKGM.Logger }) => {
+  const bfspUserConfig = await getBfspUserConfig(dirname, options);
 
   const projectConfig = {
     projectDirpath: dirname,
