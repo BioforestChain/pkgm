@@ -21,7 +21,7 @@ const argsMapCache = EasyMap.from({
      * 最后再通过 freeParamInfo 来将剩余的值归类到 args 中去
      */
     for (const arg of argv) {
-      const matchArgPrefix = arg.match(/-+?(\w+)\=?/);
+      const matchArgPrefix = arg.match(/ -+?(\w+)\=?/);
       if (matchArgPrefix !== null) {
         const [argPrefix, argName] = matchArgPrefix;
         curArgName = argName;

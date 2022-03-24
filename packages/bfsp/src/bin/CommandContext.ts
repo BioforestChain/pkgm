@@ -1,4 +1,4 @@
-import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { chalk, ChalkInstance } from "@bfchain/pkgm-base/lib/chalk";
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
 import util from "node:util";
@@ -64,7 +64,7 @@ export class CommandContext {
       }
     } while (true);
   }
-  readonly chalk = chalk as unknown as typeof chalk;
+  readonly chalk: ChalkInstance = chalk;
   private _logger?: PKGM.Logger;
   get logger() {
     if (this._logger === undefined) {
