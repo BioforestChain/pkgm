@@ -49,8 +49,6 @@ export default defineConfig((info) => {
         external: getExternalOption(__dirname),
         input: inputConfig.input,
         output: {
-          preserveModules: true,
-          manualChunks: undefined,
           entryFileNames: `[name]${extension}`,
           chunkFileNames: `chunk/[name]${extension}`,
           format: libFormat,
