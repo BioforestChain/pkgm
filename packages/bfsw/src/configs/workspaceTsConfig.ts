@@ -2,7 +2,7 @@ import { writeJsonConfig } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 
 export class WorkspaceTsConfig {
-  constructor(private _wc: import("./workspaceConfig").WorkspaceConfig) {}
+  constructor(private _wc: import("./WorkspaceConfig.base").WorkspaceConfigBase) {}
   async write() {
     const tsConfig = {
       compilerOptions: {

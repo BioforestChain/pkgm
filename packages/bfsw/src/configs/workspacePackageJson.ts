@@ -2,7 +2,7 @@ import { writeJsonConfig, getBfswVersion } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 
 export class WorkspacePackageJson {
-  constructor(private _wc: import("./workspaceConfig").WorkspaceConfig) {}
+  constructor(private _wc: import("./WorkspaceConfig.base").WorkspaceConfigBase) {}
   async write() {
     const packageJson = {
       name: "bfsp-workspace",

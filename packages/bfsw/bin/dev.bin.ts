@@ -63,6 +63,8 @@ export const devCommand = defineCommand(
       return;
     }
 
+    await workspaceConfig.write();
+
     doDevBfsw({ workspaceConfig });
   }
 );

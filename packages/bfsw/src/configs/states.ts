@@ -3,7 +3,7 @@ import { pathToKey } from "../util";
 
 type State = { userConfig: Bfsp.UserConfig; path: string };
 export class States {
-  constructor(private _wc: import("./workspaceConfig").WorkspaceConfig) {}
+  constructor(private _wc: import("./WorkspaceConfig.base").WorkspaceConfigBase) {}
   private _pathMap: Map<string, State> = new Map();
   private _nameMap: Map<string, State> = new Map();
   userConfigs() {
