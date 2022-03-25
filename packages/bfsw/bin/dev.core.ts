@@ -1,4 +1,4 @@
-import { DevLogger, doDevBfsp, getTui } from "@bfchain/pkgm-bfsp";
+import { DevLogger, doDevBfsp, getTui, toPosixPath } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format?: Bfsp.Format }) => {
@@ -35,7 +35,12 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
         }
 
         const relativePath = path.relative(workspaceConfig.root, projectRoot);
-        const bfspLoggerKit = workspacePanel.createLoggerKit({ name: relativePath, prefix: relativePath, order: 0 });
+        const loggerPrefix = `[${relativePath.replace(/\\+/g, "/")}]`;
+        const bfspLoggerKit = workspacePanel.createLoggerKit({
+          name: relativePath,
+          prefix: loggerPrefix,
+          order: 0,
+        });
         /// 开始执行编译
         const devBfsp = doDevBfsp(
           {
@@ -44,7 +49,11 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
             subStreams: projectConfigStreams,
           },
           {
-            loggerKit: devPanel.createLoggerKit({ name: relativePath, prefix: relativePath, order: 0 }),
+            loggerKit: devPanel.createLoggerKit({
+              name: relativePath,
+              prefix: loggerPrefix,
+              order: 0,
+            }),
           }
         );
         const bfspLogger = bfspLoggerKit.logger;
@@ -55,11 +64,13 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
         });
         devBfsp.onSuccess(() => {
           bfspLogger.loadingEnd("doDev");
-          bfspLogger.success("build finished");
+          bfspLogger.error.unpin("doDev");
+          bfspLogger.success.pin("doDev", "build finished");
         });
         devBfsp.onError(() => {
           bfspLogger.loadingEnd("doDev");
-          bfspLogger.error("build failed");
+          bfspLogger.success.unpin("doDev");
+          bfspLogger.error.pin("doDev", "build failed");
         });
 
         devBfspMap.set(projectRoot, {

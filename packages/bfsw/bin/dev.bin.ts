@@ -59,20 +59,23 @@ export const devCommand = defineCommand(
 
     const TUI = getTui();
 
-    const logger = TUI.getPanel("Workspaces").logger;
+    const workspacePanel = TUI.getPanel("Workspaces");
+    const logger = workspacePanel.logger;
     const workspaceConfig = await WorkspaceConfig.WatchFrom(root, logger).workspaceConfigAsync;
 
+    const initLoggerKit = workspacePanel.createLoggerKit({ name: "#init", order: 0 });
     if (
       await doInit(
         { workspaceConfig },
         {
-          logger,
+          logger: initLoggerKit.logger,
           yarnLogger: TUI.getPanel("Deps").depsLogger,
         }
       )
     ) {
       // 清除 doInit 留下的日志
-      logger.clear();
+      initLoggerKit.destroy();
+
       // 开始 bfsw 的开发模式
       await doDevBfsw({ workspaceConfig });
     }

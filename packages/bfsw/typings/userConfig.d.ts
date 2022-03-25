@@ -1,6 +1,6 @@
 declare namespace Bfsw {
   interface WorkspaceUserConfig extends Bfsp.UserConfig {
-    path: string;
+    relativePath: string;
   }
   interface Workspace {
     projects: WorkspaceUserConfig[];

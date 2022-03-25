@@ -1,5 +1,5 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { build } from "@bfchain/pkgm-base/lib/esbuild";
+import { build, BuildResult } from "@bfchain/pkgm-base/lib/esbuild";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -37,7 +37,7 @@ export const defineConfig = (cb: (info: Bfsp.ConfigEnvInfo) => Bfsp.UserConfig) 
     ...cb({
       mode: process.env.mode?.startsWith("prod") ? BUILD_MODE.PRODUCTION : BUILD_MODE.DEVELOPMENT,
     }),
-    path: "./",
+    relativePath: "./",
   };
 };
 
@@ -213,28 +213,51 @@ export const $readFromMjs2 = async <T>(filename: string, logger: PKGM.Logger, re
   return config as T;
 };
 
-export const $readFromMjs = async <T>(filename: string, logger: PKGM.Logger, refresh?: boolean) => {
+export const $readFromMjs = async <T>(filename: string, logger: PKGM.Logger, unlink?: boolean) => {
   const url = pathToFileURL(filename);
-  if (refresh) {
-    url.searchParams.append("_", Date.now().toString());
+  url.searchParams.append("_", Date.now().toString());
+
+  try {
+    const { default: config } = await import(url.href);
+    return config as T;
+  } catch (err) {
+    logger.error(err);
+  } finally {
+    if (unlink) {
+      existsSync(filename) && unlinkSync(filename);
+    }
   }
-  const { default: config } = await import(url.href);
-  return config as T;
 };
 
+export const printBuildResultWarnAndError = (logger: PKGM.Logger, buildResult: BuildResult) => {
+  if (buildResult.warnings.length > 0) {
+    for (const warn of buildResult.warnings) {
+      logger.warn(warn.text);
+    }
+  }
+  if (buildResult.errors.length > 0) {
+    for (const err of buildResult.errors) {
+      logger.error(err.text);
+    }
+    return true;
+  }
+  return false;
+};
 export const readUserConfig = async (
-  dirname: string,
+  projectRoot: string,
   options: {
-    refresh?: boolean;
+    unlink?: boolean;
     single?: AbortSignal;
     watch?: (config: Bfsp.UserConfig) => void;
     logger: PKGM.Logger;
   }
 ): Promise<Bfsp.UserConfig | undefined> => {
-  for (const filename of await folderIO.get(dirname)) {
+  const { single, logger, watch } = options;
+
+  for (const filename of await folderIO.get(projectRoot)) {
     if (filename === "#bfsp.ts" || filename === "#bfsp.mts" || filename === "#bfsp.mtsx") {
       const cache_filename = `#bfsp-${createHash("md5").update(`${Date.now()}`).digest("hex")}.mjs`;
-      const bfspDir = resolve(dirname, consts.ShadowRootPath);
+      const bfspDir = resolve(projectRoot, consts.ShadowRootPath);
       if (!existsSync(bfspDir)) {
         mkdirSync(bfspDir);
       }
@@ -243,31 +266,43 @@ export const readUserConfig = async (
         debug("complie #bfsp");
         const buildResult = await build({
           entryPoints: [filename],
-          absWorkingDir: dirname,
+          absWorkingDir: projectRoot,
           bundle: true,
           platform: "node",
           format: "esm",
           write: true,
           outfile: cache_filepath,
           tsconfig: bfspTsconfigFilepath,
-          watch: options.watch && {
-            onRebuild: async (error, result) => {
+          watch: watch && {
+            onRebuild: async (error, buildResult) => {
+              if (buildResult) {
+                printBuildResultWarnAndError(logger, buildResult);
+              }
               if (!error) {
-                options.watch!(await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, options.refresh));
+                const newConfig = await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, true);
+                if (newConfig) {
+                  watch(newConfig);
+                }
               }
             },
           },
         });
-        const { single, logger } = options;
-        if (single) {
-          if (single.aborted) {
-            return;
-          }
-          if (buildResult.stop) {
-            single.addEventListener("abort", buildResult.stop.bind(buildResult));
-          }
+
+        if (single?.aborted) {
+          return;
         }
-        return await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, options.refresh);
+
+        const hasError = printBuildResultWarnAndError(logger, buildResult);
+
+        if (typeof buildResult.stop === "function") {
+          logger.info.pin(`watch:${filename}`, `watching for complie ${chalk.blue(filename)} ...`);
+          // 监听模式
+          single?.addEventListener("abort", buildResult.stop.bind(buildResult));
+        } else if (hasError) {
+          return;
+        }
+
+        return await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, options.unlink);
       } catch (err) {
       } finally {
         existsSync(cache_filepath) && unlinkSync(cache_filepath);
@@ -278,7 +313,7 @@ export const readUserConfig = async (
     // }
     if (filename === "#bfsp.json") {
       return JSON.parse(
-        (await fileIO.get(resolve(dirname, filename), options.refresh)).toString("utf-8")
+        (await fileIO.get(resolve(projectRoot, filename), options.unlink)).toString("utf-8")
       ) as Bfsp.UserConfig;
     }
   }
@@ -361,7 +396,7 @@ export const watchBfspUserConfig = (
     };
 
     const userConfig = await readUserConfig(projectDirpath, {
-      refresh: true,
+      unlink: true,
       single: abortSingle,
       watch: tryPushUserConfig,
       logger,

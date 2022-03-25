@@ -44,7 +44,7 @@ export class WorkspaceConfigBase {
     const deletedProjectRoots = new Set<string>();
     const newProjectRoots = new Set<string>();
     for (const proj of config.projects) {
-      const projectRoot = path.resolve(this.root, proj.path);
+      const projectRoot = path.resolve(this.root, proj.relativePath);
       /// 添加索引
       this.states.add(projectRoot, { userConfig: proj, path: projectRoot });
 
