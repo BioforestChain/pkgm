@@ -77,7 +77,7 @@ export const watchBfspProjectConfig = (
     write: true,
   });
 
-  const watchDeps = doWatchDeps(projectDirpath, packageJsonStream, { runInstall: true });
+  let _watchDeps: ReturnType<typeof doWatchDeps> | undefined;
 
   return {
     userConfigStream,
@@ -86,7 +86,10 @@ export const watchBfspProjectConfig = (
     packageJsonStream,
     gitIgnoreStream,
     npmIgnoreStream,
-    depsInstallStream: watchDeps.stream,
+    /**默认不启动 deps 的watch安装，调用后才会运行 */
+    getDepsInstallStream() {
+      return (_watchDeps ??= doWatchDeps(projectDirpath, packageJsonStream, { runInstall: true })).stream;
+    },
     stopAll() {
       userConfigStream.stop();
       viteConfigStream.stop();
@@ -94,7 +97,7 @@ export const watchBfspProjectConfig = (
       packageJsonStream.stop();
       gitIgnoreStream.stop();
       npmIgnoreStream.stop();
-      watchDeps.stop();
+      _watchDeps?.stop();
     },
   };
 };

@@ -22,7 +22,7 @@ export type $ProjectConfigStreams = ReturnType<WorkspaceConfigBase["_createProje
 export type $ProjectConfigStreamsMap = Map<string, $ProjectConfigStreams>;
 
 export class WorkspaceConfigBase {
-  constructor(readonly root: string, protected _config: Bfsw.Workspace, protected _logger: PKGM.Logger) {
+  constructor(readonly root: string, protected _config: Bfsw.Workspace, protected _logger: PKGM.TuiLogger) {
     // buildService.watcher.watchWorkspace(() => this._reload());
     this._refreshProjectConfigStreamsMap(_config);
   }
@@ -129,7 +129,7 @@ export class WorkspaceConfigBase {
       write: true,
     });
 
-    const watchDeps = this._doWatchDeps(projectRoot, packageJsonStream);
+    let _watchDeps: ReturnType<WorkspaceConfigBase["_doWatchDeps"]> | undefined;
 
     return {
       projectRoot,
@@ -140,7 +140,9 @@ export class WorkspaceConfigBase {
       packageJsonStream,
       gitIgnoreStream,
       npmIgnoreStream,
-      depsInstallStream: watchDeps.stream,
+      getDepsInstallStream: () => {
+        return (_watchDeps ??= this._doWatchDeps(projectRoot, packageJsonStream)).stream;
+      },
       stopAll() {
         userConfigStream.stop();
         viteConfigStream.stop();
@@ -148,7 +150,7 @@ export class WorkspaceConfigBase {
         packageJsonStream.stop();
         gitIgnoreStream.stop();
         npmIgnoreStream.stop();
-        watchDeps.stop();
+        _watchDeps?.stop();
       },
     };
   }

@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import { userInfo } from "node:os";
+import { existsSync } from "node:fs";
 import path from "node:path";
 import { folderIO } from "../src";
 import { ts } from "./fmt.core";
@@ -42,10 +43,16 @@ export const doCreateBfsp = async (
 
   /// 初始化git仓库
   if (skipGit === false) {
+    await doInitGit(root, logger);
+  }
+};
+
+export const doInitGit = (root: string, logger: PKGM.Logger) => {
+  if (existsSync(path.join(root, ".git")) === false) {
     const g = spawn("git", ["init"], { cwd: root, stdio: "pipe" });
     logger.warn.pipeFrom(g.stdout);
     logger.error.pipeFrom(g.stderr);
-    await new Promise<number>((resolve) => {
+    return new Promise<number>((resolve) => {
       g.on("exit", (code) => {
         resolve(code ?? 0);
       });
