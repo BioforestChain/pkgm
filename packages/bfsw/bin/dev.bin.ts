@@ -1,5 +1,13 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { ALLOW_FORMATS, createTscLogger, defineCommand, DevLogger, getTui, runTsc } from "@bfchain/pkgm-bfsp";
+import {
+  ALLOW_FORMATS,
+  createTscLogger,
+  defineCommand,
+  DevLogger,
+  getTui,
+  linkBFChainPkgmModules,
+  runTsc,
+} from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 import { WorkspaceConfig } from "../src";
 import { doDevBfsw } from "./dev.core";
@@ -58,6 +66,9 @@ export const devCommand = defineCommand(
     }
 
     const TUI = getTui();
+
+    /// 先确保将 pkgm 的包安置好
+    linkBFChainPkgmModules(root);
 
     const workspacePanel = TUI.getPanel("Workspaces");
     const logger = workspacePanel.logger;

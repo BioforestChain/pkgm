@@ -48,7 +48,7 @@ export class WorkspaceConfigBase {
       /// 添加索引
       this.states.add(projectRoot, { userConfig: proj, path: projectRoot });
 
-      if (this._projectConfigStreamsMap.has(projectRoot)) {
+      if (this._projectConfigStreamsMap.has(projectRoot) === false) {
         newProjectRoots.add(projectRoot);
       }
 
@@ -60,7 +60,7 @@ export class WorkspaceConfigBase {
       let needPush = true;
       const curUserConfig = projectConfigStreams.userConfigStream.current?.userConfig;
       if (curUserConfig !== undefined) {
-        needPush = WorkspaceConfigBase._UserConfigIsEqual(curUserConfig, proj);
+        needPush = WorkspaceConfigBase._UserConfigIsEqual(curUserConfig, proj) === false;
       }
       if (needPush) {
         projectConfigStreams.userConfigFollower.push($getBfspUserConfig(proj));
@@ -159,10 +159,6 @@ export class WorkspaceConfigBase {
    * 这里内存存储的 $PackageJson 是一个假的 package.json
    * 它的主要作用是收集所有子项目的 package.json，将之统筹后，方便 doWatchDeps 用它自己的方式 判定是否触发更改
    */
-  protected _watchDepsFollower = new SharedFollower<$PackageJson>();
-  protected _watchDeps = doWatchDeps(this.root, new SharedAsyncIterable<$PackageJson>(this._watchDepsFollower), {
-    runInstall: true,
-  });
   protected _unitunifyPackageJson = {
     dependencies: {},
     devDependencies: {},
@@ -170,27 +166,31 @@ export class WorkspaceConfigBase {
     optionalDependencies: {},
   } as unknown as $PackageJson;
 
+  private __watchDepsFollower?: SharedFollower<$PackageJson>;
+  protected get _watchDepsFollower() {
+    return (this.__watchDepsFollower ??= new SharedFollower<$PackageJson>());
+  }
+  private __watchDeps?: ReturnType<typeof doWatchDeps>;
+  protected get _watchDeps() {
+    return (this.__watchDeps ??= doWatchDeps(
+      this.root,
+      new SharedAsyncIterable<$PackageJson>(this._watchDepsFollower),
+      {
+        runInstall: true,
+      }
+    ));
+  }
+
   private _doWatchDeps(projectRoot: string, packageJsonStream: SharedAsyncIterable<$PackageJson>) {
     const { _unitunifyPackageJson } = this;
 
     const prefix = projectRoot + ":";
-    const joinPrefix = (fromDeps: Bfsp.Dependencies, toDeps: Bfsp.Dependencies) => {
-      /// 先删除原先的依赖
-      for (const key in toDeps) {
-        if (key.startsWith(prefix)) {
-          delete toDeps[key];
-        }
-      }
-      // 再参入现有的依赖项
-      for (const key in fromDeps) {
-        toDeps[prefix + key] = fromDeps[key];
-      }
-    };
+
     const off = packageJsonStream.onNext((packageJson) => {
-      joinPrefix(packageJson.dependencies, _unitunifyPackageJson.dependencies);
-      joinPrefix(packageJson.devDependencies, _unitunifyPackageJson.devDependencies);
-      joinPrefix(packageJson.peerDependencies, _unitunifyPackageJson.peerDependencies);
-      joinPrefix(packageJson.optionalDependencies, _unitunifyPackageJson.optionalDependencies);
+      _joinPrefix(prefix, packageJson.dependencies, _unitunifyPackageJson.dependencies);
+      _joinPrefix(prefix, packageJson.devDependencies, _unitunifyPackageJson.devDependencies);
+      _joinPrefix(prefix, packageJson.peerDependencies, _unitunifyPackageJson.peerDependencies);
+      _joinPrefix(prefix, packageJson.optionalDependencies, _unitunifyPackageJson.optionalDependencies);
       this._watchDepsFollower.push(_unitunifyPackageJson);
     });
     return {
@@ -200,3 +200,15 @@ export class WorkspaceConfigBase {
   }
   //#endregion
 }
+const _joinPrefix = (prefix: string, fromDeps: Bfsp.Dependencies, toDeps: Bfsp.Dependencies) => {
+  /// 先删除原先的依赖
+  for (const key in toDeps) {
+    if (key.startsWith(prefix)) {
+      delete toDeps[key];
+    }
+  }
+  // 再参入现有的依赖项
+  for (const key in fromDeps) {
+    toDeps[prefix + key] = fromDeps[key];
+  }
+};

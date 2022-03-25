@@ -70,15 +70,6 @@ export class WorkspaceConfig extends WorkspaceConfigBase {
   async write() {
     await this.packageJson.write();
     await this.tsConfig.write();
-    // for (const [projectRoot, projectConfigStreams] of await this.projectConfigStreamsMapStream.getCurrent()) {
-    //   writeBfspProjectConfig(
-    //     {
-    //       projectDirpath: projectRoot,
-    //       bfspUserConfig: await projectConfigStreams.userConfigStream.getCurrent(),
-    //     },
-    //     { logger: this._logger }
-    //   );
-    // }
   }
 
   private _watching = false;
