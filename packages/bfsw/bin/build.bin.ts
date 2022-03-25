@@ -1,6 +1,16 @@
-import { DevLogger,defineCommand } from "@bfchain/pkgm-bfsp";
+import {
+  DevLogger,
+  defineCommand,
+  getTui,
+  createTscLogger,
+  runTsc,
+  writeBuildConfigs,
+  doBuild,
+} from "@bfchain/pkgm-bfsp";
 import path from "node:path";
-// import { workspaceInit } from "./workspace";
+import { WorkspaceConfig } from "../src/configs/workspaceConfig";
+import { doInit } from "./init.core";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 
 export const buildCommand = defineCommand(
   "build",
@@ -12,7 +22,7 @@ export const buildCommand = defineCommand(
     args: [[{ type: "string", name: "path", description: "project path, default is cwd." }], []],
     description: "bundle multiple profiles code.",
   } as const,
-  (params, args) => {
+  async (params, args) => {
     const debug = DevLogger("bfsp:bin/build");
 
     const profiles = params?.profiles?.split(",") || [];
@@ -26,6 +36,49 @@ export const buildCommand = defineCommand(
       root = path.resolve(root, maybeRoot);
     }
 
-    // workspaceInit({ root, mode: "build" });
+    const TUI = getTui();
+
+    const workspacePanel = TUI.getPanel("Workspaces");
+    const logger = workspacePanel.logger;
+    const workspaceConfig = await WorkspaceConfig.From(root, logger);
+
+    const initLoggerKit = workspacePanel.createLoggerKit({ name: "#init", order: 0 });
+    if (
+      workspaceConfig &&
+      (await doInit(
+        { workspaceConfig },
+        {
+          logger: initLoggerKit.logger,
+          yarnLogger: TUI.getPanel("Deps").depsLogger,
+        }
+      ))
+    ) {
+      // 清除 doInit 留下的日志
+      initLoggerKit.destroy();
+
+      const tscCompilation = () => {
+        return new Promise((resolve) => {
+          const tscLogger = createTscLogger();
+          runTsc({
+            watch: true,
+            tsconfigPath: path.join(root, "tsconfig.json"),
+            onMessage: (s) => tscLogger.write(s),
+            onClear: () => tscLogger.clear(),
+            onSuccess: () => {
+              resolve(undefined);
+            },
+          });
+        });
+      };
+      await tscCompilation();
+
+      const buildLogger = getTui().getPanel("Build").logger;
+      workspaceConfig.projects.forEach(async (x) => {
+        const projectRoot = path.join(root, x.relativePath);
+        const cfgs = await writeBuildConfigs({ root: projectRoot }, { logger: buildLogger });
+        await doBuild({ root: projectRoot, cfgs });
+        logger.info(`${chalk.green(x.name)} built successfully`);
+      });
+    }
   }
 );
