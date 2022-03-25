@@ -138,7 +138,7 @@ const getBuildPlugins = (workspaceRoot: string) => {
               if ((await fileIO.has(filepath)) === false) {
                 for (const sl of suffixAndLoaderList) {
                   const maybeFilepath = filepath + sl.suffix;
-                  if (await fileIO.has(maybeFilepath)) {
+                  if (await fileIO.has(path.resolve(workspaceRoot, maybeFilepath))) {
                     filepath = maybeFilepath;
                     loader = sl.loader;
                     break;
@@ -169,7 +169,7 @@ const getBuildPlugins = (workspaceRoot: string) => {
           const { type } = args.pluginData;
           if (type === "#bfsp#") {
             return {
-              contents: await fileIO.get(path.join(path.dirname(args.path), "#bfsp.ts")),
+              contents: await fileIO.get(path.resolve(workspaceRoot, path.dirname(args.path), "#bfsp.ts")),
               loader: "ts",
             };
           } else if (type === "#bfsp") {
