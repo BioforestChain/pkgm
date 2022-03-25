@@ -83,7 +83,10 @@ export const LoadConfig = async (
       return await $readFromMjs<Bfsw.Workspace>(cache_filepath, logger, true);
     }
 
-    /// 如果代码走到这里了，说明没有找到配置文件，可以此时又是watch模式，所以直接抛出异常
+    /**
+     * 如果代码走到这里了，说明没有找到配置文件
+     * 如果此时又是watch模式，那么说明根本没有成功执行 build 执行，所以直接抛出异常，
+     */
     if (typeof watch === "function") {
       throw new Error("no found #bfsw.ts config!");
     }

@@ -43,28 +43,33 @@ export const devCommand = defineCommand(
       root = path.resolve(root, maybeRoot);
     }
 
-    const options = { logger: getTui().getPanel("Dev").logger };
-    const tscLogger = createTscLogger();
+    const logger = getTui().getPanel("Dev").logger;
+    try {
+      const options = { logger: logger };
+      const tscLogger = createTscLogger();
 
-    const bfspUserConfig = await getBfspUserConfig(root, options);
-    const projectConfig = { projectDirpath: root, bfspUserConfig };
-    /**使用特殊定制的logger */
+      const bfspUserConfig = await getBfspUserConfig(root, options);
+      const projectConfig = { projectDirpath: root, bfspUserConfig };
+      /**使用特殊定制的logger */
 
-    const subConfigs = await writeBfspProjectConfig(projectConfig, options);
-    const configStreams = watchBfspProjectConfig(projectConfig, subConfigs, options);
+      const subConfigs = await writeBfspProjectConfig(projectConfig, options);
+      const configStreams = watchBfspProjectConfig(projectConfig, subConfigs, options);
 
-    /* const tscStoppable = */
-    runTsc({
-      watch: true,
-      tsconfigPath: path.join(root, "tsconfig.json"),
-      onMessage: (s) => tscLogger.write(s),
-      onClear: () => tscLogger.clear(),
-    });
+      /* const tscStoppable = */
+      runTsc({
+        watch: true,
+        tsconfigPath: path.join(root, "tsconfig.json"),
+        onMessage: (s) => tscLogger.write(s),
+        onClear: () => tscLogger.clear(),
+      });
 
-    doDevBfsp({
-      root,
-      format: format as Bfsp.Format,
-      subStreams: configStreams,
-    });
+      doDevBfsp({
+        root,
+        format: format as Bfsp.Format,
+        subStreams: configStreams,
+      });
+    } catch (err) {
+      logger.error(err);
+    }
   }
 );

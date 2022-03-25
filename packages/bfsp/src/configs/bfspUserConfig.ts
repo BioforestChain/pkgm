@@ -1,5 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { build, BuildResult } from "@bfchain/pkgm-base/lib/esbuild";
+import { build, BuildResult, Plugin } from "@bfchain/pkgm-base/lib/esbuild";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -262,51 +263,47 @@ export const readUserConfig = async (
         mkdirSync(bfspDir);
       }
       const cache_filepath = resolve(bfspDir, cache_filename);
-      try {
-        debug("complie #bfsp");
-        const buildResult = await build({
-          entryPoints: [filename],
-          absWorkingDir: projectRoot,
-          bundle: true,
-          platform: "node",
-          format: "esm",
-          write: true,
-          outfile: cache_filepath,
-          tsconfig: bfspTsconfigFilepath,
-          watch: watch && {
-            onRebuild: async (error, buildResult) => {
-              if (buildResult) {
-                printBuildResultWarnAndError(logger, buildResult);
+      debug("complie #bfsp");
+      const buildResult = await build({
+        entryPoints: [filename],
+        absWorkingDir: projectRoot,
+        bundle: true,
+        platform: "node",
+        format: "esm",
+        write: true,
+        outfile: cache_filepath,
+        tsconfig: bfspTsconfigFilepath,
+        plugins: getBuildPlugins(projectRoot),
+        watch: watch && {
+          onRebuild: async (error, buildResult) => {
+            if (buildResult) {
+              printBuildResultWarnAndError(logger, buildResult);
+            }
+            if (!error) {
+              const newConfig = await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, true);
+              if (newConfig) {
+                watch(newConfig);
               }
-              if (!error) {
-                const newConfig = await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, true);
-                if (newConfig) {
-                  watch(newConfig);
-                }
-              }
-            },
+            }
           },
-        });
+        },
+      });
 
-        if (single?.aborted) {
-          return;
-        }
-
-        const hasError = printBuildResultWarnAndError(logger, buildResult);
-
-        if (typeof buildResult.stop === "function") {
-          logger.info.pin(`watch:${filename}`, `watching for complie ${chalk.blue(filename)} ...`);
-          // 监听模式
-          single?.addEventListener("abort", buildResult.stop.bind(buildResult));
-        } else if (hasError) {
-          return;
-        }
-
-        return await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, options.unlink);
-      } catch (err) {
-      } finally {
-        existsSync(cache_filepath) && unlinkSync(cache_filepath);
+      if (single?.aborted) {
+        return;
       }
+
+      const hasError = printBuildResultWarnAndError(logger, buildResult);
+
+      if (typeof buildResult.stop === "function") {
+        logger.info.pin(`watch:${filename}`, `watching for complie ${chalk.blue(filename)} ...`);
+        // 监听模式
+        single?.addEventListener("abort", buildResult.stop.bind(buildResult));
+      } else if (hasError) {
+        return;
+      }
+
+      return await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, options.unlink);
     }
     // if (filename === "#bfsp.mjs") {
     //   return await _readFromMjs(filename, options.refresh);
@@ -317,9 +314,32 @@ export const readUserConfig = async (
       ) as Bfsp.UserConfig;
     }
   }
+
+  /**
+   * 如果代码走到这里了，说明没有找到配置文件
+   * 如果此时又是watch模式，那么说明根本没有成功执行 build 执行，所以直接抛出异常，
+   */
+  if (typeof watch === "function") {
+    throw new Error("no found #bfsp.ts config!");
+  }
 };
 
-export const getBfspUserConfig = async (
+const getBuildPlugins = (projectRoot: string) => {
+  const externalMarker: Plugin = {
+    name: "#bfsp resolver",
+    setup(build) {
+      // #bfsp和#bfsw bundle起来读取
+      build.onResolve({ filter: /^[^.]/ }, (args) => {
+        return {
+          external: true,
+        };
+      });
+    },
+  };
+  return [externalMarker];
+};
+
+export const getBfspUserConfig = (
   dirname = process.cwd(),
   options: {
     refresh?: boolean;
@@ -328,18 +348,32 @@ export const getBfspUserConfig = async (
     logger: PKGM.Logger;
   }
 ) => {
-  const userConfig = await readUserConfig(dirname, {
-    ...options,
-    watch:
-      options.watch &&
-      ((userConfig) => {
-        options.watch!($getBfspUserConfig(userConfig));
-      }),
-  });
-  if (userConfig === undefined) {
-    throw new Error("no found #bfsp project");
-  }
-  return $getBfspUserConfig(userConfig);
+  const po = new PromiseOut<$BfspUserConfig>();
+  (async () => {
+    const { watch } = options;
+    const userConfig = await readUserConfig(dirname, {
+      ...options,
+      watch:
+        watch &&
+        ((userConfig) => {
+          if (po.is_resolved) {
+            watch($getBfspUserConfig(userConfig));
+          } else {
+            po.resolve($getBfspUserConfig(userConfig));
+          }
+        }),
+    });
+
+    /// 非watch模式。直接报错
+    if (userConfig === undefined) {
+      if (typeof options.watch !== "function") {
+        po.reject(new Error("no found #bfsp project"));
+      }
+    } else {
+      po.resolve($getBfspUserConfig(userConfig));
+    }
+  })();
+  return po.promise;
 };
 export const $getBfspUserConfig = (userConfig: Bfsp.UserConfig): $BfspUserConfig => {
   return {
