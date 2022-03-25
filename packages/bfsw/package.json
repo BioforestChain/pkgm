@@ -13,12 +13,12 @@
       "import": "./dist/main/src/index.mjs"
     },
     "./bfsw": {
-      "import": "./dist/main/src/bfsw.bin.mjs"
+      "import": "./dist/main/bin/bfsw.bin.mjs"
     },
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsw": "./dist/main/src/bfsw.bin.mjs"
+    "bfsw": "./dist/main/bin/bfsw.bin.mjs"
   },
   "files": [
     "dist",
