@@ -15,7 +15,8 @@
     "dev:script": "lerna run dev:script --stream --parallel",
     "dev:bin": "lerna run dev:bin --stream --parallel",
     "dev:main": "lerna run dev:main --stream --parallel",
-    "dev": "concurrently \"npm:dev:*\"",
+    "dev:old": "concurrently \"npm:dev:*\"",
+    "dev": "node dev.mjs",
     "tsc": "lerna run tsc --stream --parallel"
   }
 }

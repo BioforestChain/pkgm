@@ -1,3 +1,44 @@
-export * from "prettier";
+export type {
+  LiteralUnion,
+  AST,
+  Doc,
+  AstPath,
+  FastPath,
+  BuiltInParser,
+  BuiltInParserName,
+  BuiltInParsers,
+  CustomParser,
+  Config,
+  Options,
+  RequiredOptions,
+  ParserOptions,
+  Plugin,
+  Parser,
+  Printer,
+  CursorOptions,
+  CursorResult,
+  ResolveConfigOptions,
+  SupportLanguage,
+  SupportOptionRange,
+  SupportOptionType,
+  CoreCategoryType,
+  BaseSupportOption,
+  IntSupportOption,
+  IntArraySupportOption,
+  BooleanSupportOption,
+  BooleanArraySupportOption,
+  ChoiceSupportOption,
+  PathSupportOption,
+  PathArraySupportOption,
+  SupportOption,
+  SupportOptions,
+  SupportInfo,
+  FileInfoOptions,
+  FileInfoResult,
+  doc,
+} from "prettier";
 import prettier from "prettier";
-export { prettier };
+export type $Prettier = typeof prettier;
+export const getPrettier = () => {
+  return import("prettier");
+};

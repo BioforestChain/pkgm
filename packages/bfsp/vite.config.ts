@@ -6,7 +6,8 @@ import {
   getShebangPlugin,
   libFormat,
 } from "@bfchain/pkgm-base/vite-config-helper";
-import { defineConfig } from "@bfchain/pkgm-base/lib/vite";
+import { getVite } from "@bfchain/pkgm-base/lib/vite";
+const defineConfig = getVite().defineConfig;
 
 defineInputConfig({
   outDir: "main",
@@ -45,8 +46,8 @@ export default defineConfig((info) => {
         external: getExternalOption(__dirname),
         input: inputConfig.input,
         output: {
-          preserveModules:true,
-          manualChunks:undefined,
+          preserveModules: true,
+          manualChunks: undefined,
           entryFileNames: `[name]${extension}`,
           chunkFileNames: `chunk/[name]${extension}`,
           format: libFormat,

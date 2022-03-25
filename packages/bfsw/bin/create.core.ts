@@ -14,7 +14,7 @@ export const doCreateBfsw = async (options: { root: string; name: string; licens
     projectName = name.substring(idx);
   }
 
-  const bfswTsFile = ts`
+  const bfswTsFile = await ts`
   import { defineWorkspace } from "@bfchain/pkgm-bfsw";
   import typingsProject from "./packages/typings/#bfsp";
   export default defineWorkspace(() => {

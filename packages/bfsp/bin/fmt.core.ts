@@ -1,10 +1,10 @@
-import { prettier, BuiltInParserName } from "@bfchain/pkgm-base/lib/prettier";
+import { getPrettier, BuiltInParserName } from "@bfchain/pkgm-base/lib/prettier";
 
-export const doFormat = async (options: { root: string }) => {
-  prettier.format;
-};
-export const formatCode = (code: string, parser: BuiltInParserName) => {
-  return prettier.format(code, { parser });
+// export const doFormat = async (options: { root: string }) => {
+//   prettier.format;
+// };
+export const formatCode = async (code: string, parser: BuiltInParserName) => {
+  return (await getPrettier()).format(code, { parser });
 };
 export const ts = (tsa: TemplateStringsArray, ...args: unknown[]) => {
   let code = tsa[0];
