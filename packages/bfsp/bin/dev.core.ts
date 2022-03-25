@@ -130,7 +130,7 @@ export const doDevBfsp = (
   subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
   subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
   subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
-  subStreams.depsInstallStream.onNext((state) => {
+  subStreams.getDepsInstallStream().onNext((state) => {
     switch (state) {
       case "start":
         /// 开始安装依赖时，暂停编译，解除文件占用
@@ -147,7 +147,7 @@ export const doDevBfsp = (
   });
 
   /// 如果配置齐全，那么直接开始
-  if (subStreams.viteConfigStream.hasCurrent() && subStreams.depsInstallStream.current === "success") {
+  if (subStreams.viteConfigStream.hasCurrent() && subStreams.getDepsInstallStream().current === "success") {
     abortable.start();
   }
 

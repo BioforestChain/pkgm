@@ -1,4 +1,4 @@
-import { defaultIgnores, doCreateBfsp, folderIO, ts, writeJsonConfig } from "@bfchain/pkgm-bfsp";
+import { defaultIgnores, doCreateBfsp, doInitGit, folderIO, ts, writeJsonConfig } from "@bfchain/pkgm-bfsp";
 import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -44,12 +44,5 @@ export const doCreateBfsw = async (options: { root: string; name: string; licens
   );
 
   /// 初始化git仓库
-  const g = spawn("git", ["init"], { cwd: root, stdio: "pipe" });
-  logger.warn.pipeFrom(g.stdout);
-  logger.error.pipeFrom(g.stderr);
-  await new Promise<number>((resolve) => {
-    g.on("exit", (code) => {
-      resolve(code ?? 0);
-    });
-  });
+  await doInitGit(root, logger);
 };

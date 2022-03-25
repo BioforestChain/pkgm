@@ -25,9 +25,9 @@ const comparablePackageJsonDependencies = (packageJson: $PackageJson) => {
 export const doWatchDeps = (
   projectDirpath: string,
   packageJsonStream: SharedAsyncIterable<$PackageJson>,
-  options?: { runInstall: boolean }
+  options: { runInstall: boolean }
 ) => {
-  const depsPanel = getTui().getPanel("Deps");
+  const { runInstall = false } = options;
   let startInstallCb: DepsEventCallback | undefined;
   let preDeps: ReturnType<typeof comparablePackageJsonDependencies> = {};
   type InstallDepsStates = "start" | "success" | "fail";
@@ -40,7 +40,9 @@ export const doWatchDeps = (
       return;
     }
     preDeps = curDeps;
-    if (options?.runInstall) {
+    if (runInstall) {
+      const depsPanel = getTui().getPanel("Deps");
+
       startInstallCb && (await startInstallCb());
       debug(`deps changed: ${projectDirpath}`);
 
