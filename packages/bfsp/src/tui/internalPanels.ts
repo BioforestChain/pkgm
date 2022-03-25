@@ -1,8 +1,6 @@
-import { Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import type { LogErrorOptions, LogLevel, LogType } from "@bfchain/pkgm-base/lib/vite";
-import { createSuperLogger } from "../SuperLogger";
 import { LogLevels, TuiStyle } from "./const";
 import { $LoggerKit, Panel, PanelContext, PanelGroup } from "./Panel";
 

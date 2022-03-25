@@ -1,5 +1,4 @@
 import { defaultIgnores, doCreateBfsp, doInitGit, folderIO, ts, writeJsonConfig } from "@bfchain/pkgm-bfsp";
-import { spawn } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { joinMonoName } from "../src/util";

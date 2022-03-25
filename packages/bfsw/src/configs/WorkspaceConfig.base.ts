@@ -12,6 +12,7 @@ import {
   watchTsConfig,
   watchViteConfig,
 } from "@bfchain/pkgm-bfsp";
+import EventEmitter from "node:events";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { States } from "./states";
@@ -152,6 +153,27 @@ export class WorkspaceConfigBase {
         npmIgnoreStream.stop();
         _watchDeps?.stop();
       },
+    };
+  }
+
+  /**
+   * 销毁 WorkspaceConfig 中构建的流
+   */
+  destroy() {
+    for (const projectConfigStreams of this._projectConfigStreamsMap.values()) {
+      projectConfigStreams.stopAll();
+    }
+    this._projectConfigStreamsMap.clear();
+    this.__e?.emit("destroy");
+  }
+  private __e?: EventEmitter;
+  private get _e() {
+    return (this.__e ??= new EventEmitter());
+  }
+  onDestroy(cb: () => void) {
+    this._e.on("destroy", cb);
+    return () => {
+      this._e.off("destroy", cb);
     };
   }
 

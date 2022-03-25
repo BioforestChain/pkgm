@@ -337,7 +337,7 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
 
   private _loop = true;
   stop() {
-    if (this._loop) {
+    if (this._loop === false) {
       return false;
     }
     this._loop = false;
@@ -345,6 +345,10 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
     return true;
   }
   onStop(cb: () => void, once?: boolean) {
+    /// 根据当前的状态立即执行
+    if (this._loop === false) {
+      cb();
+    }
     return this._bind("stop", cb, once);
   }
   private _bind(eventname: string, cb: (...args: any[]) => void, once?: boolean) {

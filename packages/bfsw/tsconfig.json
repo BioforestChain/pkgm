@@ -51,7 +51,6 @@
     "src/configs/WorkspaceConfig.base.ts",
     "src/configs/WorkspaceConfig.loader.ts",
     "src/configs/workspaceConfig.ts",
-    "src/configs/WorkspaceConfig.watch.ts",
     "src/configs/workspaceTsConfig.ts",
     "src/configs/workspacePackageJson.ts",
     "src/configs/states.ts"

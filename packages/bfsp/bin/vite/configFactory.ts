@@ -1,4 +1,4 @@
-import { typescript } from "@bfchain/pkgm-base/lib/typescript";
+import { $Typescript, getTypescript } from "@bfchain/pkgm-base/lib/typescript";
 import type { InlineConfig } from "@bfchain/pkgm-base/lib/vite";
 import { getExternalOption } from "@bfchain/pkgm-base/vite-config-helper";
 import fs from "node:fs";
@@ -68,17 +68,18 @@ export const ViteConfigFactory = (options: {
     },
     plugins: [
       (() => {
-        const parsedTsConfig: typescript.TranspileOptions = JSON.parse(JSON.stringify(options.tsConfig.json));
+        const parsedTsConfig: $Typescript.TranspileOptions = JSON.parse(JSON.stringify(options.tsConfig.json));
         const compilerOptions = (parsedTsConfig.compilerOptions ||= {});
         compilerOptions.emitDeclarationOnly = false;
         compilerOptions.noEmit = false;
         compilerOptions.sourcemap = false;
         compilerOptions.inlineSources = false;
         compilerOptions.inlineSourceMap = false;
+        let ts: typeof $Typescript | undefined;
 
         return {
           name: "tsc.emitDecoratorMetadata",
-          load(source: string) {
+          async load(source: string) {
             // otherwise modules like 'vite/preload' will cause error
             if (!path.isAbsolute(source)) {
               return null;
@@ -88,17 +89,17 @@ export const ViteConfigFactory = (options: {
             }
 
             try {
-              const ts = fs.readFileSync(source, "utf8");
-              if (!ts) {
+              const tsSource = fs.readFileSync(source, "utf8");
+              if (!tsSource) {
                 return null;
               }
 
-              if (ts.includes("@") === false) {
+              if (tsSource.includes("@") === false) {
                 return null;
               }
 
               // Find the decorator and if there isn't one, return out
-              const hasDecorator = ts
+              const hasDecorator = tsSource
                 .replace(/`(?:\.|(\\\`)|[^\``])*`|"(?:\.|(\\\")|[^\""\n])*"|'(?:\.|(\\\')|[^\''\n])*'/g, "")
                 .replace(/\/\/[\w\W]*?\n/g, "")
                 .replace(/\/\*[\w\W]*?\*\//g, "")
@@ -107,8 +108,9 @@ export const ViteConfigFactory = (options: {
                 return null;
               }
 
+              ts ??= await getTypescript();
               debug("need emitDecoratorMetadata", source);
-              const program = typescript.transpileModule(ts, parsedTsConfig);
+              const program = ts.transpileModule(tsSource, parsedTsConfig);
               // log(program.outputText);
               return program.outputText;
             } catch (err) {

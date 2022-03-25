@@ -1,5 +1,5 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { build as buildBfsp } from "@bfchain/pkgm-base/lib/vite";
+import { getVite } from "@bfchain/pkgm-base/lib/vite";
 import { existsSync } from "node:fs";
 import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -218,7 +218,7 @@ const buildSingle = async (options: {
 
   /// vite 打包
   flag(`bundling javascript codes`);
-  await buildBfsp({
+  await getVite().build({
     ...jsBundleConfig,
     build: {
       ...jsBundleConfig.build,

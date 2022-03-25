@@ -11,6 +11,7 @@ export const createCommand = defineCommand(
     params: [
       { type: "string", name: "license", description: "project license, default is MIT", require: false },
       { type: "string", name: "name", description: "project name, default is dirname", require: false },
+      { type: "boolean", name: "yes", description: "anwser all question by default value", require: false },
     ],
     args: [[{ type: "string", name: "name", description: "project name, default is dirname" }], []],
     description: `create a new bfsw project`,
@@ -20,6 +21,7 @@ export const createCommand = defineCommand(
     const workspaceName = params.name ?? path.basename(workspaceRoot);
 
     if (
+      params.yes !== true &&
       (await ctx.question(
         `
       ${chalk.gray`Workspace Directory`}: ${chalk.cyan(workspaceRoot)}
@@ -46,5 +48,8 @@ export const createCommand = defineCommand(
     }
     /// 根据核心文件初始化配置与依赖安装
     await doInit({ workspaceConfig }, ctx);
+
+    // 销毁
+    workspaceConfig.destroy();
   }
 );

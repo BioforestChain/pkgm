@@ -520,6 +520,7 @@ export const watchTsConfig = (
 ) => {
   const { write = false, logger } = options;
   const follower = new SharedFollower<$TsConfig>();
+  const sai = new SharedAsyncIterable<$TsConfig>(follower);
 
   let tsConfig: $TsConfig | undefined;
   let preTsConfigJson = "";
@@ -607,7 +608,7 @@ export const watchTsConfig = (
   });
   (async () => {
     const watcher = await getWatcher(projectDirpath);
-    await watcher.doWatch(
+    const doUnWatch = await watcher.doWatch(
       {
         expression: [
           "allof",
@@ -646,6 +647,7 @@ export const watchTsConfig = (
         }
       }
     );
+    sai.onStop(doUnWatch);
   })().catch((err) => {
     logger.error("WATCH TS FILES FAIL:", err);
   });
@@ -659,5 +661,5 @@ export const watchTsConfig = (
 
   /// 初始化，使用400ms时间来进行防抖
   looper.loop("init", 400);
-  return new SharedAsyncIterable<$TsConfig>(follower);
+  return sai;
 };

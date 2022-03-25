@@ -75,6 +75,7 @@ export class FbWatchmanClient extends Client {
     }));
   }
   commandAsync(args: [cmd: "watch-project", root: string]): Promise<WatchProjectResponse>;
+  commandAsync(args: [cmd: "unsubscribe", watch: string, name: string]): Promise<void>;
   commandAsync(args: [cmd: "subscribe", watch: string, name: string, config: SubscribeOptions]): Promise<void>;
   commandAsync(args: any) {
     return new Promise<any>((resolve, reject) => {

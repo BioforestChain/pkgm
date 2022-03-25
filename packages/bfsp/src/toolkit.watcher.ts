@@ -39,13 +39,18 @@ const watcherCache = EasyMap.from({
         subName = `${projectBaseName}:${createHash("md5").update(JSON.stringify(sub)).digest("base64")}`;
       }
 
-      wm.on("subscription", function (subscriptionResp: any) {
+      const onSubscription = (subscriptionResp: any) => {
         if (subscriptionResp.subscription !== subName) return;
         subscriptionResp.files.forEach(function (file: any) {
           cb(file.name, file.new ? "add" : file.exists ? "change" : "unlink");
         });
-      });
+      };
+      wm.on("subscription", onSubscription);
       await wm.commandAsync(["subscribe", projectResp.watch, subName, sub]);
+      return () => {
+        wm.off("subscription", onSubscription);
+        return wm.commandAsync(["unsubscribe", projectResp.watch, subName!]);
+      };
     };
 
     return { ...projectResp, doWatch };
@@ -54,33 +59,3 @@ const watcherCache = EasyMap.from({
 
 export const getWatcher = (root: string, logger: PKGM.ConsoleLogger = consoleLogger) =>
   watcherCache.forceGet({ root, logger });
-
-(async () => {
-  if (process.argv.includes("--test-watchman")) {
-    const root = process.cwd();
-    const watcher = await getWatcher(root);
-    console.log("watching", root);
-    watcher.doWatch(
-      {
-        expression: [
-          "allof",
-          [
-            "anyof",
-            ["match", "**/*.ts", "wholename"],
-            ["match", "**/*.tsx", "wholename"],
-            ["match", "**/*.cts", "wholename"],
-            ["match", "**/*.mts", "wholename"],
-            ["match", "**/*.ctsx", "wholename"],
-            ["match", "**/*.mtsx", "wholename"],
-          ],
-          ["not", ["match", "**/node_modules/**", "wholename"]],
-          ["not", ["match", "build/**", "wholename"]],
-          ["not", ["match", "dist/**", "wholename"]],
-          ["not", ["match", "**/.*/**", "wholename"]],
-        ],
-      },
-      console.log
-    );
-    console.log("watched", root);
-  }
-})();

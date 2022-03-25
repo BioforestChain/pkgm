@@ -30,8 +30,15 @@ const walkFiles = (dir: string) => {
     }
   }
 };
-walkFiles(path.dirname(path.dirname(require.resolve("vite"))));
-export const { build, defineConfig } = require("vite") as typeof import("vite");
+export type $Vite = typeof import("vite");
+let _vite: $Vite | undefined;
+export const getVite = () => {
+  if (_vite === undefined) {
+    walkFiles(path.dirname(path.dirname(require.resolve("vite"))));
+    _vite = require("vite") as $Vite;
+  }
+  return _vite;
+};
 
 export const defineViteStdoutApis = (apis: { writeLine: (log: string) => void; clearLine: () => void }) => {
   Reflect.set(globalThis, "viteWriteLine", apis.writeLine);

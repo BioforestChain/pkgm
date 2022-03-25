@@ -1,6 +1,4 @@
-import path, { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { existsSync } from "node:fs";
+import path from "node:path";
 import { Worker } from "node:worker_threads";
 import { getBfspWorkerDir } from "../util";
 
@@ -14,7 +12,7 @@ export interface RunTscOption {
   onExit?: () => void;
   watch?: boolean;
 }
-export const runTsc = (opts: RunTscOption) => {
+export const runTsc = (opts: RunTscOption) => {debugger;
   let workerMjsPath = path.join(getBfspWorkerDir(), "bin/tsc/tsc_worker.mjs");
   const tscWorker = new Worker(workerMjsPath, {
     argv: [opts.projectMode ? "-p" : "--build", opts.tsconfigPath, opts.watch ? "-w" : ""].filter(

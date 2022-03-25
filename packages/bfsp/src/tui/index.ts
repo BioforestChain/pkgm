@@ -4,7 +4,7 @@ export * from "./Panel";
 
 // export const tui = new Tui();
 let tui: Tui | undefined;
-export const getTui = () => {
+export const getTui = () => {debugger
   return (tui ??= new Tui());
 };
 
