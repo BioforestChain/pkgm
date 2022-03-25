@@ -1,26 +1,66 @@
-import { FbWatchmanClient, SubscribeOptions } from "@bfchain/pkgm-base/lib/fb-watchman";
+import { FbWatchmanClient, SubscribeOptions, WatchProjectResponse } from "@bfchain/pkgm-base/lib/fb-watchman";
 import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
 import { consoleLogger } from "./consoleLogger";
 import { createHash } from "node:crypto";
 
-const wm = new FbWatchmanClient();
+let _wm: FbWatchmanClient | undefined;
+const getWm = () => {
+  return (_wm ??= new FbWatchmanClient());
+};
 
-/// 目录监听器
-const watcherCache = EasyMap.from({
+const watchCache = EasyMap.from({
   transformKey: (args: { root: string; logger: PKGM.ConsoleLogger }) => {
     return args.root;
   },
   creater: async (args, root) => {
+    const wm = getWm();
     await wm.afterReady();
-    const projectResp = await wm.commandAsync(["watch-project", root]);
+    let cache: { projectResp: Promise<WatchProjectResponse>; ref: number } | undefined;
 
-    // It is considered to be best practice to show any 'warning' or
-    // 'error' information to the user, as it may suggest steps
-    // for remediation
-    if (projectResp.warning) {
-      args.logger.warn(projectResp.warning);
-    }
+    return {
+      wm,
+      refProjectResp: () => {
+        if (cache === undefined) {
+          cache = {
+            projectResp: wm.commandAsync(["watch-project", root]).then((projectResp) => {
+              if (projectResp.warning) {
+                // It is considered to be best practice to show any 'warning' or
+                // 'error' information to the user, as it may suggest steps
+                // for remediation
+                args.logger.warn(projectResp.warning);
+              }
+              return projectResp;
+            }),
+            ref: 1,
+          };
+          wm.ref();
+        }
+        return cache.projectResp;
+      },
+      unrefProjectResp: async () => {
+        if (cache === undefined) {
+          return;
+        }
+        cache.ref -= 1;
+        if (cache.ref === 0) {
+          const { projectResp } = cache;
+          cache = undefined;
+          await wm.commandAsync(["watch-del", (await projectResp).watch]);
+          if (wm.unref()) {
+            _wm = undefined;
+          }
+        }
+      },
+    };
+  },
+});
 
+/// 目录监听器
+const subscriptionCache = EasyMap.from({
+  transformKey: (args: { root: string; logger: PKGM.ConsoleLogger }) => {
+    return args.root;
+  },
+  creater: async (args, root) => {
     const projectBaseName = `[${createHash("md5").update(root).digest("base64")}]`;
 
     const doWatch = async (
@@ -28,6 +68,9 @@ const watcherCache = EasyMap.from({
       cb: (filename: string, type: Bfsp.WatcherAction) => unknown,
       subName?: string
     ) => {
+      const { wm, refProjectResp, unrefProjectResp } = await watchCache.forceGet(args);
+      const projectResp = await refProjectResp();
+
       const sub = {
         fields: ["name", "new", "exists"],
         relative_root: projectResp.relative_path,
@@ -47,15 +90,16 @@ const watcherCache = EasyMap.from({
       };
       wm.on("subscription", onSubscription);
       await wm.commandAsync(["subscribe", projectResp.watch, subName, sub]);
-      return () => {
+      return async () => {
         wm.off("subscription", onSubscription);
-        return wm.commandAsync(["unsubscribe", projectResp.watch, subName!]);
+        await wm.commandAsync(["unsubscribe", projectResp.watch, subName!]);
+        await unrefProjectResp();
       };
     };
 
-    return { ...projectResp, doWatch };
+    return { doWatch };
   },
 });
 
 export const getWatcher = (root: string, logger: PKGM.ConsoleLogger = consoleLogger) =>
-  watcherCache.forceGet({ root, logger });
+  subscriptionCache.forceGet({ root, logger });
