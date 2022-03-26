@@ -24,13 +24,7 @@ declare namespace Bfsp {
       optionalDependencies?: Dependencies;
       [name: string]: unknown;
     };
-    tsConfig?: {
-      compilerOptions?: {
-        [name: string]: unknown;
-      };
-      // references?: TsReference[];
-      // files?: string[];
-    };
+    tsConfig?: Bfsp.TsConfig;
     internal?: Iterable<string> | InternalPredict;
   }
   type Dependencies = {

@@ -12,7 +12,7 @@ export interface RunTscOption {
   onExit?: () => void;
   watch?: boolean;
 }
-export const runTsc = (opts: RunTscOption) => {debugger;
+export const runTsc = (opts: RunTscOption) => {
   let workerMjsPath = path.join(getBfspWorkerDir(), "bin/tsc/tsc_worker.mjs");
   const tscWorker = new Worker(workerMjsPath, {
     argv: [opts.projectMode ? "-p" : "--build", opts.tsconfigPath, opts.watch ? "-w" : ""].filter(

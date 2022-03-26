@@ -381,6 +381,9 @@ export const generateTsConfig = async (
   const depRefs = await bfspUserConfig.extendsService.tsRefs; // await buildService.calculateRefsByPath(projectDirpath);
   const tsConfig = {
     compilerOptions: {
+      /**
+       * 默认的参数配置
+       */
       composite: true,
       noEmit: true,
       declaration: true,
@@ -388,7 +391,6 @@ export const generateTsConfig = async (
       target: "es2020",
       module: "es2020",
       lib: ["ES2020"],
-      outDir: TscOutRootPath(options.outDirRoot, options.outDirName),
       importHelpers: true,
       isolatedModules: false,
       strict: true,
@@ -404,13 +406,21 @@ export const generateTsConfig = async (
       emitDeclarationOnly: false,
       // baseUrl: "./",
       // types: ["node"],
-      paths: tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles),
       esModuleInterop: true,
       skipLibCheck: true,
       forceConsistentCasingInFileNames: true,
       emitDecoratorMetadata: true,
       experimentalDecorators: true,
+
+      /**
+       * 开发者自己定义的参数
+       */
       ...(bfspUserConfig.userConfig.tsConfig?.compilerOptions ?? {}),
+      /**
+       * 不可被定义的
+       */
+      outDir: TscOutRootPath(options.outDirRoot, options.outDirName),
+      paths: tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles),
     },
     references: [
       {
