@@ -62,33 +62,24 @@ export const linkBFChainPkgmModules = (root: string) => {
 };
 
 export const runYarn = (opts: RunYarnOption) => {
-  let proc: cp.ChildProcessWithoutNullStreams | undefined;
-  let killed = false;
   let yarnRunSuccess = true;
   const donePo = new PromiseOut<boolean>();
+  const ac = new AbortController();
   const ret = {
     stop() {
-      killed = true;
-      proc?.kill();
+      ac.abort();
     },
     afterDone: donePo.promise,
   };
 
   (() => {
     const yarnPath = getYarnPath();
-    if (killed) {
+    if (ac.signal.aborted) {
       return;
     }
-    const {
-      // onMessage = () => {},
-      // onSuccess = onMessage,
-      // onError = onMessage,
-      // onWarn = onError,
-      // onFlag = onMessage,
-      logger,
-    } = opts;
+    const { logger } = opts;
 
-    proc = cp.spawn(
+    const proc = cp.spawn(
       "node",
       [
         yarnPath,
@@ -97,8 +88,8 @@ export const runYarn = (opts: RunYarnOption) => {
         // 这个参数一定要给，否则有些时候环境变量可能会被未知的程序改变，传递的环境变量会进一步改变默认 yarn install 的默认行为
         "--production=false",
       ],
-      { cwd: opts.root, env: {} }
-    ); // yarn install --non-interactive
+      { cwd: opts.root, env: {}, signal: ac.signal }
+    );
 
     /**
      * 需要这个，是因为yarn有bug
@@ -175,9 +166,33 @@ export const runYarn = (opts: RunYarnOption) => {
     proc.stdout?.on("data", onJsonLines);
     proc.stderr?.on("data", onJsonLines);
 
-    proc.on("exit", () => {
+    /// 有signal的话，一定要提供 error 监听，否则会抛出异常到全局
+    proc.once("error", () => {
+      yarnRunSuccess = false;
+    });
+    proc.once("exit", async () => {
       /// 将 @bfchain/pkgm 的所有包 link 到对应目录下
       linkBFChainPkgmModules(opts.root);
+      if (yarnRunSuccess) {
+        logger.clear();
+        const listSpawn = cp.spawn("node", [yarnPath, "list"], { cwd: opts.root, env: {}, signal: ac.signal });
+        listSpawn.stdout.on("data", (chunk) => {
+          logger.log.write(
+            String(chunk)
+              .replace("yarn list", "Dependencies list by yarn ")
+              .replace(/Done in [\d\.]+s\./, "")
+          );
+        });
+        await new Promise<void>((resolve) => {
+          listSpawn.once("exit", resolve);
+          /// 有signal的话，一定要提供 error 监听，否则会抛出异常到全局
+          listSpawn.once("error", () => {
+            yarnRunSuccess = false;
+            resolve();
+          });
+        });
+      }
+
       donePo.resolve(yarnRunSuccess);
       opts.onExit?.(yarnRunSuccess);
     });
