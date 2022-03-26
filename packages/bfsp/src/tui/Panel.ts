@@ -26,6 +26,10 @@ export abstract class Panel<N extends string, K extends number = number> impleme
       this.$queueRenderTab();
     });
   }
+  debug(log: string) {
+    this._ctx.debug(log);
+  }
+
   private _status: PanelStatus = "info"; // "loading";
   get status() {
     return this._status;

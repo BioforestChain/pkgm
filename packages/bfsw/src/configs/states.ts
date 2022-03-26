@@ -1,7 +1,7 @@
+import { toPosixPath } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
-import { pathToKey } from "../util";
 
-type State = { userConfig: Bfsp.UserConfig; path: string };
+type State = { userConfig: Bfsp.UserConfig; projectRoot: string };
 export class States {
   constructor(private _wc: import("./WorkspaceConfig.base").WorkspaceConfigBase) {}
   private _pathMap: Map<string, State> = new Map();
@@ -15,66 +15,60 @@ export class States {
   states() {
     return [...this._nameMap.values()];
   }
-  add(p: string, s: State) {
-    this._pathMap.set(p, s);
-    this._nameMap.set(s.userConfig.name, s);
+  add(projectRoot: string, state: State) {
+    this._pathMap.set(projectRoot, state);
+    this._nameMap.set(state.userConfig.name, state);
   }
   clear() {
     this._pathMap.clear();
     this._nameMap.clear();
   }
 
-  findByPath(p: string) {
-    return this._pathMap.get(p);
+  findByPath(projectRoot: string) {
+    return this._pathMap.get(projectRoot);
   }
-  findByName(n: string) {
-    return this._nameMap.get(n);
+  findByName(projectName: string) {
+    return this._nameMap.get(projectName);
   }
 
-  delByPath(p: string) {
-    const s = this.findByPath(p);
+  delByPath(projectRoot: string) {
+    const s = this.findByPath(projectRoot);
     if (s) {
-      this._pathMap.delete(p);
+      this._pathMap.delete(projectRoot);
       this._nameMap.delete(s.userConfig.name);
     }
   }
-  delByName(n: string) {
-    const s = this.findByName(n);
+  delByName(projectName: string) {
+    const s = this.findByName(projectName);
     if (s) {
-      this._nameMap.delete(n);
-      this._pathMap.delete(s.path);
+      this._nameMap.delete(projectName);
+      this._pathMap.delete(s.projectRoot);
     }
   }
-  calculateRefsByPath(baseDir: string) {
-    const refSet = new Set<string>();
-    // 计算ref
-    // 假设当前查询路径是 ./abc/core , 被计算的路径与计算结果对应如下：
-    // ./abc/core/module => ./module
-    // ./abc/util => ../util
-    const addToSet = (x: string | undefined) => {
-      if (!x) {
-        return;
-      }
-      const p1 = path.join(this._wc.root, x);
-      const p = path.relative(baseDir, p1);
-      if (p === "") {
-        return; // 自己不需要包含
-      }
-      refSet.add(p);
-    };
+  calculateRefsByPath(projectRoot: string) {
+    const references: Bfsp.TsReference[] = [];
 
-    // deps字段里的需要加入
-    const key = pathToKey(this._wc.root, baseDir);
-    const deps = this.findByPath(key)?.userConfig.deps;
-    if (deps) {
-      const pathList = deps.map((x) => this.findByName(x)).map((x) => x?.path);
-      pathList?.forEach((x) => {
-        addToSet(x);
+    /**去重 */
+    const relativePaths = new Set<string>();
+
+    for (const projectName of this.findByPath(projectRoot)?.userConfig.deps ?? []) {
+      const state = this.findByName(projectName);
+      if (state !== undefined) {
+        const relativePath = path.relative(projectRoot, state.projectRoot);
+        if (relativePath === "") {
+          // 自己不需要包含
+          continue;
+        }
+        relativePaths.add(relativePath);
+      }
+    }
+
+    // 加入依赖的项目
+    for (const relativePath of relativePaths) {
+      references.push({
+        path: toPosixPath(path.join(relativePath, "tsconfig.json")),
       });
     }
-    const refs = [...refSet.values()].map((x) => ({ path: path.join(x, "tsconfig.json") }));
-
-    // console.log(`refs for ${baseDir}`, refs);
-    return refs;
+    return references;
   }
 }

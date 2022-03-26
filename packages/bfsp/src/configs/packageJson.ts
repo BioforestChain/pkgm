@@ -197,8 +197,8 @@ export const watchPackageJson = (
       follower.push(curPackageJson);
     }
 
-    const bfspUserConfig = await bfspUserConfigStream.getCurrent();
-    const tsConfig = await tsConfigStream.getCurrent();
+    const bfspUserConfig = await bfspUserConfigStream.waitCurrent();
+    const tsConfig = await tsConfigStream.waitCurrent();
     const newPackageJson = await generatePackageJson(projectDirpath, bfspUserConfig, tsConfig);
     if (isDeepStrictEqual(newPackageJson, curPackageJson)) {
       return;

@@ -49,7 +49,7 @@ export class WorkspaceConfigBase {
     /// 添加索引
     for (const proj of config.projects) {
       const projectRoot = path.join(this.root, proj.relativePath);
-      this.states.add(projectRoot, { userConfig: proj, path: projectRoot });
+      this.states.add(projectRoot, { userConfig: proj, projectRoot: projectRoot });
       projectConfigMap.set(projectRoot, proj);
     }
 
@@ -102,13 +102,11 @@ export class WorkspaceConfigBase {
   }
 
   protected _projectConfigStreamsMapFollower = new SharedFollower<$ProjectConfigStreamsMap>();
-  readonly projectConfigStreamsMapStream = new SharedAsyncIterable(
-    this._projectConfigStreamsMapFollower.toAsyncIterator()
-  );
+  readonly projectConfigStreamsMapStream = new SharedAsyncIterable(this._projectConfigStreamsMapFollower);
   protected _deletedProjectRootsFollower = new SharedFollower<Set<string>>();
-  readonly removeProjectRootsStream = new SharedAsyncIterable(this._deletedProjectRootsFollower.toAsyncIterator());
+  readonly removeProjectRootsStream = new SharedAsyncIterable(this._deletedProjectRootsFollower);
   protected _newProjectRootsFollower = new SharedFollower<Set<string>>();
-  readonly addProjectRootsStream = new SharedAsyncIterable(this._newProjectRootsFollower.toAsyncIterator());
+  readonly addProjectRootsStream = new SharedAsyncIterable(this._newProjectRootsFollower);
 
   /**
    * 判断两个UserConfig是否等价
@@ -167,7 +165,7 @@ export class WorkspaceConfigBase {
         packageJsonStream.stop();
         gitIgnoreStream.stop();
         npmIgnoreStream.stop();
-        _watchDeps?.stop();
+        _watchDeps?.off();
       },
     };
   }
@@ -210,9 +208,9 @@ export class WorkspaceConfigBase {
   protected get _watchDepsFollower() {
     return (this.__watchDepsFollower ??= new SharedFollower<$PackageJson>());
   }
-  private __watchDeps?: ReturnType<typeof doWatchDeps>;
-  protected get _watchDeps() {
-    return (this.__watchDeps ??= doWatchDeps(
+  private __watchDepsStream?: ReturnType<typeof doWatchDeps>;
+  protected get _watchDepsStream() {
+    return (this.__watchDepsStream ??= doWatchDeps(
       this.root,
       new SharedAsyncIterable<$PackageJson>(this._watchDepsFollower),
       {
@@ -225,17 +223,23 @@ export class WorkspaceConfigBase {
     const { _unitunifyPackageJson } = this;
 
     const prefix = projectRoot + ":";
-
-    const off = packageJsonStream.onNext((packageJson) => {
+    const joinPackageJson = (packageJson: $PackageJson) => {
       _joinPrefix(prefix, packageJson.dependencies, _unitunifyPackageJson.dependencies);
       _joinPrefix(prefix, packageJson.devDependencies, _unitunifyPackageJson.devDependencies);
       _joinPrefix(prefix, packageJson.peerDependencies, _unitunifyPackageJson.peerDependencies);
       _joinPrefix(prefix, packageJson.optionalDependencies, _unitunifyPackageJson.optionalDependencies);
       this._watchDepsFollower.push(_unitunifyPackageJson);
-    });
+    };
+
+    const off = packageJsonStream.onNext(joinPackageJson);
+    const initPackageJson = packageJsonStream.current;
+    if (initPackageJson !== undefined) {
+      joinPackageJson(initPackageJson);
+    }
+
     return {
-      stream: this._watchDeps.stream,
-      stop: off,
+      stream: this._watchDepsStream,
+      off,
     };
   }
   //#endregion

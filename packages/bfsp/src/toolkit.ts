@@ -300,7 +300,7 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
   get current() {
     return this._current;
   }
-  constructor(/* private */ source: AsyncIterator<T>) {
+  constructor(/* private */ source: AsyncIterator<T> | SharedFollower<T>) {
     (async () => {
       do {
         const item = await source.next();
@@ -325,7 +325,7 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
   hasCurrent() {
     return this._current !== undefined;
   }
-  getCurrent() {
+  waitCurrent() {
     if (this._current === undefined) {
       return this.getNext();
     }
@@ -362,6 +362,9 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
 
   /// 每一次for await，都会生成一个新的迭代器，直到被break掉
   [Symbol.asyncIterator]() {
+    return this.toAI();
+  }
+  toSAI() {
     const follower = new SharedFollower<T>(() => {
       this._followers.delete(follower);
     });
@@ -370,11 +373,14 @@ export class SharedAsyncIterable<T> implements AsyncIterable<T> {
     if (this._current !== undefined) {
       follower.push(this._current);
     }
-    return follower;
+    return follower as AsyncIterableIterator<T>;
+  }
+  toAI() {
+    return this.toSAI() as AsyncIterableIterator<T>;
   }
 }
 
-export class SharedFollower<T> implements AsyncIterator<T> {
+export class SharedFollower<T> implements AsyncIterableIterator<T> {
   private _waitters: PromiseOut<T>[] = [];
   private _caches: T[] = [];
   push(item: T) {
@@ -412,10 +418,10 @@ export class SharedFollower<T> implements AsyncIterator<T> {
     };
   }
 
-  constructor(private onDone?: Function) {}
+  constructor(private _onDone?: Function) {}
   async return() {
     if (this._done === false) {
-      this.onDone?.();
+      this._onDone?.();
       if (this._waitters.length > 0) {
         this._waitters.forEach((waitter) => waitter.reject());
         this._waitters.length = 0;
@@ -429,8 +435,13 @@ export class SharedFollower<T> implements AsyncIterator<T> {
   throw() {
     return this.return();
   }
-  toAsyncIterator() {
-    return this as AsyncIterator<T>;
+  private _yielded = false;
+  [Symbol.asyncIterator](): AsyncIterableIterator<T> {
+    if (this._yielded) {
+      throw new Error("shared flowser should not be iterator multi times!");
+    }
+    this._yielded = true;
+    return this as AsyncIterableIterator<T>;
   }
 }
 
@@ -440,7 +451,7 @@ export const toPosixPath = (windowsPath: string) => {
   windowsPath = path.normalize(windowsPath); // 至少会返回 "."、 "a" 、 "a\\b"
   let somepath = slash(windowsPath);
   if (somepath.length > 1) {
-    if (somepath.includes(":/") === false && somepath.startsWith("./") === false) {
+    if (somepath.includes(":/") === false && somepath.startsWith(".") === false) {
       somepath = "./" + somepath;
     }
   }
@@ -649,7 +660,11 @@ export const Closeable = <T1 = unknown, T2 = unknown>(
   return abortable;
 };
 
-export const Loopable = <T = unknown>(title: string, fun: (reasons: Set<T | undefined>) => unknown) => {
+export const Loopable = <T = unknown>(
+  title: string,
+  fun: (reasons: Set<T | undefined>) => unknown,
+  defaultDebounce?: number
+) => {
   let lock: Set<T | undefined> | undefined; //= -1;
   const doLoop = async (reason?: T, debounce?: number) => {
     lock = new Set([reason]);
@@ -669,7 +684,7 @@ export const Loopable = <T = unknown>(title: string, fun: (reasons: Set<T | unde
     lock = undefined;
   };
   return {
-    loop(reason?: T, debounce?: number) {
+    loop(reason?: T, debounce = defaultDebounce) {
       if (lock === undefined) {
         doLoop(reason, debounce);
       } else {

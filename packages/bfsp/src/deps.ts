@@ -32,54 +32,59 @@ export const doWatchDeps = (
   let preDeps: ReturnType<typeof comparablePackageJsonDependencies> = {};
   type InstallDepsStates = "start" | "success" | "fail";
   const follower = new SharedFollower<InstallDepsStates>();
-  let stoppable: { stop: () => void } | undefined;
-  const loopable = Loopable("watch deps", async () => {
-    const packageJson = await packageJsonStream.getCurrent();
-    const curDeps = comparablePackageJsonDependencies(packageJson);
-    if (isDeepStrictEqual(curDeps, preDeps)) {
-      return;
-    }
-    preDeps = curDeps;
-    if (runInstall) {
-      const depsPanel = getTui().getPanel("Deps");
+  let stopper: (() => void) | undefined;
+  const loopable = Loopable(
+    "watch deps",
+    async () => {
+      const packageJson = await packageJsonStream.waitCurrent();
+      const curDeps = comparablePackageJsonDependencies(packageJson);
+      if (isDeepStrictEqual(curDeps, preDeps)) {
+        return;
+      }
+      preDeps = curDeps;
+      if (runInstall) {
+        startInstallCb && (await startInstallCb());
+        debug(`deps changed: ${projectDirpath}`);
+        const depsPanel = getTui().getPanel("Deps");
 
-      startInstallCb && (await startInstallCb());
-      debug(`deps changed: ${projectDirpath}`);
+        follower.push("start");
+        depsPanel.updateStatus("loading");
+        const yarnTask = runYarn({
+          root: projectDirpath,
+          logger: depsPanel.depsLogger,
+        });
+        stopper = () => {
+          offStopper();
+          yarnTask.stop();
+          stopper = undefined;
+          preDeps = {};
+        };
+        const offStopper = stream.onStop(stopper);
 
-      follower.push("start");
-      depsPanel.updateStatus("loading");
-      const yarnTask = runYarn({
-        root: projectDirpath,
-        logger: depsPanel.depsLogger,
-      });
-      stoppable = yarnTask;
-      const isSuccess = await yarnTask.afterDone;
+        const isSuccess = await yarnTask.afterDone;
 
-      follower.push(isSuccess ? "success" : "fail");
-      depsPanel.updateStatus(isSuccess ? "success" : "error");
-    } else {
-      follower.push("success");
-    }
-  });
+        follower.push(isSuccess ? "success" : "fail");
+        depsPanel.updateStatus(isSuccess ? "success" : "error");
+      } else {
+        follower.push("success");
+      }
+    },
+    100
+  );
 
   //#region 监听变更
   packageJsonStream.onNext(() => {
-    if (stoppable) {
-      stoppable.stop();
-      stoppable = undefined;
-    }
+    stopper?.();
     loopable.loop();
   });
   //#endregion
 
+  /// 自启
+  if (packageJsonStream.hasCurrent()) {
+    loopable.loop();
+  }
+
   const stream = new SharedAsyncIterable<InstallDepsStates>(follower);
-  return {
-    stream,
-    stop() {
-      stream.stop();
-      if (stoppable) {
-        stoppable.stop();
-      }
-    },
-  };
+
+  return stream;
 };

@@ -1,21 +1,19 @@
-import { build, BuildResult, Loader, Plugin } from "@bfchain/pkgm-base/lib/esbuild";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { build, Loader, Plugin } from "@bfchain/pkgm-base/lib/esbuild";
 import {
-  $readFromMjs,
   createTsconfigForEsbuild,
+  DebounceLoadConfig,
   DevLogger,
   fileIO,
   folderIO,
-  toPosixPath,
   printBuildResultWarnAndError,
-  DebounceLoadConfig,
+  toPosixPath,
 } from "@bfchain/pkgm-bfsp";
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import path, { resolve } from "node:path";
-import { consts } from "../consts";
 import bfswTsconfigContent from "../../assets/tsconfig.bfsw.json?raw";
-import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
+import { consts } from "../consts";
 const bfswTsconfigFilepath = createTsconfigForEsbuild(bfswTsconfigContent);
 
 export const defineWorkspace = (cb: () => Bfsw.Workspace) => {
@@ -27,7 +25,7 @@ export const LoadConfig = async (
   options: {
     single?: AbortSignal;
     watch?: (config: Bfsw.Workspace) => void;
-    logger: PKGM.Logger;
+    logger: PKGM.TuiLogger;
   }
 ) => {
   const debug = DevLogger("bfsw:config/load");

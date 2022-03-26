@@ -44,9 +44,9 @@ export const doDevBfsp = (
       /**防抖，避免不必要的多次调用 */
       const closeSign = new PromiseOut<unknown>();
       (async () => {
-        const userConfig = await subStreams.userConfigStream.getCurrent();
-        const viteConfig = await subStreams.viteConfigStream.getCurrent();
-        const tsConfig = await subStreams.tsConfigStream.getCurrent();
+        const userConfig = await subStreams.userConfigStream.waitCurrent();
+        const viteConfig = await subStreams.viteConfigStream.waitCurrent();
+        const tsConfig = await subStreams.tsConfigStream.waitCurrent();
 
         const viteConfigBuildOptions = {
           userConfig: userConfig.userConfig,
@@ -145,6 +145,8 @@ export const doDevBfsp = (
   });
 
   /// 如果配置齐全，那么直接开始
+  logger.info("subStreams.viteConfigStream.hasCurrent()", subStreams.viteConfigStream.hasCurrent());
+  logger.info("subStreams.getDepsInstallStream().current", subStreams.getDepsInstallStream().current);
   if (subStreams.viteConfigStream.hasCurrent() && subStreams.getDepsInstallStream().current === "success") {
     abortable.start();
   }

@@ -42,11 +42,17 @@
     "./lib/yarn": {
       "import": "./dist/main/lib/yarn.mjs"
     },
+    "./util/aborter": {
+      "import": "./dist/main/util/aborter.mjs"
+    },
     "./util/extends_map": {
       "import": "./dist/main/util/extends_map.mjs"
     },
     "./util/extends_promise_out": {
       "import": "./dist/main/util/extends_promise_out.mjs"
+    },
+    "./util/extends_promise_safe": {
+      "import": "./dist/main/util/extends_promise_safe.mjs"
     },
     "./util/typings": {
       "import": "./dist/main/util/typings.mjs"

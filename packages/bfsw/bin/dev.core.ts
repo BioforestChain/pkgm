@@ -1,4 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { Aborter } from "@bfchain/pkgm-base/util/aborter";
+import { safePromiseOffThen, safePromiseThen } from "@bfchain/pkgm-base/util/extends_promise_safe";
 import { Closeable, createTscLogger, DevLogger, doDevBfsp, getTui, runTsc, slash } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
@@ -12,9 +14,13 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
   type $DevBfsp = ReturnType<typeof doDevBfsp>;
 
   const devBfspMap = new Map<string, { devBfsp: $DevBfsp; stop: Function }>();
-  let stoped = false;
+  // let stoped = false;
+  const aborter = new Aborter();
   const stop = () => {
-    stoped = true;
+    if (aborter.isAborted) {
+      return;
+    }
+    aborter.abort();
     for (const [projectRoot, devBfsp] of devBfspMap) {
       devBfsp.stop();
       logger.info("stoped dev project in %s", path.relative(workspaceConfig.root, projectRoot));
@@ -24,12 +30,11 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
 
   (async () => {
     const devPanel = getTui().getPanel("Dev");
-    listening: for await (const projectConfigStreamsMap of workspaceConfig.projectConfigStreamsMapStream) {
-      if (stoped) {
-        break listening;
-      }
+    listening: for await (const projectConfigStreamsMap of aborter.wrapAsyncIterator(
+      workspaceConfig.projectConfigStreamsMapStream.toAI()
+    )) {
       for (const [projectRoot, projectConfigStreams] of projectConfigStreamsMap) {
-        if (stoped) {
+        if (aborter.isAborted) {
           break listening;
         }
         if (devBfspMap.has(projectRoot)) {
@@ -75,24 +80,29 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
           bfspLogger.error.pin("doDev", "build failed");
         });
 
+        /// 中断器
+        const stop = () => {
+          devBfsp.abortable.close();
+          bfspLoggerKit.destroy();
+          safePromiseOffThen(aborter.afterAborted, stop);
+        };
+        safePromiseThen(aborter.afterAborted, stop);
+
+        /// 存储
         devBfspMap.set(projectRoot, {
           devBfsp,
-          stop() {
-            devBfsp.abortable.close();
-            bfspLoggerKit.destroy();
-          },
+          stop,
         });
       }
     }
   })();
 
   (async () => {
-    listening: for await (const deletedProjectRoots of workspaceConfig.removeProjectRootsStream) {
-      if (stoped) {
-        break listening;
-      }
+    listening: for await (const deletedProjectRoots of aborter.wrapAsyncIterator(
+      workspaceConfig.removeProjectRootsStream.toAI()
+    )) {
       for (const projectRoot of deletedProjectRoots) {
-        if (stoped) {
+        if (aborter.isAborted) {
           break listening;
         }
         devBfspMap.get(projectRoot)?.stop();

@@ -37,7 +37,7 @@ export const watchNpmIgnore = (
       follower.push(curNpmIgnore);
     }
 
-    const bfspUserConfig = await bfspUserConfigStream.getCurrent();
+    const bfspUserConfig = await bfspUserConfigStream.waitCurrent();
     const newNpmIgnore = await generateNpmIgnore(projectDirpath, bfspUserConfig.userConfig);
     if (isEqualSet(newNpmIgnore, curNpmIgnore)) {
       return;

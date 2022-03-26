@@ -562,7 +562,7 @@ export const watchTsConfig = (
   /// 循环处理监听到的事件
   const looper = Loopable("watch tsconfigs", async (reasons) => {
     debug("reasons:", reasons);
-    const bfspUserConfig = await bfspUserConfigStream.getCurrent();
+    const bfspUserConfig = await bfspUserConfigStream.waitCurrent();
     // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
     if (tsConfig === undefined) {
       follower.push(

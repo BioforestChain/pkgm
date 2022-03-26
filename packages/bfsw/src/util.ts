@@ -1,6 +1,4 @@
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
-import { toPosixPath } from "@bfchain/pkgm-bfsp";
-import path from "node:path";
 
 export async function* ParallelRunner(max: number) {
   let waitter: PromiseOut<void> | undefined; // = new PromiseOut
@@ -38,14 +36,4 @@ export const joinMonoName = (rootName: string, packageName: string) => {
     .replace("@-", "@")
     .replace(/-+/g, "-");
   return monoName;
-};
-export const pathToKey = (root: string, p: string) => {
-  let relativePath = p;
-  if (path.isAbsolute(p)) {
-    relativePath = path.relative(root, p);
-  }
-  if (relativePath === "") {
-    relativePath = ".";
-  }
-  return toPosixPath(relativePath);
 };

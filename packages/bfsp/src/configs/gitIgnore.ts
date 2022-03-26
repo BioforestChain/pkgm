@@ -38,7 +38,7 @@ export const watchGitIgnore = (
       follower.push(curGitIgnore);
     }
 
-    const bfspUserConfig = await bfspUserConfigStream.getCurrent();
+    const bfspUserConfig = await bfspUserConfigStream.waitCurrent();
     const newGitIgnore = await generateGitIgnore(projectDirpath, bfspUserConfig.userConfig);
     if (isEqualSet(newGitIgnore, curGitIgnore)) {
       return;
