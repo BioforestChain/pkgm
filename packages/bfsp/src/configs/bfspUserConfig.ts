@@ -244,14 +244,18 @@ export const printBuildResultWarnAndError = (logger: PKGM.Logger, buildResult: B
   }
   return false;
 };
-export const DebounceLoadConfig = <T>(filepath: string, logger: PKGM.Logger, debounce = 50) => {
+export const DebounceLoadConfig = <T>(filepath: string, logger: PKGM.TuiLogger, debounce = 50) => {
   // const debounce  = 50
-  type LoadConfigTask = { status: "debounce" | "loading" | "end"; task: PromiseOut<T | undefined> };
+  type LoadConfigTask = {
+    status: "debounce" | "loading" | "end";
+    task: PromiseOut<T | undefined>;
+    fileContent: string;
+  };
   const loadConfigTaskList: LoadConfigTask[] = [];
   const loadConfig = async () => {
-    const latestTask = loadConfigTaskList[loadConfigTaskList.length - 1];
-    /// 如果在 debounce 中，说明已经有其它任务返回了这个对象，所以直接返回空就行
-    if (latestTask?.status === "debounce") {
+    const preTask = loadConfigTaskList[loadConfigTaskList.length - 1];
+    /// 如果在 debounce 中，说明代码还没执行，同时这个返回值已经被别人接手返回了，所以直接返回空就行
+    if (preTask?.status === "debounce") {
       return;
     }
 
@@ -259,12 +263,21 @@ export const DebounceLoadConfig = <T>(filepath: string, logger: PKGM.Logger, deb
     const newTask: LoadConfigTask = {
       status: "debounce",
       task: new PromiseOut(),
+      fileContent: "",
     };
+    loadConfigTaskList.push(newTask);
     setTimeout(async () => {
       newTask.status = "loading";
+      /// 加载脚本内容
+      newTask.fileContent = readFileSync(filepath, "utf-8");
+      /// 和上一次对比，如果脚本内容一样，那么不需要执行，直接返回空
+      if (newTask.fileContent === preTask?.fileContent) {
+        newTask.task.resolve(undefined);
+        return;
+      }
+
       const newConfig = await $readFromMjs<T>(filepath, logger, true);
       newTask.status = "end";
-      loadConfigTaskList.splice(loadConfigTaskList.indexOf(newTask), 1);
       newTask.task.resolve(newConfig);
     }, debounce);
     return newTask.task.promise;
@@ -278,7 +291,7 @@ export const readUserConfig = async (
     unlink?: boolean;
     single?: AbortSignal;
     watch?: (config: Bfsp.UserConfig) => void;
-    logger: PKGM.Logger;
+    logger: PKGM.TuiLogger;
   }
 ): Promise<Bfsp.UserConfig | undefined> => {
   const { single, logger, watch } = options;
