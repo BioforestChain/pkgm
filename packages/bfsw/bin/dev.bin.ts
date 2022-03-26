@@ -1,16 +1,7 @@
-import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import {
-  ALLOW_FORMATS,
-  createTscLogger,
-  defineCommand,
-  DevLogger,
-  getTui,
-  linkBFChainPkgmModules,
-  runTsc,
-} from "@bfchain/pkgm-bfsp";
+import { ALLOW_FORMATS, defineCommand, DevLogger, getTui, linkBFChainPkgmModules } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
 import { WorkspaceConfig } from "../src";
-import { doDevBfsw } from "./dev.core";
+import { doDevBfsw, runBfswTsc } from "./dev.core";
 import { doInit } from "./init.core";
 // import { workspaceInit } from "./workspace";
 
@@ -87,14 +78,8 @@ export const devCommand = defineCommand(
       // 清除 doInit 留下的日志
       initLoggerKit.destroy();
 
-      const tscLogger = createTscLogger();
-      runTsc({
-        watch: true,
-        tsconfigPath: path.join(root, "tsconfig.json"),
-        onMessage: (s) => tscLogger.write(s),
-        onClear: () => tscLogger.clear(),
-      });
-
+      // 开始 tsc 编译
+      runBfswTsc(workspaceConfig);
       // 开始 bfsw 的开发模式
       await doDevBfsw({ workspaceConfig });
     }

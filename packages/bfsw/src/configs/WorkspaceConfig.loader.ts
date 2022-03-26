@@ -173,8 +173,9 @@ const getBuildPlugins = (workspaceRoot: string) => {
               loader: "ts",
             };
           } else if (type === "#bfsp") {
-            const bfspDirname = toPosixPath(path.dirname(args.path));
-            const bfspTrue = JSON.stringify(toPosixPath(path.join(bfspDirname, "#bfsp#")));
+            /// 这里的路径时代码里头的风格，本来就是 posix 风格，不需要改动。这里 toPosixPath 只是为了补上相对路径 "./" ，如果需要的话
+            const bfspDirname = toPosixPath(path.posix.dirname(args.path));
+            const bfspTrue = JSON.stringify(toPosixPath(path.posix.join(bfspDirname, "#bfsp#")));
             return {
               contents: `
               export * from ${bfspTrue};

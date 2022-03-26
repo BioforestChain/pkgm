@@ -45,7 +45,7 @@ export class States {
       this._pathMap.delete(s.path);
     }
   }
-  async calculateRefsByPath(baseDir: string) {
+  calculateRefsByPath(baseDir: string) {
     const refSet = new Set<string>();
     // 计算ref
     // 假设当前查询路径是 ./abc/core , 被计算的路径与计算结果对应如下：

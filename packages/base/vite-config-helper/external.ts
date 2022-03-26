@@ -48,7 +48,7 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
     "worker_threads",
     "zlib",
   ]);
-  const yarnList = execSync("yarn list --prod --json",{stdio:['pipe','pipe','ignore']})
+  const yarnList = execSync("yarn list --prod --json", { stdio: ["pipe", "pipe", "ignore"] })
     .toString()
     .split("\n")
     .map((line) => {
@@ -67,7 +67,6 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
     allowExternals.add(pkgName);
   }
 
-  // const dirname = __dirname.replace(/\\/g, "/");
   const node_module_dirname = path.join(dirname, "node_module").replace(/\\/g, "/") + "/";
 
   const viteInnerSources = new Set(["vite/preload-helper"]);

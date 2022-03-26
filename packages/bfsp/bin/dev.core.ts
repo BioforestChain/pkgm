@@ -38,93 +38,90 @@ export const doDevBfsp = (
   let errorCb: DevEventCallback;
   let abortable: ReturnType<typeof Closeable>;
 
-  abortable = Closeable<string, string>("bin:dev", async (reasons) => {
-    /**防抖，避免不必要的多次调用 */
-    const closeSign = new PromiseOut<unknown>();
-    (async () => {
-      /// debounce
-      await sleep(500);
-      if (closeSign.is_finished) {
-        debug("skip vite build by debounce");
-        return;
-      }
+  abortable = Closeable<string, string>(
+    "bin:dev",
+    async (reasons) => {
+      /**防抖，避免不必要的多次调用 */
+      const closeSign = new PromiseOut<unknown>();
+      (async () => {
+        const userConfig = await subStreams.userConfigStream.getCurrent();
+        const viteConfig = await subStreams.viteConfigStream.getCurrent();
+        const tsConfig = await subStreams.tsConfigStream.getCurrent();
 
-      const userConfig = await subStreams.userConfigStream.getCurrent();
-      const viteConfig = await subStreams.viteConfigStream.getCurrent();
-      const tsConfig = await subStreams.tsConfigStream.getCurrent();
+        const viteConfigBuildOptions = {
+          userConfig: userConfig.userConfig,
+          projectDirpath: root,
+          viteConfig,
+          tsConfig,
+          format: format ?? userConfig.userConfig.formats?.[0],
+          logger,
+        };
+        if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
+          return;
+        }
+        preViteConfigBuildOptions = viteConfigBuildOptions;
+        const viteBuildConfig = ViteConfigFactory(viteConfigBuildOptions);
 
-      const viteConfigBuildOptions = {
-        userConfig: userConfig.userConfig,
-        projectDirpath: root,
-        viteConfig,
-        tsConfig,
-        format: format ?? userConfig.userConfig.formats?.[0],
-        logger,
-      };
-      if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
-        return;
-      }
-      preViteConfigBuildOptions = viteConfigBuildOptions;
-      const viteBuildConfig = ViteConfigFactory(viteConfigBuildOptions);
-
-      debug("running bfsp build!");
-      //#region vite
-      const viteLogger = createViteLogger(loggerKit);
-      getTui().debug("start vite");
-      const dev = (await getVite().build({
-        ...viteBuildConfig,
-        build: {
-          ...viteBuildConfig.build,
-          minify: false,
-          sourcemap: true,
-          rollupOptions: {
-            ...viteBuildConfig.build?.rollupOptions,
-            onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
+        debug("running bfsp build!");
+        //#region vite
+        const viteLogger = createViteLogger(loggerKit);
+        getTui().debug("start vite");
+        const dev = (await getVite().build({
+          ...viteBuildConfig,
+          build: {
+            ...viteBuildConfig.build,
+            minify: false,
+            sourcemap: true,
+            rollupOptions: {
+              ...viteBuildConfig.build?.rollupOptions,
+              onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
+            },
           },
-        },
-        mode: "development",
-        customLogger: viteLogger,
-      })) as RollupWatcher;
-      //#endregion
+          mode: "development",
+          customLogger: viteLogger,
+        })) as RollupWatcher;
+        //#endregion
 
-      closeSign.onSuccess((reason) => {
-        debug("close bfsp build, reason: ", reason);
-        preViteConfigBuildOptions = undefined;
-        dev.close();
-      });
+        closeSign.onSuccess((reason) => {
+          debug("close bfsp build, reason: ", reason);
+          preViteConfigBuildOptions = undefined;
+          dev.close();
+        });
 
-      dev.on("change", (id, change) => {
-        debug(`${change.event} file: ${id} `);
-      });
+        dev.on("change", (id, change) => {
+          debug(`${change.event} file: ${id} `);
+        });
 
-      dev.on("event", async (event) => {
-        const name = userConfig.userConfig.name;
-        debug(`package ${name}: ${event.code}`);
-        if (event.code === "START") {
-          devPanel.updateStatus("loading");
-          startCb && (await startCb(name));
-          return;
-        }
-        // bundle结束，关闭watch
-        if (event.code === "BUNDLE_END") {
-          // close as https://www.rollupjs.org/guide/en/#rollupwatch suggests
-          event.result.close();
-          devPanel.updateStatus("success");
-          successCb && (await successCb(name));
-          return;
-        }
-        if (event.code === "ERROR") {
-          devPanel.updateStatus("error");
-          errorCb && (await errorCb(name));
-          return;
-        }
-      });
-    })();
+        dev.on("event", async (event) => {
+          const name = userConfig.userConfig.name;
+          debug(`package ${name}: ${event.code}`);
+          if (event.code === "START") {
+            devPanel.updateStatus("loading");
+            startCb && (await startCb(name));
+            return;
+          }
+          // bundle结束，关闭watch
+          if (event.code === "BUNDLE_END") {
+            // close as https://www.rollupjs.org/guide/en/#rollupwatch suggests
+            event.result.close();
+            devPanel.updateStatus("success");
+            successCb && (await successCb(name));
+            return;
+          }
+          if (event.code === "ERROR") {
+            devPanel.updateStatus("error");
+            errorCb && (await errorCb(name));
+            return;
+          }
+        });
+      })();
 
-    return (reason: unknown) => {
-      closeSign.resolve(reason);
-    };
-  });
+      return (reason: unknown) => {
+        closeSign.resolve(reason);
+      };
+    },
+    500
+  );
 
   /// 开始监听并触发编译
   subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));

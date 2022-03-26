@@ -44,11 +44,17 @@ export class WorkspaceConfigBase {
     const projectConfigStreamsMap = new Map<string, $ProjectConfigStreams>();
     const deletedProjectRoots = new Set<string>();
     const newProjectRoots = new Set<string>();
-    for (const proj of config.projects) {
-      const projectRoot = path.resolve(this.root, proj.relativePath);
-      /// 添加索引
-      this.states.add(projectRoot, { userConfig: proj, path: projectRoot });
 
+    const projectConfigMap = new Map<string, Bfsw.WorkspaceUserConfig>();
+    /// 添加索引
+    for (const proj of config.projects) {
+      const projectRoot = path.join(this.root, proj.relativePath);
+      this.states.add(projectRoot, { userConfig: proj, path: projectRoot });
+      projectConfigMap.set(projectRoot, proj);
+    }
+
+    /// 更新配置
+    for (const [projectRoot, proj] of projectConfigMap) {
       if (this._projectConfigStreamsMap.has(projectRoot) === false) {
         newProjectRoots.add(projectRoot);
       }
@@ -64,9 +70,15 @@ export class WorkspaceConfigBase {
         needPush = WorkspaceConfigBase._UserConfigIsEqual(curUserConfig, proj) === false;
       }
       if (needPush) {
-        projectConfigStreams.userConfigFollower.push($getBfspUserConfig(proj));
+        /// 生成完整项目配置
+        const packageConfig = $getBfspUserConfig(proj);
+        /// 填写“扩展服务”的数据
+        packageConfig.extendsService.tsRefs = this.states.calculateRefsByPath(projectRoot);
+
+        projectConfigStreams.userConfigFollower.push(packageConfig);
       }
     }
+
     /// 把其余的项目都停掉
     for (const [projectRoot, projectConfigStreams] of this._projectConfigStreamsMap) {
       if (projectConfigStreamsMap.has(projectRoot)) {
@@ -79,8 +91,12 @@ export class WorkspaceConfigBase {
 
     /// 推送更新
     this._projectConfigStreamsMapFollower.push(projectConfigStreamsMap);
-    this._deletedProjectRootsFollower.push(deletedProjectRoots);
-    this._newProjectRootsFollower.push(newProjectRoots);
+    if (deletedProjectRoots.size > 0) {
+      this._deletedProjectRootsFollower.push(deletedProjectRoots);
+    }
+    if (newProjectRoots.size > 0) {
+      this._newProjectRootsFollower.push(newProjectRoots);
+    }
 
     return { projectConfigStreamsMap };
   }
@@ -90,9 +106,9 @@ export class WorkspaceConfigBase {
     this._projectConfigStreamsMapFollower.toAsyncIterator()
   );
   protected _deletedProjectRootsFollower = new SharedFollower<Set<string>>();
-  readonly deletedProjectRootsStream = new SharedAsyncIterable(this._deletedProjectRootsFollower.toAsyncIterator());
+  readonly removeProjectRootsStream = new SharedAsyncIterable(this._deletedProjectRootsFollower.toAsyncIterator());
   protected _newProjectRootsFollower = new SharedFollower<Set<string>>();
-  readonly newProjectRootsStream = new SharedAsyncIterable(this._newProjectRootsFollower.toAsyncIterator());
+  readonly addProjectRootsStream = new SharedAsyncIterable(this._newProjectRootsFollower.toAsyncIterator());
 
   /**
    * 判断两个UserConfig是否等价

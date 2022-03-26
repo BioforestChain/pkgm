@@ -437,14 +437,33 @@ export class SharedFollower<T> implements AsyncIterator<T> {
 //#endregion
 
 export const toPosixPath = (windowsPath: string) => {
-  const somepath = windowsPath.replace(/^(\w):|\\+/g, "/$1");
+  windowsPath = path.normalize(windowsPath); // 至少会返回 "."、 "a" 、 "a\\b"
+  let somepath = slash(windowsPath);
   if (somepath.length > 1) {
-    if (somepath[0] !== "/" && !somepath.startsWith("./")) {
-      return "./" + somepath;
+    if (somepath.includes(":/") === false && somepath.startsWith("./") === false) {
+      somepath = "./" + somepath;
     }
   }
   return somepath;
 };
+// export const toPosixOld = (windowsPath: string) => {
+//   return windowsPath.replace(/^(\w):|\\+/g, "/$1");
+// };
+/**
+ * ## slash
+ * Convert Windows backslash paths to slash paths: `foo\\bar` ➔ `foo/bar`
+ * @fork https://github.com/sindresorhus/slash/blob/main/index.js
+ */
+export function slash(path: string) {
+  const isExtendedLengthPath = /^\\\\\?\\/.test(path);
+  const hasNonAscii = /[^\u0000-\u0080]+/.test(path); // eslint-disable-line no-control-regex
+
+  if (isExtendedLengthPath || hasNonAscii) {
+    return path;
+  }
+
+  return path.replace(/\\+/g, "/");
+}
 
 //#region 模糊Array与Set的辅助集合
 export abstract class List<T> implements Iterable<T> {
@@ -531,7 +550,8 @@ type DoClose<T> = (reasons: Set<T | undefined>) => unknown;
 
 export const Closeable = <T1 = unknown, T2 = unknown>(
   title: string,
-  fun: (reasons: Set<T1 | undefined>) => BFChainUtil.PromiseMaybe<DoClose<T2>>
+  fun: (reasons: Set<T1 | undefined>) => BFChainUtil.PromiseMaybe<DoClose<T2>>,
+  defaultDebounce?: number
 ) => {
   const debug = DevLogger("bfsp:toolkit/closeable/" + title);
   let aborter: DoClose<T2> | undefined;
@@ -608,18 +628,18 @@ export const Closeable = <T1 = unknown, T2 = unknown>(
   );
 
   const abortable = {
-    start(reason?: T1) {
+    start(reason?: T1, debounce = defaultDebounce) {
       cmdQueue.add("open");
-      looper.loop([1, reason]);
+      looper.loop([1, reason], debounce);
     },
-    close(reason?: T2) {
+    close(reason?: T2, debounce = defaultDebounce) {
       cmdQueue.add("close");
-      looper.loop([2, reason]);
+      looper.loop([2, reason], debounce);
     },
-    restart(reason?: T1 & T2) {
+    restart(reason?: T1 & T2, debounce = defaultDebounce) {
       cmdQueue.add("close");
       cmdQueue.add("open");
-      looper.loop([3, reason]);
+      looper.loop([3, reason], debounce);
     },
     /* @todo 
     pause

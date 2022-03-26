@@ -1,3 +1,4 @@
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
 import { getBfspWorkerDir } from "../util";
@@ -23,12 +24,13 @@ export const runTsc = (opts: RunTscOption) => {
     stderr: false,
     env: {},
   });
-  let resolve: Function;
-  const ret = Object.assign(new Promise<void>((cb) => (resolve = cb)), {
+  const afterDonePo = new PromiseOut<void>();
+  const ret = {
     stop() {
       tscWorker.terminate();
     },
-  });
+    afterDone: afterDonePo.promise,
+  };
 
   tscWorker.on("message", (data) => {
     const cmd = data[0];
@@ -46,7 +48,7 @@ export const runTsc = (opts: RunTscOption) => {
       }
       opts.onMessage(data[1]);
     } else if (cmd === "exit") {
-      resolve();
+      afterDonePo.resolve();
       ret.stop();
     }
   });
