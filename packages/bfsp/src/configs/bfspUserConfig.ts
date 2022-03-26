@@ -296,7 +296,7 @@ export const readUserConfig = async (
       const hasError = printBuildResultWarnAndError(logger, buildResult);
 
       if (typeof buildResult.stop === "function") {
-        logger.info.pin(`watch:${filename}`, `watching for complie ${chalk.blue(filename)} ...`);
+        logger.info.pin(`watch:${filename}`, `watching ${chalk.blue(filename)} changes...`);
         // 监听模式
         single?.addEventListener("abort", buildResult.stop.bind(buildResult));
       } else if (hasError) {

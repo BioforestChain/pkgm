@@ -26,6 +26,8 @@ import {
 import { getTui } from "../tui";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 const debug = DevLogger("bfsp:config/tsconfig");
+import { isDeepStrictEqual } from "node:util";
+import { jsonClone } from "../toolkit.util";
 
 // export const getFilename = (somepath: string) => {
 //   return somepath.match(/([^\\\/]+)\.[^\\\/]+$/)?.[1] ?? "";
@@ -349,6 +351,78 @@ export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<s
 const getTsconfigFiles = (list: TsFilesLists, field: keyof Omit<TsFilesLists, "profileMap">) => {
   return list[field].toArray().filter((filepath) => list.profileMap.unuseFiles.has(filepath) === false);
 };
+const _generateUser_CompilerOptionsBase = (bfspUserConfig: $BfspUserConfig) => {
+  return {
+    json: {
+      /**
+       * 默认的参数配置
+       */
+      composite: true,
+      noEmit: true,
+      declaration: true,
+      sourceMap: false,
+      target: "es2020",
+      module: "es2020",
+      lib: ["ES2020"],
+      importHelpers: true,
+      isolatedModules: false,
+      strict: true,
+      noImplicitAny: true,
+      strictNullChecks: true,
+      strictFunctionTypes: true,
+      strictBindCallApply: true,
+      strictPropertyInitialization: true,
+      noImplicitThis: true,
+      alwaysStrict: true,
+      moduleResolution: "node",
+      resolveJsonModule: true,
+      emitDeclarationOnly: false,
+      esModuleInterop: true,
+      skipLibCheck: true,
+      forceConsistentCasingInFileNames: true,
+      emitDecoratorMetadata: true,
+      experimentalDecorators: true,
+      // baseUrl: "./",
+      // types: ["node"],
+
+      /**
+       * 开发者自己定义的参数
+       */
+      ...(bfspUserConfig.userConfig.tsConfig?.compilerOptions ?? {}),
+    },
+    isolatedJson: {
+      isolatedModules: true,
+      noEmit: false,
+      emitDeclarationOnly: false,
+    },
+    typingsJson: {
+      isolatedModules: false,
+      noEmit: false,
+    },
+  };
+};
+const _generateUser_References = async (bfspUserConfig: $BfspUserConfig) => {
+  const depRefs = await bfspUserConfig.extendsService.tsRefs;
+  return {
+    json: [
+      {
+        path: "./tsconfig.isolated.json",
+      },
+      {
+        path: "./tsconfig.typings.json",
+      },
+      ...depRefs,
+    ],
+    isolatedJson: [
+      {
+        path: "./tsconfig.typings.json",
+      },
+      ...depRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
+    ],
+    typingsJson: [],
+  };
+};
+
 export const generateTsConfig = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
@@ -376,91 +450,42 @@ export const generateTsConfig = async (
 
   groupTsFilesByAdd(projectDirpath, bfspUserConfig, allTsFileList, tsFilesLists);
 
-  // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
-  // const tsRefs = await multi.getReferences(projectDirpath);
-  const depRefs = await bfspUserConfig.extendsService.tsRefs; // await buildService.calculateRefsByPath(projectDirpath);
+  /// 生成配置
+  const userCompilerOptionsBase = _generateUser_CompilerOptionsBase(bfspUserConfig);
+  const userReferences = await _generateUser_References(bfspUserConfig);
+
+  /// 组合配置
   const tsConfig = {
     compilerOptions: {
-      /**
-       * 默认的参数配置
-       */
-      composite: true,
-      noEmit: true,
-      declaration: true,
-      sourceMap: false,
-      target: "es2020",
-      module: "es2020",
-      lib: ["ES2020"],
-      importHelpers: true,
-      isolatedModules: false,
-      strict: true,
-      noImplicitAny: true,
-      strictNullChecks: true,
-      strictFunctionTypes: true,
-      strictBindCallApply: true,
-      strictPropertyInitialization: true,
-      noImplicitThis: true,
-      alwaysStrict: true,
-      moduleResolution: "node",
-      resolveJsonModule: true,
-      emitDeclarationOnly: false,
-      // baseUrl: "./",
-      // types: ["node"],
-      esModuleInterop: true,
-      skipLibCheck: true,
-      forceConsistentCasingInFileNames: true,
-      emitDecoratorMetadata: true,
-      experimentalDecorators: true,
-
-      /**
-       * 开发者自己定义的参数
-       */
-      ...(bfspUserConfig.userConfig.tsConfig?.compilerOptions ?? {}),
+      ...userCompilerOptionsBase.json,
       /**
        * 不可被定义的
        */
       outDir: TscOutRootPath(options.outDirRoot, options.outDirName),
       paths: tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles),
     },
-    references: [
-      {
-        path: "./tsconfig.isolated.json",
-      },
-      {
-        path: "./tsconfig.typings.json",
-      },
-      ...depRefs,
-    ],
-    // files: tsFilesLists.notestFiles.toArray(),
+    references: userReferences.json,
     files: [] as string[],
   };
 
   const tsIsolatedConfig = {
     extends: "./tsconfig.json",
     compilerOptions: {
-      isolatedModules: true,
+      ...userCompilerOptionsBase.isolatedJson,
       outDir: TscIsolatedOutRootPath(options.outDirRoot, options.outDirName),
-      noEmit: false,
-      emitDeclarationOnly: false,
     },
     files: getTsconfigFiles(tsFilesLists, "isolatedFiles"),
-    references: [
-      {
-        path: "./tsconfig.typings.json",
-      },
-      ...depRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
-    ],
+    references: userReferences.isolatedJson,
   };
 
   const tsTypingsConfig = {
     extends: "./tsconfig.json",
     compilerOptions: {
-      isolatedModules: false,
+      ...userCompilerOptionsBase.typingsJson,
       outDir: TscTypingsOutRootPath(options.outDirRoot, options.outDirName),
-      noEmit: false,
     },
     files: getTsconfigFiles(tsFilesLists, "typeFiles"),
-    references: [],
+    references: userReferences.typingsJson,
   };
 
   return {
@@ -533,7 +558,7 @@ export const watchTsConfig = (
   const sai = new SharedAsyncIterable<$TsConfig>(follower);
 
   let tsConfig: $TsConfig | undefined;
-  let preTsConfigJson = "";
+  let preTsConfig = {} as any;
   /// 循环处理监听到的事件
   const looper = Loopable("watch tsconfigs", async (reasons) => {
     debug("reasons:", reasons);
@@ -575,35 +600,27 @@ export const watchTsConfig = (
       tsConfig.typingsJson.files = getTsconfigFiles(tsFilesLists, "typeFiles");
     }
 
-    const paths = tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles);
-    tsConfig.json.compilerOptions.paths = paths;
-    const depRefs = await bfspUserConfig.extendsService.tsRefs;
+    /// 生成用户配置
+    const userCompilerOptionsBase = _generateUser_CompilerOptionsBase(bfspUserConfig);
+    const userReferences = await _generateUser_References(bfspUserConfig);
 
-    const refs = [
-      {
-        path: "./tsconfig.isolated.json",
-      },
-      {
-        path: "./tsconfig.typings.json",
-      },
-      ...depRefs,
-    ];
-    tsConfig.json.references = refs;
-    tsConfig.isolatedJson.references = [
-      {
-        path: "./tsconfig.typings.json",
-      },
-      ...depRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
-    ];
-    const newTsConfigJson = JSON.stringify({
+    tsConfig.json.compilerOptions = {
+      ...userCompilerOptionsBase.json,
+      outDir: tsConfig.json.compilerOptions.outDir,
+      paths: tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles),
+    };
+    tsConfig.json.references = userReferences.json;
+    tsConfig.isolatedJson.references = userReferences.isolatedJson;
+
+    const newTsConfig = jsonClone({
       json: tsConfig.json,
       isolated: tsConfig.isolatedJson,
       typings: tsConfig.typingsJson,
     });
-    if (preTsConfigJson === newTsConfigJson) {
+    if (isDeepStrictEqual(preTsConfig, newTsConfig)) {
       return;
     }
-    preTsConfigJson = newTsConfigJson;
+    preTsConfig = newTsConfig;
 
     if (write) {
       if (!existsSync(projectDirpath)) {
