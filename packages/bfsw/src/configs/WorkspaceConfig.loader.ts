@@ -8,12 +8,14 @@ import {
   folderIO,
   toPosixPath,
   printBuildResultWarnAndError,
+  DebounceLoadConfig,
 } from "@bfchain/pkgm-bfsp";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, unlinkSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { consts } from "../consts";
 import bfswTsconfigContent from "../../assets/tsconfig.bfsw.json?raw";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 const bfswTsconfigFilepath = createTsconfigForEsbuild(bfswTsconfigContent);
 
 export const defineWorkspace = (cb: () => Bfsw.Workspace) => {
@@ -42,6 +44,8 @@ export const LoadConfig = async (
       const cache_filepath = resolve(bfswDir, cache_filename);
       debug("complie #bfsw");
 
+      const loadConfig = DebounceLoadConfig<Bfsw.Workspace>(cache_filepath, logger);
+
       const buildResult = await build({
         entryPoints: [filename],
         absWorkingDir: workspaceRoot,
@@ -58,7 +62,7 @@ export const LoadConfig = async (
               printBuildResultWarnAndError(logger, buildResult);
             }
             if (!error) {
-              const newConfig = await $readFromMjs<Bfsw.Workspace>(cache_filepath, logger, true);
+              const newConfig = await loadConfig();
               if (newConfig) {
                 watch(newConfig);
               }
@@ -80,7 +84,7 @@ export const LoadConfig = async (
         return;
       }
 
-      return await $readFromMjs<Bfsw.Workspace>(cache_filepath, logger, true);
+      return await loadConfig();
     }
 
     /**

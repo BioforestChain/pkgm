@@ -244,6 +244,34 @@ export const printBuildResultWarnAndError = (logger: PKGM.Logger, buildResult: B
   }
   return false;
 };
+export const DebounceLoadConfig = <T>(filepath: string, logger: PKGM.Logger, debounce = 50) => {
+  // const debounce  = 50
+  type LoadConfigTask = { status: "debounce" | "loading" | "end"; task: PromiseOut<T | undefined> };
+  const loadConfigTaskList: LoadConfigTask[] = [];
+  const loadConfig = async () => {
+    const latestTask = loadConfigTaskList[loadConfigTaskList.length - 1];
+    /// 如果在 debounce 中，说明已经有其它任务返回了这个对象，所以直接返回空就行
+    if (latestTask?.status === "debounce") {
+      return;
+    }
+
+    /// 否则直接创建一个新的任务
+    const newTask: LoadConfigTask = {
+      status: "debounce",
+      task: new PromiseOut(),
+    };
+    setTimeout(async () => {
+      newTask.status = "loading";
+      const newConfig = await $readFromMjs<T>(filepath, logger, true);
+      newTask.status = "end";
+      loadConfigTaskList.splice(loadConfigTaskList.indexOf(newTask), 1);
+      newTask.task.resolve(newConfig);
+    }, debounce);
+    return newTask.task.promise;
+  };
+  return loadConfig;
+};
+
 export const readUserConfig = async (
   projectRoot: string,
   options: {
@@ -263,6 +291,9 @@ export const readUserConfig = async (
         mkdirSync(bfspDir);
       }
       const cache_filepath = resolve(bfspDir, cache_filename);
+
+      const loadConfig = DebounceLoadConfig<Bfsp.UserConfig>(cache_filepath, logger);
+
       debug("complie #bfsp");
       const buildResult = await build({
         entryPoints: [filename],
@@ -280,7 +311,7 @@ export const readUserConfig = async (
               printBuildResultWarnAndError(logger, buildResult);
             }
             if (!error) {
-              const newConfig = await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, true);
+              const newConfig = await loadConfig();
               if (newConfig) {
                 watch(newConfig);
               }
@@ -303,7 +334,7 @@ export const readUserConfig = async (
         return;
       }
 
-      return await $readFromMjs<Bfsp.UserConfig>(cache_filepath, logger, options.unlink);
+      return await loadConfig();
     }
     // if (filename === "#bfsp.mjs") {
     //   return await _readFromMjs(filename, options.refresh);

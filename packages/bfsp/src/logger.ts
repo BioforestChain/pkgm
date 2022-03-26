@@ -13,6 +13,7 @@ import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import { consoleLogger } from "./consoleLogger";
 import { $LoggerKit, getTui, hasTui } from "./tui/index";
 import { BundlePanel } from "./tui/internalPanels";
+import { EasyWeakMap } from "@bfchain/pkgm-base/util/extends_map";
 
 export const LogLevels: Record<LogLevel, number> = {
   silent: 0,
@@ -22,10 +23,11 @@ export const LogLevels: Record<LogLevel, number> = {
 };
 const useScreen = true;
 
-let _viteLogger: Logger | undefined;
 let _viteLogoContent: string | undefined;
-let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", options: LoggerOptions = {}) => {
-  if (_viteLogger === undefined) {
+const viteLoggerWeakMap = EasyWeakMap.from({
+  creater(viteLoggerKit: $LoggerKit) {
+    const level: LogLevel = "info";
+    const options: LoggerOptions = {};
     const warnedMessages = new Set<unknown>();
 
     const $formatViteMsg = (type: LogType, msg: string, options: LogErrorOptions) => {
@@ -147,14 +149,17 @@ let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", opt
       },
     };
 
-    _viteLogger = logger;
-
+    const rootLoggerKit = viteLoggerKit.logger.panel?.loggerKit ?? viteLoggerKit;
     defineViteStdoutApis({
-      writeLine: (log: string) => viteLoggerKit.logger.log.pin("#line", log),
-      clearLine: () => viteLoggerKit.logger.log.unpin("#line"),
+      writeLine: (log: string) => rootLoggerKit.logger.log.pin("#line", log),
+      clearLine: () => rootLoggerKit.logger.log.unpin("#line"),
     });
-  }
-  return _viteLogger;
+
+    return logger;
+  },
+});
+let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", options: LoggerOptions = {}) => {
+  return viteLoggerWeakMap.forceGet(viteLoggerKit);
 };
 
 export type $TscLogger = {

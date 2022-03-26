@@ -97,6 +97,7 @@ export const doDevBfsp = (
           debug(`package ${name}: ${event.code}`);
           if (event.code === "START") {
             devPanel.updateStatus("loading");
+            loggerKit.clearScreen();
             startCb && (await startCb(name));
             return;
           }
