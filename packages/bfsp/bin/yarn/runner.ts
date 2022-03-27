@@ -1,4 +1,5 @@
 import { getYarnPath } from "@bfchain/pkgm-base/lib/yarn";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import cp from "node:child_process";
 import fs from "node:fs";
@@ -7,12 +8,8 @@ import { fileURLToPath } from "node:url";
 export interface RunYarnOption {
   root: string;
   onExit?: (done: boolean) => void;
-  logger: PKGM.Logger;
-  // onMessage?: (s: string) => void;
-  // onError?: (s: string) => void;
-  // onWarn?: (s: string) => void;
-  // onSuccess?: (s: string) => void;
-  // onFlag?: (s: string, loading?: boolean | number) => void;
+  logger: PKGM.TuiLogger;
+  rootPackageNameList?: string[];
 }
 export const linkBFChainPkgmModules = (root: string) => {
   const isBFChainPkgmModuleDir = (moduleDir: string) => {
@@ -61,7 +58,7 @@ export const linkBFChainPkgmModules = (root: string) => {
   }
 };
 
-export const runYarn = (opts: RunYarnOption) => {
+export const runYarn = (args: RunYarnOption) => {
   let yarnRunSuccess = true;
   const donePo = new PromiseOut<boolean>();
   const ac = new AbortController();
@@ -77,7 +74,7 @@ export const runYarn = (opts: RunYarnOption) => {
     if (ac.signal.aborted) {
       return;
     }
-    const { logger } = opts;
+    const { root, logger } = args;
 
     const proc = cp.spawn(
       "node",
@@ -88,7 +85,7 @@ export const runYarn = (opts: RunYarnOption) => {
         // 这个参数一定要给，否则有些时候环境变量可能会被未知的程序改变，传递的环境变量会进一步改变默认 yarn install 的默认行为
         "--production=false",
       ],
-      { cwd: opts.root, env: {}, signal: ac.signal }
+      { cwd: root, env: {}, signal: ac.signal }
     );
 
     /**
@@ -172,31 +169,140 @@ export const runYarn = (opts: RunYarnOption) => {
     });
     proc.once("exit", async () => {
       /// 将 @bfchain/pkgm 的所有包 link 到对应目录下
-      linkBFChainPkgmModules(opts.root);
-      if (yarnRunSuccess) {
-        logger.clear();
-        const listSpawn = cp.spawn("node", [yarnPath, "list"], { cwd: opts.root, env: {}, signal: ac.signal });
-        listSpawn.stdout.on("data", (chunk) => {
-          logger.log.write(
-            String(chunk)
-              .replace("yarn list", "Dependencies list by yarn ")
-              .replace(/Done in [\d\.]+s\./, "")
-          );
-        });
-        await new Promise<void>((resolve) => {
-          listSpawn.once("exit", resolve);
-          /// 有signal的话，一定要提供 error 监听，否则会抛出异常到全局
-          listSpawn.once("error", () => {
-            yarnRunSuccess = false;
-            resolve();
-          });
+      linkBFChainPkgmModules(root);
+
+      /// 如果可以，打印出 yarn list
+      const rootPackageNameList = args.rootPackageNameList;
+      if (yarnRunSuccess && rootPackageNameList !== undefined) {
+        runYarnList({
+          root,
+          logger,
+          rootPackageNameList,
+          signal: ac.signal,
         });
       }
 
       donePo.resolve(yarnRunSuccess);
-      opts.onExit?.(yarnRunSuccess);
+      args.onExit?.(yarnRunSuccess);
     });
   })();
 
   return ret;
+};
+
+interface RunYarnListOption {
+  root: string;
+  logger: PKGM.TuiLogger;
+  rootPackageNameList: string[];
+  signal: AbortSignal;
+}
+
+const runYarnList = (args: RunYarnListOption) => {
+  const yarnPath = getYarnPath();
+  const { logger } = args;
+  logger.log.pin("yarn-list", "list deps...");
+  const listSpawn = cp.spawn("node", [yarnPath, "list", "--json"], {
+    cwd: args.root,
+    env: {},
+    signal: args.signal,
+  });
+  listSpawn.stdout.on("data", (chunk) => {
+    try {
+      const data = JSON.parse(String(chunk));
+      if (data.type === "tree" && data.data.type === "list") {
+        const trees: Tree[] = data.data.trees;
+        const treeMap = groupTree(trees);
+        const rootNames = new Set(args.rootPackageNameList);
+        const logs = logTree(treeMap, trees, (tree) => rootNames.has(tree.sname));
+        logger.log.unpin("yarn-list");
+        logger.clear();
+        const title = chalk.cyanBright("Dependencies list by yarn");
+        logger.log(title);
+        logger.log(logs.join("\n"));
+      }
+    } catch {}
+  });
+  return new Promise<boolean>((resolve) => {
+    listSpawn.once("exit", () => {
+      resolve(true);
+    });
+    /// 有signal的话，一定要提供 error 监听，否则会抛出异常到全局
+    listSpawn.once("error", () => {
+      resolve(false);
+    });
+  });
+};
+
+type Tree = {
+  name: string;
+  children: Tree[];
+  depth?: number;
+  sname: string;
+  version: string;
+  rversion: string;
+};
+const logTree = (
+  map: Map<string, Tree>,
+  trees: Tree[],
+  isRoot = (tree: Tree) => true,
+  logs: string[] = [],
+  prefix = "",
+  depth = 2
+) => {
+  const filteredTree = trees.filter(isRoot);
+  const lastTree = filteredTree.at(-1);
+
+  for (const tree of filteredTree) {
+    let treePrefix = prefix + "├─";
+    let childPrefix = prefix + "│  ";
+    if (tree.depth === 0) {
+      logs.push(chalk.cyan(childPrefix));
+    }
+    if (lastTree === tree) {
+      treePrefix = prefix + "└─";
+      childPrefix = prefix + "   ";
+    }
+
+    if (tree.depth === 0) {
+      logs.push(`${chalk.cyan(treePrefix)} ${chalk.bold.green(tree.sname)}\t${chalk.blue(tree.rversion)}`);
+    } else {
+      const rootTree = map.get(tree.sname)!;
+      const isFullMatch = rootTree?.version === tree.version;
+      if (isFullMatch) {
+        logs.push(`${chalk.cyan(treePrefix)} ${tree.sname}\t${chalk.blue(tree.rversion)}`);
+      } else {
+        logs.push(
+          `${chalk.cyan(treePrefix)} ${tree.sname}${chalk.italic.gray("@" + tree.rversion)}\t${chalk.blueBright(
+            rootTree.version
+          )}`
+        );
+      }
+    }
+
+    if (depth > 1) {
+      const children = tree.children ?? map.get(tree.sname)?.children;
+      if (children) {
+        logTree(map, children, () => true, logs, childPrefix, depth - 1);
+      }
+    }
+  }
+  return logs;
+};
+const groupTree = (trees: Tree[], map = new Map<string, Tree>()) => {
+  for (const tree of trees) {
+    const name_version = tree.name.match(/(@?[^@]+)@(.+)/);
+    if (name_version) {
+      tree.sname = name_version[1];
+      tree.rversion = name_version[2];
+      tree.version = tree.rversion.replace(/^\^|^\~/, "");
+      //   console.log(name_version);
+      if (tree.depth === 0) {
+        map.set(tree.sname, tree);
+      }
+    }
+    if (tree.children) {
+      groupTree(tree.children, map);
+    }
+  }
+  return map;
 };

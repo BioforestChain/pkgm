@@ -16,5 +16,6 @@ export const doInit = async (
   return runYarn({
     root: workspaceConfig.root,
     logger: yarnLogger,
+    rootPackageNameList: workspaceConfig.projects.map((p) => p.packageJson?.name ?? p.name),
   }).afterDone;
 };

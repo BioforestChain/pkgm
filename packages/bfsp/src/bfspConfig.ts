@@ -88,7 +88,13 @@ export const watchBfspProjectConfig = (
     npmIgnoreStream,
     /**默认不启动 deps 的watch安装，调用后才会运行 */
     getDepsInstallStream() {
-      return (_watchDepsStream ??= doWatchDeps(projectDirpath, packageJsonStream, { runInstall: true }));
+      return (_watchDepsStream ??= doWatchDeps(projectDirpath, packageJsonStream, {
+        runInstall: true,
+        runListGetter() {
+          const userConfig = projectConfig.bfspUserConfig.userConfig;
+          return [userConfig.packageJson?.name ?? userConfig.name];
+        },
+      }));
     },
     stopAll() {
       userConfigStream.stop();

@@ -25,7 +25,7 @@ const comparablePackageJsonDependencies = (packageJson: $PackageJson) => {
 export const doWatchDeps = (
   projectDirpath: string,
   packageJsonStream: SharedAsyncIterable<$PackageJson>,
-  options: { runInstall: boolean }
+  options: { runInstall: boolean; runListGetter?: () => string[] }
 ) => {
   const { runInstall = false } = options;
   let startInstallCb: DepsEventCallback | undefined;
@@ -52,6 +52,7 @@ export const doWatchDeps = (
         const yarnTask = runYarn({
           root: projectDirpath,
           logger: depsPanel.depsLogger,
+          rootPackageNameList: options.runListGetter?.(),
         });
         stopper = () => {
           offStopper();

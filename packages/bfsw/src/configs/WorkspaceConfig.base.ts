@@ -215,6 +215,9 @@ export class WorkspaceConfigBase {
       new SharedAsyncIterable<$PackageJson>(this._watchDepsFollower),
       {
         runInstall: true,
+        runListGetter: () => {
+          return this.projects.map((p) => p.packageJson?.name ?? p.name);
+        },
       }
     ));
   }
