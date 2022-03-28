@@ -27,7 +27,7 @@ export class AnimationFrameManager {
       }
 
       try {
-        await this.onAnimationFrame?.();
+        await this.requestRender();
       } catch (err) {
         this._emitError(err);
       }
@@ -60,6 +60,21 @@ export class AnimationFrameManager {
   cancelAnimationFrame(id: number) {
     this._funs.delete(id);
   }
-  onAnimationFrame?: () => unknown;
+  bindRender(doRender: () => unknown) {
+    this._doRender = doRender;
+    this.requestRender();
+  }
+  private _doRender?: () => unknown;
+  private _requestingRender = false;
+  requestRender() {
+    if (this._requestingRender) {
+      return;
+    }
+    this._requestingRender = true;
+    queueMicrotask(() => {
+      this._requestingRender = false;
+      this._doRender?.();
+    });
+  }
 }
 export const afm = new AnimationFrameManager();

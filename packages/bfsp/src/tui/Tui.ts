@@ -74,7 +74,7 @@ export class Tui {
     }
 
     /// 绑定动画帧的回调
-    afm.onAnimationFrame = () => this._screen.render();
+    afm.bindRender(() => this._screen.render());
 
     /// 关闭进程的交互
     queueMicrotask(() => {

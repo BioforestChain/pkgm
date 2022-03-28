@@ -25,6 +25,7 @@ export abstract class Panel<N extends string, K extends number = number> impleme
       // this._ctx.debug(`blur: ${this.name}`);
       this.$queueRenderTab();
     });
+    this.deactivate();
   }
   debug(log: string) {
     this._ctx.debug(log);
@@ -105,6 +106,7 @@ export abstract class Panel<N extends string, K extends number = number> impleme
         }
         if (c !== this.elTab.content) {
           this.elTab.content = c;
+          afm.requestRender();
         }
       }
 
@@ -121,6 +123,9 @@ export abstract class Panel<N extends string, K extends number = number> impleme
   }
   group?: PanelGroup;
   activate() {
+    if (this._isActive === true) {
+      return;
+    }
     if (this.group) {
       for (const panel of this.group.values()) {
         if (panel.name !== this.name) {
@@ -135,6 +140,9 @@ export abstract class Panel<N extends string, K extends number = number> impleme
     this.$queueRenderTab();
   }
   deactivate() {
+    if (this._isActive === false) {
+      return;
+    }
     this.elLog.hide();
     this._isActive = false;
     // this._ctx.debug(`deactivate: ${this.name}`);
