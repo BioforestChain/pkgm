@@ -30,15 +30,21 @@ async function* GenerateDevTask(packages) {
 async function run() {
   const packages = ["base", "bfsp", "bfsw"]
     .map((x) => {
-      return ["dev", "dev:script"].map((s) => {
-        const wait = x === "base"; // base的任务要先编译
-        return { dir: `./packages/${x}`, name: s, wait };
-      });
+      if (x === "base") {
+        return ["dev", "dev:script"].map((s) => {
+          return { dir: `./packages/${x}`, name: s, wait: true };
+        });
+      } else {
+        return ["dev"].map((s) => {
+          return { dir: `./packages/${x}`, name: s, wait: false };
+        });
+      }
     })
-    .flat();
+    .flat()
+    .sort((a, b) => a.dir.localeCompare(b.dir));
 
   for await (const x of GenerateDevTask(packages)) {
-    console.log(x);
+    console.log(`[${x}] task done`);
   }
 }
 run();
