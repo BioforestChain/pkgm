@@ -38,47 +38,63 @@ export const LoadConfig = async (
       const cache_filepath = resolve(bfswDir, cache_filename);
       debug("complie #bfsw");
 
-      const loadConfig = DebounceLoadConfig<Bfsw.Workspace>(cache_filepath, logger);
+      const _loadConfig = DebounceLoadConfig<Bfsw.Workspace>(cache_filepath, logger);
+      const loadConfig = async (...args: BFChainUtil.AllArgument<typeof _loadConfig>) => {
+        const res = await _loadConfig(...args);
+        if (res !== undefined) {
+          logger.error.unpin("load-workspace");
+        }
+        return res;
+      };
+      const handleError = (e: any) => {
+        logger.error.pin("load-workspace", e.message ?? e);
+      };
 
-      const buildResult = await build({
-        entryPoints: [filename],
-        absWorkingDir: workspaceRoot,
-        bundle: true,
-        platform: "node",
-        format: "esm",
-        write: true,
-        outfile: cache_filepath,
-        tsconfig: bfswTsconfigFilepath,
-        plugins: getBuildPlugins(workspaceRoot),
-        watch: watch && {
-          onRebuild: async (error, buildResult) => {
-            if (buildResult) {
-              printBuildResultWarnAndError(logger, buildResult);
-            }
-            if (!error) {
-              const newConfig = await loadConfig();
-              if (newConfig) {
-                watch(newConfig);
+      try {
+        const buildResult = await build({
+          entryPoints: [filename],
+          absWorkingDir: workspaceRoot,
+          bundle: true,
+          platform: "node",
+          format: "esm",
+          write: true,
+          outfile: cache_filepath,
+          tsconfig: bfswTsconfigFilepath,
+          plugins: getBuildPlugins(workspaceRoot),
+          watch: watch && {
+            onRebuild: async (error, buildResult) => {
+              if (buildResult) {
+                printBuildResultWarnAndError(logger, buildResult);
               }
-            }
+              if (!error) {
+                const newConfig = await loadConfig();
+                if (newConfig) {
+                  watch(newConfig);
+                }
+              } else {
+                handleError(error);
+              }
+            },
           },
-        },
-      });
-      if (single?.aborted) {
+        });
+        if (single?.aborted) {
+          return;
+        }
+
+        const hasError = printBuildResultWarnAndError(logger, buildResult);
+
+        if (typeof buildResult.stop === "function") {
+          logger.info.pin(`watch:${filename}`, `watching ${chalk.blue(filename)} changes...`);
+          // 监听模式
+          single?.addEventListener("abort", buildResult.stop.bind(buildResult));
+        } else if (hasError) {
+          return;
+        }
+        return await loadConfig();
+      } catch (e) {
+        handleError(e);
         return;
       }
-
-      const hasError = printBuildResultWarnAndError(logger, buildResult);
-
-      if (typeof buildResult.stop === "function") {
-        logger.info.pin(`watch:${filename}`, `watching ${chalk.blue(filename)} changes...`);
-        // 监听模式
-        single?.addEventListener("abort", buildResult.stop.bind(buildResult));
-      } else if (hasError) {
-        return;
-      }
-
-      return await loadConfig();
     }
 
     /**
