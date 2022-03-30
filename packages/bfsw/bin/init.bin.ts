@@ -1,5 +1,5 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { defineCommand } from "@bfchain/pkgm-bfsp";
+import { defineCommand } from "@bfchain/pkgm-bfsp/sdk";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";

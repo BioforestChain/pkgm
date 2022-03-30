@@ -1,10 +1,9 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import type { Readable } from "node:stream";
 import util from "node:util";
-import { afm } from "./tui/animtion";
-import { FRAMES } from "./tui/const";
+import { afm } from "../tui/animtion";
+import { FRAMES } from "../tui/const";
 
-import { setTimeout as sleep } from "node:timers/promises";
 type $Writer = (s: string) => void;
 export const createSuperLogger = (options: {
   prefix: string;

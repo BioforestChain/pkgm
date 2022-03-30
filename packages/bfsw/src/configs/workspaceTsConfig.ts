@@ -1,4 +1,4 @@
-import { writeJsonConfig } from "@bfchain/pkgm-bfsp";
+import { writeJsonConfig } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
 
 export class WorkspaceTsConfig {

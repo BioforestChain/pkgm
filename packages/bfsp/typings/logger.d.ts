@@ -1,13 +1,3 @@
-declare namespace NodeJS {
-  interface Process {
-    noDeprecation: boolean;
-    env: {
-      LD_LIBRARY_PATH: string;
-      PKGM_MODE: string;
-    } & ProcessEnv;
-  }
-}
-
 declare namespace PKGM {
   type Print = (format?: any, ...param: any[]) => void;
   type Pin = (label: string, format?: any, ...param: any[]) => void;
@@ -46,6 +36,6 @@ declare namespace PKGM {
   type ConsoleLogger = SimpleLogger & Partial<Omit<Logger, keyof SimpleLogger>>;
 
   type TuiLogger = Logger & {
-    panel?: import("./tui").Panel<any>;
+    panel?: import("../sdk/tui").Panel<any>;
   };
 }

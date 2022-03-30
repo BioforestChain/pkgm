@@ -3,9 +3,8 @@ import { writeFile } from "node:fs/promises";
 import { userInfo } from "node:os";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { folderIO } from "../src";
+import { folderIO, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
 import { ts } from "./fmt.core";
-import { writeJsonConfig } from "./util";
 
 export const doCreateBfsp = async (
   options: { root: string; name: string; license?: string; skipGit?: boolean },

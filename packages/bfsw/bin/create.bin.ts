@@ -1,5 +1,5 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { defineCommand, linkBFChainPkgmModules } from "@bfchain/pkgm-bfsp";
+import { defineCommand, linkBFChainPkgmModules } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 import { doCreateBfsw } from "./create.core";

@@ -1,2 +1,5 @@
 ///<reference path="../typings/userConfig.d.ts" />
-export * from "./configs/workspaceConfig";
+
+export const defineWorkspace = (cb: () => Bfsw.Workspace) => {
+  return cb();
+};

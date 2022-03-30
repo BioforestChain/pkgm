@@ -1,4 +1,4 @@
-import { runYarn } from "@bfchain/pkgm-bfsp";
+import { runYarn } from "@bfchain/pkgm-bfsp/sdk";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 export const doInit = async (
   args: { workspaceConfig: WorkspaceConfig },

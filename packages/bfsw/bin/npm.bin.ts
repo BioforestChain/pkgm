@@ -1,4 +1,4 @@
-import { defineCommand } from "@bfchain/pkgm-bfsp";
+import { defineCommand } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
 // import { workspaceInit } from "./workspace";
 

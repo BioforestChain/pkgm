@@ -1,5 +1,5 @@
-import { toPosixPath } from "@bfchain/pkgm-bfsp";
 import path from "node:path";
+import { toPosixPath } from "@bfchain/pkgm-bfsp/sdk";
 
 type State = { userConfig: Bfsp.UserConfig; projectRoot: string };
 export class States {

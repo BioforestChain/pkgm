@@ -1,30 +1,186 @@
-import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
-import { existsSync, readFileSync } from "node:fs";
+import "@bfchain/pkgm-base/util/typings";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { fileIO, folderIO, require } from "../src";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 
-export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) => void) {
-  if (items.length < numContainer) {
-    items.forEach((x) => cb([x]));
-    return;
-  }
-  const avg = Math.floor(items.length / numContainer);
-  const mod = items.length % numContainer;
-  for (let i = 0; i < numContainer; i++) {
-    const start = i * avg;
-    const slicedItems = items.slice(start, start + avg);
-    if (mod > 0 && i < mod) {
-      slicedItems.push(items[items.length - mod + i]);
+import { toPosixPath } from "./toolkit.path";
+
+//#region 模糊Array与Set的辅助集合
+export abstract class List<T> implements Iterable<T> {
+  abstract [Symbol.iterator](): Iterator<T, any, undefined>;
+  abstract add(item: T): void;
+  abstract remove(item: T): void;
+  abstract toArray(): T[];
+  abstract toSet(): Set<T>;
+  abstract get size(): number;
+}
+export class ListArray<T> extends List<T> {
+  constructor(items?: Iterable<T>) {
+    super();
+    if (items !== undefined) {
+      if (Array.isArray(items)) {
+        this._arr = items;
+      } else {
+        this._arr = [...items];
+      }
+    } else {
+      this._arr = [];
     }
-    cb(slicedItems);
+  }
+  private _arr: T[];
+  add(item: T): void {
+    if (this._arr.includes(item) === false) {
+      this._arr[this._arr.length] = item;
+    }
+  }
+  remove(item: T): void {
+    const index = this._arr.indexOf(item);
+    if (index !== -1) {
+      this._arr.splice(index, 1);
+    }
+  }
+  get size() {
+    return this._arr.length;
+  }
+  [Symbol.iterator]() {
+    return this._arr[Symbol.iterator]();
+  }
+  toArray() {
+    return this._arr;
+  }
+  toSet() {
+    return new Set(this._arr);
+  }
+}
+export class ListSet<T> extends List<T> {
+  constructor(items?: Iterable<T>) {
+    super();
+    this._set = new Set(items);
+  }
+  private _set: Set<T>;
+  add(item: T): void {
+    this._set.add(item);
+  }
+  remove(item: T): void {
+    this._set.delete(item);
+  }
+  get size() {
+    return this._set.size;
+  }
+  [Symbol.iterator]() {
+    return this._set[Symbol.iterator]();
+  }
+  toArray() {
+    return [...this._set];
+  }
+  toSet() {
+    return this._set;
+  }
+}
+//#endregion
+
+/**为出口的js文件进行自动重命名,寻找一个不冲突的文件名
+ * input 与 output 一一对应
+ * 但是input可以有别名,这些别名决定着output
+ * 别名可以一样
+ *
+ * input: InputPath
+ * output: OutputName
+ */
+export class ExportsMap {
+  readonly oi = new Map<string, string>();
+  readonly io = new Map<string, string>();
+  hasInput(input: string) {
+    return this.io.has(input);
+  }
+  defineOutput(input: string, output: string) {
+    this.oi.set(output, input);
+    this.io.set(input, output);
+  }
+  autoOutput(input: string, inputAlias: string) {
+    let output = this.oi.get(input);
+    if (output !== undefined) {
+      return output;
+    }
+    let autoNameAcc = 0;
+    do {
+      output = autoNameAcc === 0 ? inputAlias : `${inputAlias}-${autoNameAcc}`;
+      if (this.oi.has(output) === false) {
+        break;
+      }
+
+      autoNameAcc += Math.ceil(this.oi.size / 2);
+    } while (true);
+
+    this.defineOutput(input, output);
+    return output;
+  }
+  getOutput(input: string) {
+    return this.io.get(input);
+  }
+  delInput(input: string) {
+    const output = this.io.get(input);
+    if (output !== undefined) {
+      this.io.delete(input);
+      this.oi.delete(output);
+      return true;
+    }
+    return false;
   }
 }
 
-export async function writeJsonConfig(filepath: string, config: any) {
-  await folderIO.tryInit(path.dirname(filepath));
-  await fileIO.set(filepath, Buffer.from(JSON.stringify(config, null, 2)), true);
-}
+export const parseExports = (exports: Bfsp.UserConfig["exports"]) => {
+  const exportsMap = new ExportsMap();
+  let _index: { posixKey: string; input: string; key: string } | undefined;
+  const standardExports: Bfsp.UserConfig["exports"] = { ".": "" };
+  /// 先暴露出模块
+  for (const key in exports) {
+    /**一个格式化后的key, 是用于提供 @bfchain/xxx/{key} 这样的扩展包的 */
+    const posixKey = path.posix.normalize(key);
+    if (posixKey.startsWith("..")) {
+      console.error(`invalid exports key: '${key}'`);
+      continue;
+    }
+    const input: string = toPosixPath((exports as any)[key]);
+
+    let inputAlias = posixKey;
+    if (posixKey === "." || posixKey === "./" || posixKey === "") {
+      standardExports["."] = input;
+
+      inputAlias = "index";
+      if (_index !== undefined) {
+        console.error(`duplicated default export: '${posixKey}', will use '.' by default`);
+        if (_index.posixKey === ".") {
+          continue;
+        }
+        exportsMap.delInput(_index.input);
+      }
+      _index = { posixKey, input, key };
+    } else {
+      if (posixKey in standardExports) {
+        console.error(`duplicated default export: '${posixKey}('${key}')'`);
+        continue;
+      }
+      (standardExports as any)[posixKey] = input;
+    }
+
+    exportsMap.autoOutput(input, inputAlias);
+  }
+
+  if (_index === undefined) {
+    throw new Error("no found default export('.')");
+  }
+
+  return {
+    exportsMap,
+    formatedExports: standardExports,
+    indexFile: _index.input,
+    indexKey: {
+      sourceKey: _index.key,
+      posixKey: _index.posixKey,
+    },
+  };
+};
+
 export interface TreeNode<T> {
   data: T;
   parent?: TreeNode<T>;
@@ -172,73 +328,6 @@ export class Tree<T> {
     }
   }
 }
-
-export const getBfspDir = () => {
-  const importer = import.meta.url;
-  const idx = importer.lastIndexOf("@bfchain/pkgm-bfsp");
-  let p = "";
-  if (idx >= 0) {
-    // 全局安装
-    const baseNodeModulesDir = fileURLToPath(importer.substring(0, idx));
-    p = path.join(baseNodeModulesDir, "@bfchain/pkgm-bfsp"); // yarn global
-    if (!existsSync(p)) {
-      // npm i -g
-      p = baseNodeModulesDir;
-    }
-  } else {
-    // 本地调试
-    const lidx = importer.lastIndexOf("/dist/");
-    const bfspDir = fileURLToPath(importer.substring(0, lidx));
-    p = bfspDir;
-  }
-  return p;
-};
-
-export const getBfswDir = () => {
-  const importer = import.meta.url;
-  const idx = importer.lastIndexOf("@bfchain/pkgm-bfsw");
-  let p = "";
-  if (idx >= 0) {
-    // 全局安装
-    const baseNodeModulesDir = fileURLToPath(importer.substring(0, idx));
-    p = path.join(baseNodeModulesDir, "@bfchain/pkgm-bfsw"); // yarn global
-    if (!existsSync(p)) {
-      // npm i -g
-      p = baseNodeModulesDir;
-    }
-  } else {
-    // 本地调试
-    const lidx = importer.lastIndexOf("/dist/");
-    const bfspDir = fileURLToPath(importer.substring(0, lidx));
-    p = bfspDir;
-  }
-  p = p.replace("bfsp", "bfsw");
-
-  return p;
-};
-export const getBfspWorkerDir = () => {
-  return path.join(getBfspDir(), "dist/main");
-};
-let bfspPkgJson: any;
-export const getBfspPackageJson = () => {
-  if (bfspPkgJson === undefined) {
-    const p = path.join(getBfspDir(), "package.json");
-    bfspPkgJson = new Function(`return ${readFileSync(p, "utf-8")}`)();
-  }
-  return bfspPkgJson;
-};
-export const getBfspVersion = () => {
-  const version = getBfspPackageJson().version;
-  return version as string;
-};
-
-export const getBfswPackageJson = () => {
-  const p = path.join(getBfswDir(), "package.json");
-  return new Function(`return ${readFileSync(p, "utf-8")}`)();
-};
-export const getBfswVersion = () => {
-  return getBfswPackageJson().version;
-};
 
 type OrderMap<T> = Map<T, { has: boolean }>;
 export class Tasks<T extends string> {

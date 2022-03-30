@@ -1,7 +1,7 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { Aborter } from "@bfchain/pkgm-base/util/aborter";
 import { safePromiseOffThen, safePromiseThen } from "@bfchain/pkgm-base/util/extends_promise_safe";
-import { Closeable, createTscLogger, DevLogger, doDevBfsp, getTui, runTsc, slash } from "@bfchain/pkgm-bfsp";
+import { Closeable, createTscLogger, DevLogger, getTui, slash, doDevBfsp, runTsc } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 

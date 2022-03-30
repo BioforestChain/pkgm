@@ -1,7 +1,7 @@
 import path from "node:path";
 import { defineCommand } from "../bin";
-import { getTui } from "../src";
-import { DevLogger } from "../src/logger";
+import { getTui } from "../sdk/tui";
+import { DevLogger } from "../sdk/logger/logger";
 import { doBuild, writeBuildConfigs } from "./build.core";
 import { helpOptions } from "./help.core";
 import { linkBFChainPkgmModules } from "./yarn/runner";

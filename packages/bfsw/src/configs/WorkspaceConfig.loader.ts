@@ -8,17 +8,13 @@ import {
   folderIO,
   printBuildResultWarnAndError,
   toPosixPath,
-} from "@bfchain/pkgm-bfsp";
+} from "@bfchain/pkgm-bfsp/sdk";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import path, { resolve } from "node:path";
 import bfswTsconfigContent from "../../assets/tsconfig.bfsw.json?raw";
 import { consts } from "../consts";
 const bfswTsconfigFilepath = createTsconfigForEsbuild(bfswTsconfigContent);
-
-export const defineWorkspace = (cb: () => Bfsw.Workspace) => {
-  return cb();
-};
 
 export const LoadConfig = async (
   workspaceRoot: string,
@@ -96,17 +92,28 @@ export const LoadConfig = async (
 };
 
 const getBuildPlugins = (workspaceRoot: string) => {
-  const externalMarker: Plugin = {
-    name: "#bfsw resolver",
-    setup(build) {
-      // #bfsp和#bfsw bundle起来读取
-      build.onResolve({ filter: /^[^.]/ }, (args) => {
-        return {
-          external: true,
-        };
-      });
-    },
-  };
+  // const externalMarker: Plugin = {
+  //   name: "#bfsw resolver",
+  //   setup(build) {
+  //     // #bfsp和#bfsw bundle起来读取
+  //     build.onResolve({ filter: /^[^.]/ }, (args) => {
+  //       return {
+  //         external: true,
+  //       };
+  //     });
+  //   },
+  // };
+  // const resolvePlugin: Plugin ={
+  //       name: "#bfsw resolver",
+  //   setup(build) {
+  //     // #bfsp和#bfsw bundle起来读取
+  //     build.onResolve({ filter: /^[^.]/ }, (args) => {
+  //       return {
+  //         external: true,
+  //       };
+  //     });
+  //   },
+  // }
   const suffixAndLoaderList: {
     suffix: string;
     loader: Loader;
@@ -123,15 +130,20 @@ const getBuildPlugins = (workspaceRoot: string) => {
           filter: /^[.]|#$/,
         },
         async (args) => {
+          const pluginData = {
+            type: "",
+            loader: "ts",
+            // resolveDir 要传递下去，为esbuild指定 node.resolve 所需的根目录，以避免找不到 node_modules 中的模块问题
+            resolveDir: args.resolveDir,
+          };
           if (args.path.includes("#bfsp")) {
             if (path.basename(args.path) === "#bfsp#") {
               /// 私有的#bfsp#路径，指代真实的#bfsp#
+              pluginData.type = "#bfsp#";
               return {
                 path: args.path,
                 namespace: "bfsp-wrapper",
-                pluginData: {
-                  type: "#bfsp#",
-                },
+                pluginData,
               };
             } else {
               /// 寻找匹配的文件
@@ -148,15 +160,13 @@ const getBuildPlugins = (workspaceRoot: string) => {
                 }
               }
               if (loader !== undefined) {
+                pluginData.type = "#bfsp";
                 const resolvedPath = path.resolve(args.resolveDir, filepath);
                 return {
                   path: resolvedPath,
                   namespace: "bfsp-wrapper",
                   watchFiles: [resolvedPath],
-                  pluginData: {
-                    type: "#bfsp",
-                    loader,
-                  },
+                  pluginData,
                 };
               }
             }
@@ -169,11 +179,12 @@ const getBuildPlugins = (workspaceRoot: string) => {
           namespace: "bfsp-wrapper",
         },
         async (args) => {
-          const { type } = args.pluginData;
+          const { type, resolveDir, loader } = args.pluginData;
           if (type === "#bfsp#") {
             return {
               contents: await fileIO.get(path.resolve(workspaceRoot, path.dirname(args.path), "#bfsp.ts")),
-              loader: "ts",
+              loader,
+              resolveDir,
             };
           } else if (type === "#bfsp") {
             const relPath = toPosixPath(path.relative(workspaceRoot, args.path));
@@ -187,12 +198,14 @@ const getBuildPlugins = (workspaceRoot: string) => {
               const newDefault = Object.assign(defaultValue ?? {}, { relativePath:${JSON.stringify(bfspDirname)} });
               export default newDefault;
               `,
-              loader: "ts",
+              loader,
+              resolveDir,
             };
           }
         }
       );
     },
   };
-  return [externalMarker, bfspWrapper];
+  // return [externalMarker, bfspWrapper];
+  return [bfspWrapper];
 };

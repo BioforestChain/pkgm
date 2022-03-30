@@ -1,86 +1,23 @@
-import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { existsSync } from "node:fs";
 import path, { resolve } from "node:path";
-import { writeJsonConfig } from "../../bin/util";
-import { consoleLogger } from "../consoleLogger";
-import { TscIsolatedOutRootPath, TscOutRootPath, TscTypingsOutRootPath } from "../consts";
-import { DevLogger } from "../logger";
-import {
-  $PathInfo,
-  fileIO,
-  folderIO,
-  getExtname,
-  getTwoExtnames,
-  getWatcher,
-  List,
-  ListArray,
-  ListSet,
-  Loopable,
-  notGitIgnored,
-  PathInfoParser,
-  SharedAsyncIterable,
-  SharedFollower,
-  toPosixPath,
-  walkFiles,
-} from "../toolkit";
-import { getTui } from "../tui";
-import type { $BfspUserConfig } from "./bfspUserConfig";
-const debug = DevLogger("bfsp:config/tsconfig");
 import { isDeepStrictEqual } from "node:util";
-import { jsonClone } from "../toolkit.util";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+
+import { TscIsolatedOutRootPath, TscOutRootPath, TscTypingsOutRootPath } from "../consts";
+import { DevLogger } from "../../sdk/logger/logger";
+import type { $BfspUserConfig } from "./bfspUserConfig";
+import { ListArray, ListSet, List } from "../../sdk/toolkit/toolkit";
+import { PathInfoParser, toPosixPath, getExtname } from "../../sdk/toolkit/toolkit.path";
+import { jsonClone } from "../../sdk/toolkit/toolkit.util";
+import { getWatcher } from "../../sdk/toolkit/toolkit.watcher";
+import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream";
+import { fileIO, folderIO, walkFiles, writeJsonConfig } from "../../sdk/toolkit/toolkit.fs";
+import { isTsFile, notGitIgnored, isBinFile, isTestFile, isTypeFile } from "../../sdk/toolkit/toolkit.lang";
+const debug = DevLogger("bfsp:config/tsconfig");
 
 // export const getFilename = (somepath: string) => {
 //   return somepath.match(/([^\\\/]+)\.[^\\\/]+$/)?.[1] ?? "";
 // };
-
-export const isTsFile = (filepathInfo: $PathInfo) => {
-  const { relative } = filepathInfo;
-  if (relative.endsWith("#bfsp.ts")) {
-    return false;
-  }
-  const { extname } = filepathInfo;
-  if (
-    /// 在assets文件夹下的json文件
-    (extname === ".json" && toPosixPath(filepathInfo.relative).startsWith("./assets/")) ||
-    /// ts文件（忽略类型定义文件）
-    (isTsExt(extname) && ".d" !== filepathInfo.secondExtname)
-  ) {
-    return notGitIgnored(filepathInfo.full); // promise<boolean>
-  }
-  return false;
-};
-
-const isTsExt = (extname: string) => {
-  return (
-    extname === ".ts" ||
-    extname === ".tsx" ||
-    extname === ".cts" ||
-    extname === ".mts" ||
-    extname === ".ctsx" ||
-    extname === ".mtsx"
-  );
-};
-
-const isTypeFile = (projectDirpath: string, filepath: string) =>
-  filepath.endsWith(".type.ts") || filepath.startsWith("./typings/");
-
-export const isTestFile = (projectDirpath: string, filepath: string) => {
-  const exts = getTwoExtnames(filepath);
-  if (exts !== undefined) {
-    return ".test" === exts.ext2 || (filepath.startsWith("./tests/") && ".bm" === exts.ext2);
-  }
-  return false;
-};
-
-const isBinFile = (projectDirpath: string, filepath: string) => {
-  if (filepath.startsWith("./bin/")) {
-    const exts = getTwoExtnames(filepath);
-    if (exts !== undefined) {
-      return isTsExt(exts.ext2) && (".cmd" === exts.ext2 || ".tui" === exts.ext2);
-    }
-  }
-  return false;
-};
 
 export class ProfileMap {
   static getProfileInfo = (somepath: string) => {
@@ -173,7 +110,6 @@ export class ProfileMap {
   private _profileErrorLogs: string[] = [];
   toTsPaths(_profileNameList: string[] = ["default"]) {
     const paths: { [key: Bfsp.Profile]: string[] } = {};
-    debug("profiles", _profileNameList);
     const profileList = _profileNameList.map((profile) => {
       if (profile.startsWith("#") === false) {
         profile = "#" + profile;
@@ -284,7 +220,7 @@ export class ProfileMap {
 }
 export type $ProfileInfo = { privatePath: string; sourcePath: string; profiles: Bfsp.Profile[] };
 
-type TsFilesLists = {
+export type TsFilesLists = {
   allFiles: List<string>;
   isolatedFiles: List<string>;
   typeFiles: List<string>;
@@ -292,12 +228,7 @@ type TsFilesLists = {
   binFiles: List<string>;
   profileMap: ProfileMap;
 };
-export const groupTsFilesByAdd = (
-  projectDirpath: string,
-  bfspUserConfig: $BfspUserConfig,
-  tsFiles: Iterable<string>,
-  lists: TsFilesLists
-) => {
+export const groupTsFilesByAdd = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
   for (const filepath of tsFiles) {
     lists.allFiles.add(filepath);
 
@@ -325,6 +256,7 @@ export const groupTsFilesByAdd = (
     }
   }
 };
+
 export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<string>, lists: TsFilesLists) => {
   for (const filepath of tsFiles) {
     lists.allFiles.remove(filepath);
@@ -348,9 +280,11 @@ export const groupTsFilesByRemove = (projectDirpath: string, tsFiles: Iterable<s
     lists.profileMap.removeProfileInfo(filepath);
   }
 };
-const getTsconfigFiles = (list: TsFilesLists, field: keyof Omit<TsFilesLists, "profileMap">) => {
+
+export const getTsconfigFiles = (list: TsFilesLists, field: keyof Omit<TsFilesLists, "profileMap">) => {
   return list[field].toArray().filter((filepath) => list.profileMap.unuseFiles.has(filepath) === false);
 };
+
 const _generateUser_CompilerOptionsBase = (bfspUserConfig: $BfspUserConfig) => {
   return {
     json: {
@@ -448,7 +382,7 @@ export const generateTsConfig = async (
     ),
   };
 
-  groupTsFilesByAdd(projectDirpath, bfspUserConfig, allTsFileList, tsFilesLists);
+  groupTsFilesByAdd(projectDirpath, allTsFileList, tsFilesLists);
 
   /// 生成配置
   const userCompilerOptionsBase = _generateUser_CompilerOptionsBase(bfspUserConfig);
@@ -589,7 +523,7 @@ export const watchTsConfig = (
 
       /// 将变更的文件写入tsconfig中
       if (addFileList.length > 0) {
-        groupTsFilesByAdd(projectDirpath, bfspUserConfig, addFileList, tsFilesLists);
+        groupTsFilesByAdd(projectDirpath, addFileList, tsFilesLists);
       }
       if (removeFileList.length > 0) {
         groupTsFilesByRemove(projectDirpath, removeFileList, tsFilesLists);

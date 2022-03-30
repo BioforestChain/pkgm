@@ -1,5 +1,5 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { defineCommand, getBfswPackageJson } from "@bfchain/pkgm-bfsp";
+import { defineCommand, getBfswPackageJson } from "@bfchain/pkgm-bfsp/sdk";
 
 export const versionCommand = defineCommand(
   "version",

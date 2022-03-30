@@ -1,9 +1,11 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import path from "node:path";
 import { defineCommand } from "../bin";
-import { getTui, watchBfspProjectConfig, writeBfspProjectConfig } from "../src";
-import { ALLOW_FORMATS, getBfspUserConfig } from "../src/configs/bfspUserConfig";
-import { createTscLogger, DevLogger } from "../src/logger";
+import { watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
+import { getBfspUserConfig } from "../src/configs/bfspUserConfig";
+import { getTui } from "../sdk/tui";
+import { createTscLogger, DevLogger } from "../sdk/logger/logger";
+import { ALLOW_FORMATS } from "../sdk/toolkit/toolkit.fs";
 import { doDevBfsp } from "./dev.core";
 import { helpOptions } from "./help.core";
 import { runTsc } from "./tsc/runner";

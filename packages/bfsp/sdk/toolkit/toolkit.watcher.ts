@@ -1,7 +1,7 @@
 import { FbWatchmanClient, SubscribeOptions, WatchProjectResponse } from "@bfchain/pkgm-base/lib/fb-watchman";
 import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
-import { consoleLogger } from "./consoleLogger";
 import { createHash } from "node:crypto";
+import { consoleLogger } from "../logger/consoleLogger";
 
 let _wm: FbWatchmanClient | undefined;
 const getWm = () => {

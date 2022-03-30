@@ -1,7 +1,7 @@
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { DevLogger } from "../logger";
-import { Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
+import { DevLogger } from "../../sdk/logger/logger";
+import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import type { $TsConfig } from "./tsConfig";
 const debug = DevLogger("bfsp:config/vite");

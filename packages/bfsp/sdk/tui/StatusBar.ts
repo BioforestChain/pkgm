@@ -1,5 +1,5 @@
 import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
-import { jsonClone } from "../toolkit.util";
+import { jsonClone } from "../toolkit/toolkit.util";
 import { afm } from "./animtion";
 import { FRAMES, TuiStyle } from "./const";
 

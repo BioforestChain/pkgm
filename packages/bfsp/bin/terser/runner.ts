@@ -1,10 +1,9 @@
-import { existsSync } from "node:fs";
 import os from "node:os";
 import path, { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import { walkFiles } from "../../src/toolkit";
-import { getBfspWorkerDir, rearrange } from "../util";
+import { walkFiles, getBfspWorkerDir } from "../../sdk/toolkit/toolkit.fs";
+import { rearrange } from "../../sdk/toolkit/toolkit.util";
 
 export const runTerser = async (opts: { sourceDir: string; logError: (log: string) => void }) => {
   const __filename = fileURLToPath(import.meta.url);

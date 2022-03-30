@@ -1,16 +1,16 @@
 import {
-  DevLogger,
   defineCommand,
-  getTui,
-  createTscLogger,
   runTsc,
   writeBuildConfigs,
   doBuild,
-} from "@bfchain/pkgm-bfsp";
+  DevLogger,
+  getTui,
+  createTscLogger,
+} from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 import { doInit } from "./init.core";
-import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 
 export const buildCommand = defineCommand(
   "build",

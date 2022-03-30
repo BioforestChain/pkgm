@@ -1,4 +1,5 @@
-import { getBfspUserConfig, writeBfspProjectConfig } from "../src";
+import { writeBfspProjectConfig } from "../src/bfspConfig";
+import { getBfspUserConfig } from "../src/configs/bfspUserConfig";
 import { runYarn } from "./yarn/runner";
 
 export const doInit = async (args: { root: string }, logger: PKGM.Logger) => {
