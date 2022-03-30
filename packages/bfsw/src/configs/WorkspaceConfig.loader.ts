@@ -140,7 +140,7 @@ const getBuildPlugins = (workspaceRoot: string) => {
               if ((await fileIO.has(filepath)) === false) {
                 for (const sl of suffixAndLoaderList) {
                   const maybeFilepath = filepath + sl.suffix;
-                  if (await fileIO.has(path.resolve(workspaceRoot, maybeFilepath))) {
+                  if (await fileIO.has(path.resolve(args.resolveDir, maybeFilepath))) {
                     filepath = maybeFilepath;
                     loader = sl.loader;
                     break;
@@ -148,10 +148,11 @@ const getBuildPlugins = (workspaceRoot: string) => {
                 }
               }
               if (loader !== undefined) {
+                const resolvedPath = path.resolve(args.resolveDir, filepath);
                 return {
-                  path: filepath,
+                  path: resolvedPath,
                   namespace: "bfsp-wrapper",
-                  watchFiles: [path.resolve(workspaceRoot, filepath)],
+                  watchFiles: [resolvedPath],
                   pluginData: {
                     type: "#bfsp",
                     loader,
@@ -175,8 +176,9 @@ const getBuildPlugins = (workspaceRoot: string) => {
               loader: "ts",
             };
           } else if (type === "#bfsp") {
+            const relPath = toPosixPath(path.relative(workspaceRoot, args.path));
             /// 这里的路径时代码里头的风格，本来就是 posix 风格，不需要改动。这里 toPosixPath 只是为了补上相对路径 "./" ，如果需要的话
-            const bfspDirname = toPosixPath(path.posix.dirname(args.path));
+            const bfspDirname = toPosixPath(path.posix.dirname(relPath));
             const bfspTrue = JSON.stringify(toPosixPath(path.posix.join(bfspDirname, "#bfsp#")));
             return {
               contents: `
