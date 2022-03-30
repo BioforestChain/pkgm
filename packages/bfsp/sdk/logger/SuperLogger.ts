@@ -300,6 +300,7 @@ export const createSuperLogger = (options: {
   //#endregion
 
   return {
+    prefix,
     isSuperLogger: true,
     log,
     info,
