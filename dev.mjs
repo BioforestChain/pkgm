@@ -28,20 +28,16 @@ async function* GenerateDevTask(packages) {
 }
 
 async function run() {
-  const packages = ["base", "bfsp", "bfsw"]
-    .map((x) => {
-      if (x === "base") {
-        return ["dev", "dev:script"].map((s) => {
-          return { dir: `./packages/${x}`, name: s, wait: true };
-        });
-      } else {
-        return ["dev"].map((s) => {
-          return { dir: `./packages/${x}`, name: s, wait: false };
-        });
-      }
-    })
-    .flat()
-    .sort((a, b) => a.dir.localeCompare(b.dir));
+  const packages = [
+    { dir: "base", name: "dev", wait: true },
+    { dir: "base", name: "dev:script", wait: true },
+
+    { dir: "bfsp", name: "dev:bin", wait: true },
+    { dir: "bfsp", name: "dev" },
+
+    { dir: "bfsw", name: "dev" },
+  ].sort((a, b) => a.dir.localeCompare(b.dir));
+  packages.forEach((x) => (x.dir = `./packages/${x.dir}`));
 
   for await (const x of GenerateDevTask(packages)) {
     console.log(`[${x}] task done`);

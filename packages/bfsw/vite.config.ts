@@ -17,12 +17,6 @@ defineInputConfig({
   },
   default: true,
 });
-defineInputConfig({
-  outDir: "script",
-  input: {
-    postinstall: "postinstall.ts",
-  },
-});
 export default defineConfig((info) => {
   const inputConfig = findInputConfig(info.mode);
 
