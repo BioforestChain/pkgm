@@ -1,7 +1,7 @@
 import { existsSync, statSync } from "node:fs";
 import path from "node:path";
 import { defineCommand } from "../bin";
-import { DevLogger } from "../src/logger";
+import { DevLogger } from "../sdk/logger/logger";
 import { doTest } from "./test";
 import inspector from "node:inspector";
 

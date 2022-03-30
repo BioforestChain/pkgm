@@ -1,7 +1,14 @@
-import { defaultIgnores, doCreateBfsp, doInitGit, folderIO, ts, writeJsonConfig } from "@bfchain/pkgm-bfsp";
+import {
+  defaultIgnores,
+  doCreateBfsp,
+  doInitGit,
+  ts,
+  folderIO,
+  writeJsonConfig,
+  joinMonoName,
+} from "@bfchain/pkgm-bfsp/sdk";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
-import { joinMonoName } from "../src/util";
 
 export const doCreateBfsw = async (options: { root: string; name: string; license?: string }, logger: PKGM.Logger) => {
   const { root, name, license = "MIT" } = options;

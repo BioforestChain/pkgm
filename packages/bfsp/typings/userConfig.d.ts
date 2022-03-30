@@ -35,8 +35,16 @@ declare namespace Bfsp {
   type JsFormat = "cjs" | "esm" | "iife";
   type JsExtension = ".cjs" | ".mjs" | ".js";
   type Format = JsFormat | { format: JsFormat; ext: JsExtension };
+
+  enum BUILD_MODE {
+    DEVELOPMENT = "development",
+    PRODUCTION = "production",
+  }
+  // interface ConfigEnvInfo {
+  //   mode: BUILD_MODE.DEVELOPMENT | BUILD_MODE.PRODUCTION;
+  // }
   interface ConfigEnvInfo {
-    mode: import("../src/configs/bfspUserConfig").BUILD_MODE;
+    mode: import("../src/index").BUILD_MODE;
   }
 
   type Profile = `#${string}`;

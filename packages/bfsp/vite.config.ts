@@ -20,6 +20,7 @@ defineInputConfig({
     tsc_worker: "bin/tsc/worker.ts",
     terser_worker: "bin/terser/worker.ts",
     test: "test.ts",
+    sdk: "sdk/index.ts",
     // "w": "src/toolkit.watcher.ts",
   },
   default: true,

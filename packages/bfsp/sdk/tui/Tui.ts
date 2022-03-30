@@ -1,6 +1,6 @@
 import { blessed, Widgets } from "@bfchain/pkgm-base/lib/blessed";
 import { chalk, supportsColor } from "@bfchain/pkgm-base/lib/chalk";
-import { jsonClone } from "../toolkit.util";
+import { jsonClone } from "../toolkit/toolkit.util";
 import { afm } from "./animtion";
 import { TuiStyle } from "./const";
 import {

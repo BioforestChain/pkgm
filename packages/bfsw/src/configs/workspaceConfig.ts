@@ -4,11 +4,6 @@ import { LoadConfig } from "./WorkspaceConfig.loader";
 export * from "./WorkspaceConfig.base";
 export * from "./WorkspaceConfig.loader";
 
-export namespace WorkspaceConfig {
-  // export type Options = {
-  //   watch?: boolean;
-  // };
-}
 export class WorkspaceConfig extends WorkspaceConfigBase {
   static async From(workspaceRoot: string, logger: PKGM.Logger) {
     const initConfig = await LoadConfig(workspaceRoot, { logger });

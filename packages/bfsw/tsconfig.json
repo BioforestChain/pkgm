@@ -46,7 +46,6 @@
     "bin/version.bin.ts",
     "bin/help.bin.ts",
     "src/index.ts",
-    "src/util.ts",
     "src/consts.ts",
     "src/configs/WorkspaceConfig.base.ts",
     "src/configs/WorkspaceConfig.loader.ts",

@@ -1,8 +1,6 @@
 import { chalk, ChalkInstance } from "@bfchain/pkgm-base/lib/chalk";
 import { createInterface } from "node:readline";
-import type { Readable } from "node:stream";
-import util from "node:util";
-import { createSuperLogger } from "../SuperLogger";
+import { createSuperLogger } from "../../sdk/logger/SuperLogger";
 export class CommandContext {
   constructor(
     private options: {

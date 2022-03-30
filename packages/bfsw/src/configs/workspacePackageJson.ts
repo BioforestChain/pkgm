@@ -1,4 +1,4 @@
-import { writeJsonConfig, getBfswVersion, toPosixPath } from "@bfchain/pkgm-bfsp";
+import { writeJsonConfig, toPosixPath } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
 
 export class WorkspacePackageJson {

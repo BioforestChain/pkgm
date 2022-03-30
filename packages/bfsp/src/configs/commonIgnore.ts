@@ -1,10 +1,3 @@
-export type IgnoreUserConfig =
-  | {
-      include?: string[];
-      exclude?: string[];
-    }
-  | string[];
-
 export type IgnoreRules = Set<string>;
 
 export const defaultIgnores = new Set([
@@ -27,7 +20,7 @@ export const defaultIgnores = new Set([
   "yarn.lock",
 ]);
 
-export const effectConfigIgnores = (ignoreRules: IgnoreRules, ignoreConfig?: IgnoreUserConfig) => {
+export const effectConfigIgnores = (ignoreRules: IgnoreRules, ignoreConfig?: Bfsp.IgnoreUserConfig) => {
   if (ignoreConfig !== undefined) {
     if (Array.isArray(ignoreConfig)) {
       ignoreConfig = {

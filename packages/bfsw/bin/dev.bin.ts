@@ -1,9 +1,9 @@
-import { ALLOW_FORMATS, defineCommand, DevLogger, getTui, linkBFChainPkgmModules } from "@bfchain/pkgm-bfsp";
+import { defineCommand, linkBFChainPkgmModules, ALLOW_FORMATS, DevLogger, getTui } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
-import { WorkspaceConfig } from "../src";
+
+import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 import { doDevBfsw, runBfswTsc } from "./dev.core";
 import { doInit } from "./init.core";
-// import { workspaceInit } from "./workspace";
 
 export const devCommand = defineCommand(
   "dev",

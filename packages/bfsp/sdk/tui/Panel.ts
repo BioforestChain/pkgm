@@ -1,8 +1,8 @@
 import { blessed } from "@bfchain/pkgm-base/lib/blessed";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { EasyMap } from "@bfchain/pkgm-base/util/extends_map";
-import { createSuperLogger } from "../SuperLogger";
-import { jsonClone } from "../toolkit.util";
+import { createSuperLogger } from "../logger/SuperLogger";
+import { jsonClone } from "../toolkit/toolkit.util";
 import { afm } from "./animtion";
 import { FRAMES, TuiStyle } from "./const";
 

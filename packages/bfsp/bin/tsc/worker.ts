@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createContext, runInContext, Script } from "node:vm";
 import { isMainThread, parentPort } from "node:worker_threads";
-import { require } from "../../src/toolkit";
+import { require } from "../../sdk/toolkit/toolkit.require";
 
 export function doTsc() {
   const tscPath = getTscPath();

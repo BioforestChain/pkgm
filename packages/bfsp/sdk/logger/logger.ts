@@ -11,8 +11,7 @@ import {
 import util from "node:util";
 import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import { consoleLogger } from "./consoleLogger";
-import { $LoggerKit, getTui, hasTui } from "./tui/index";
-import { BundlePanel } from "./tui/internalPanels";
+import { $LoggerKit, getTui, hasTui } from "../tui/index";
 import { EasyWeakMap } from "@bfchain/pkgm-base/util/extends_map";
 
 export const LogLevels: Record<LogLevel, number> = {

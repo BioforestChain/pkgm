@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cp from "node:child_process";
-import { require } from "../src/toolkit.require";
+import { require } from "../sdk/toolkit/toolkit.require";
 export const doTest = async (options: {
   root?: string;
   tests?: string[];

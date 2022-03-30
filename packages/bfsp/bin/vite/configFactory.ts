@@ -1,13 +1,12 @@
+import fs from "node:fs";
+import path from "node:path";
 import { $Typescript, getTypescript } from "@bfchain/pkgm-base/lib/typescript";
 import type { InlineConfig } from "@bfchain/pkgm-base/lib/vite";
 import { getExternalOption } from "@bfchain/pkgm-base/vite-config-helper";
-import fs from "node:fs";
-import path from "node:path";
-import { ALLOW_FORMATS } from "../../src/configs/bfspUserConfig";
 import { $TsConfig } from "../../src/configs/tsConfig";
 import type { $ViteConfig } from "../../src/configs/viteConfig";
-import { DevLogger } from "../../src/logger";
-import { parseExtensionAndFormat } from "../../src/toolkit";
+import { ALLOW_FORMATS, parseExtensionAndFormat } from "../../sdk/toolkit/toolkit.fs";
+import { DevLogger } from "../../sdk/logger/logger";
 const debug = DevLogger("bfsp:config/vite");
 
 export const ViteConfigFactory = (options: {

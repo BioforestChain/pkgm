@@ -4,14 +4,14 @@ import {
   $getBfspUserConfig,
   $PackageJson,
   doWatchDeps,
-  SharedAsyncIterable,
-  SharedFollower,
   watchGitIgnore,
   watchNpmIgnore,
   watchPackageJson,
   watchTsConfig,
   watchViteConfig,
-} from "@bfchain/pkgm-bfsp";
+  SharedAsyncIterable,
+  SharedFollower,
+} from "@bfchain/pkgm-bfsp/sdk";
 import EventEmitter from "node:events";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";

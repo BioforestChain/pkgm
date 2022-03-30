@@ -1,6 +1,8 @@
 import { resolve } from "node:path";
-import { DevLogger } from "../logger";
-import { fileIO, isEqualSet, Loopable, SharedAsyncIterable, SharedFollower } from "../toolkit";
+import { DevLogger } from "../../sdk/logger/logger";
+import { SharedAsyncIterable, SharedFollower, Loopable } from "../../sdk/toolkit/toolkit.stream";
+import { fileIO } from "../../sdk/toolkit/toolkit.fs";
+import { isEqualSet } from "../../sdk/toolkit/toolkit.lang";
 import { $BfspUserConfig } from "./bfspUserConfig";
 import { defaultIgnores, effectConfigIgnores } from "./commonIgnore";
 

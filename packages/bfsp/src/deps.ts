@@ -1,9 +1,9 @@
 import { isDeepStrictEqual } from "node:util";
 import { runYarn } from "../bin/yarn/runner";
 import { $PackageJson } from "./configs/packageJson";
-import { DevLogger } from "./logger";
-import { Loopable, SharedAsyncIterable, SharedFollower } from "./toolkit";
-import { getTui } from "./tui";
+import { DevLogger } from "../sdk/logger/logger";
+import { Loopable, SharedAsyncIterable, SharedFollower } from "../sdk/toolkit/toolkit.stream";
+import { getTui } from "../sdk/tui";
 
 const debug = DevLogger("bfsp:deps");
 type DepsEventCallback = () => unknown;

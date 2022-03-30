@@ -1,7 +1,7 @@
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import path from "node:path";
 import { Worker } from "node:worker_threads";
-import { getBfspWorkerDir } from "../util";
+import { getBfspWorkerDir } from "../../sdk/toolkit/toolkit.fs";
 
 export interface RunTscOption {
   projectMode?: boolean;
