@@ -71,7 +71,7 @@ export default defineConfig((info) => {
                 import: `./${buildOutDir}/${key}.mjs`,
               };
             }
-            fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+            fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2).replace(/\n/g, "\r\n"));
           }
         },
       },
