@@ -634,7 +634,7 @@ export const watchTsConfig = (
     follower.push(tsConfig);
   });
   (async () => {
-    const watcher = await getWatcher(projectDirpath);
+    const watcher = await getWatcher(projectDirpath,logger);
     const doUnWatch = await watcher.doWatch(
       {
         expression: [

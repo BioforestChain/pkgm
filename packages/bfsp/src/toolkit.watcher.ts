@@ -57,7 +57,7 @@ const watchCache = EasyMap.from({
 
 /// 目录监听器
 const subscriptionCache = EasyMap.from({
-  transformKey: (args: { root: string; logger: PKGM.ConsoleLogger }) => {
+  transformKey: (args: { root: string; logger: PKGM.TuiLogger }) => {
     return args.root;
   },
   creater: async (args, root) => {
@@ -84,15 +84,18 @@ const subscriptionCache = EasyMap.from({
 
       const onSubscription = (subscriptionResp: any) => {
         if (subscriptionResp.subscription !== subName) return;
-        subscriptionResp.files.forEach(function (file: any) {
-          cb(file.name, file.new ? "add" : file.exists ? "change" : "unlink");
-        });
+        const files = subscriptionResp.files;
+        files &&
+          files.forEach(function (file: any) {
+            cb(file.name, file.new ? "add" : file.exists ? "change" : "unlink");
+          });
       };
       wm.on("subscription", onSubscription);
       await wm.commandAsync(["subscribe", projectResp.watch, subName, sub]);
       return async () => {
         wm.off("subscription", onSubscription);
-        await wm.commandAsync(["unsubscribe", projectResp.watch, subName!]);
+        // !! uncomment the following line will cause fb-watchman to unwatch the workspace root !!
+        // await wm.commandAsync(["unsubscribe", projectResp.watch, subName!]);
         await unrefProjectResp();
       };
     };
@@ -101,5 +104,4 @@ const subscriptionCache = EasyMap.from({
   },
 });
 
-export const getWatcher = (root: string, logger: PKGM.ConsoleLogger = consoleLogger) =>
-  subscriptionCache.forceGet({ root, logger });
+export const getWatcher = (root: string, logger: PKGM.TuiLogger) => subscriptionCache.forceGet({ root, logger });
