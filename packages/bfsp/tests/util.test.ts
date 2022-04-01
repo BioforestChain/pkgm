@@ -1,7 +1,7 @@
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import { defineTest } from "../test";
-import { Tasks, Tree } from "../bin/util";
-import { Closeable } from "../src/toolkit";
+import { Tasks, Tree } from "../sdk/toolkit/toolkit";
+import { Closeable } from "../sdk/toolkit/toolkit.stream";
 
 const compareFn = (a: string, b: string) => {
   if (a === b) {

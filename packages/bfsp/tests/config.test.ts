@@ -3,7 +3,8 @@ import { defineTest } from "../test";
 import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getBfspProjectConfig, gitignoreListCache, watchBfspProjectConfig, writeBfspProjectConfig } from "../src";
+import { gitignoreListCache } from "../sdk/toolkit/toolkit.fs";
+import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
