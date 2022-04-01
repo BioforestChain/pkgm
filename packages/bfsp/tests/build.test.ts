@@ -1,5 +1,5 @@
 import { defineTest } from "../test";
-import { rearrange } from "../bin/util";
+import { rearrange } from "../sdk/toolkit/toolkit.util";
 
 defineTest("rearrange less 1", async (t) => {
   const items2 = [] as number[][];
