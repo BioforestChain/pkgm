@@ -212,6 +212,7 @@ const buildSingle = async (options: {
     tsConfig: tsConfig1,
     outRoot: buildOutDir,
     logger: viteLoggerKit.logger,
+    format: userConfig1.formatExts[0].format ?? "esm",
   });
   const distDir = jsBundleConfig.build!.outDir!;
 
