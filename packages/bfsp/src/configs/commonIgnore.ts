@@ -4,6 +4,7 @@ export const defaultIgnores = new Set([
   ".npm",
   ".vscode",
   ".bfsp",
+  ".bfsw",
   "node_modules",
   ".gitignore",
   "*.tsbuildinfo",
