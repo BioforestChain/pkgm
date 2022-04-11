@@ -179,6 +179,7 @@ export type $BfspUserConfig = {
 };
 class ExtendsService {
   tsRefs: BFChainUtil.PromiseMaybe<{ path: string }[]> = [];
+  dependencies: BFChainUtil.PromiseMaybe<{ [name: string]: string }> = {};
 }
 
 export const watchBfspUserConfig = (

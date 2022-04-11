@@ -19,13 +19,6 @@ import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
 const debug = DevLogger("bfsp:bin/build");
 
-export const writeBuildConfigs = async (args: { root?: string }, options: { logger: PKGM.Logger }) => {
-  const { root = process.cwd() } = args;
-  const bfspUserConfig = await getBfspUserConfig(root, options);
-  const projectConfig = { projectDirpath: root, bfspUserConfig };
-  const subConfigs = await writeBfspProjectConfig(projectConfig, options);
-  return { subConfigs, bfspUserConfig };
-};
 export const installBuildDeps = async (options: { root: string }) => {
   const { root } = options;
   const depsPanel = getTui().getPanel("Deps");
@@ -306,9 +299,12 @@ class BuildLogger {
   };
 }
 
-export const doBuild = async (args: { root?: string; cfgs: Awaited<ReturnType<typeof writeBuildConfigs>> }) => {
-  const { root = process.cwd(), cfgs } = args; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
-  const { subConfigs, bfspUserConfig } = cfgs;
+export const doBuild = async (args: {
+  root?: string;
+  subConfigs: Awaited<ReturnType<typeof writeBfspProjectConfig>>;
+  bfspUserConfig: $BfspUserConfig;
+}) => {
+  const { root = process.cwd(), subConfigs, bfspUserConfig } = args; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
   const buildLogger = new BuildLogger([bfspUserConfig.userConfig.name]);
 
   buildLogger.debug(`root: ${root}`);
