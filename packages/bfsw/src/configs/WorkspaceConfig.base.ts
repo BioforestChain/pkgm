@@ -74,6 +74,7 @@ export class WorkspaceConfigBase {
         const packageConfig = $getBfspUserConfig(proj);
         /// 填写“扩展服务”的数据
         packageConfig.extendsService.tsRefs = this.states.calculateRefsByPath(projectRoot);
+        packageConfig.extendsService.dependencies = this.states.calculateDepsByPath(projectRoot);
 
         projectConfigStreams.userConfigFollower.push(packageConfig);
       }

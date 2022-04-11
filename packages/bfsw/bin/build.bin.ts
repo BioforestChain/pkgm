@@ -1,11 +1,12 @@
 import {
   defineCommand,
   runTsc,
-  writeBuildConfigs,
   doBuild,
   DevLogger,
   getTui,
   createTscLogger,
+  getBfspUserConfig,
+  writeBfspProjectConfig,
 } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
@@ -75,8 +76,18 @@ export const buildCommand = defineCommand(
       const buildLogger = getTui().getPanel("Build").logger;
       workspaceConfig.projects.forEach(async (x) => {
         const projectRoot = path.join(root, x.relativePath);
-        const cfgs = await writeBuildConfigs({ root: projectRoot }, { logger: buildLogger });
-        await doBuild({ root: projectRoot, cfgs });
+
+        const bfspUserConfig = await getBfspUserConfig(projectRoot, { logger: buildLogger });
+        
+        // 填充 `extendsService` 內容
+        bfspUserConfig.extendsService.tsRefs = workspaceConfig.states.calculateRefsByPath(projectRoot);
+        bfspUserConfig.extendsService.dependencies = workspaceConfig.states.calculateDepsByPath(projectRoot);
+        const subConfigs = await writeBfspProjectConfig(
+          { projectDirpath: projectRoot, bfspUserConfig },
+          { logger: buildLogger }
+        );
+
+        await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
         logger.info(`${chalk.green(x.name)} built successfully`);
       });
     }

@@ -2,9 +2,11 @@ import path from "node:path";
 import { defineCommand } from "../bin";
 import { getTui } from "../sdk/tui";
 import { DevLogger } from "../sdk/logger/logger";
-import { doBuild, writeBuildConfigs } from "./build.core";
+import { doBuild } from "./build.core";
 import { helpOptions } from "./help.core";
 import { linkBFChainPkgmModules } from "./yarn/runner";
+import { getBfspUserConfig } from "../src/configs/bfspUserConfig";
+import { writeBfspProjectConfig } from "../src/bfspConfig";
 
 export const buildCommand = defineCommand(
   "build",
@@ -37,9 +39,10 @@ export const buildCommand = defineCommand(
     linkBFChainPkgmModules(root);
 
     /// 生成初始配置文件
-    const cfgs = await writeBuildConfigs({ root }, { logger });
+    const bfspUserConfig = await getBfspUserConfig(root, { logger });
+    const subConfigs = await writeBfspProjectConfig({ projectDirpath: root, bfspUserConfig }, { logger });
 
     /// 开始编译工作
-    doBuild({ root, cfgs });
+    doBuild({ root, bfspUserConfig, subConfigs });
   }
 );

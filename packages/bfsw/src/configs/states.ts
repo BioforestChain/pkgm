@@ -71,4 +71,14 @@ export class States {
     }
     return references;
   }
+  calculateDepsByPath(projectRoot: string) {
+    const deps: Bfsp.Dependencies = {};
+    for (const projectName of this.findByPath(projectRoot)?.userConfig.deps ?? []) {
+      const state = this.findByName(projectName);
+      if (state !== undefined) {
+        deps[projectName] = `^${state.userConfig.packageJson?.version || "1.0.0"}`;
+      }
+    }
+    return deps;
+  }
 }

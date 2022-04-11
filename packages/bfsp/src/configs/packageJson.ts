@@ -132,6 +132,7 @@ export const generatePackageJson = async (
   packageJson.dependencies = Object.assign(
     //
     {},
+    bfspUserConfig.extendsService.dependencies,
     packageJson.dependencies,
     userConfigPackageJson.dependencies
   );
