@@ -1,0 +1,7 @@
+- [ ] 实现 tabs 栏
+- [ ] 实现动态添加页面
+- [ ] 实现 esc-menubar
+  - [ ] 提供 runner
+- [ ] 实现 debug 面板
+  - [ ] 每一个 tab 页面都会有自己的 debug 面板（F12、菜单栏）
+  - [ ] 全局的 debug 面板（Shift+F12、菜单栏）
