@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { $Typescript, getTypescript } from "@bfchain/pkgm-base/lib/typescript";
+import { $Typescript, getTypescript, transpileModule } from "@bfchain/pkgm-base/lib/typescript";
 import type { InlineConfig } from "@bfchain/pkgm-base/lib/vite";
 import { getExternalOption } from "@bfchain/pkgm-base/vite-config-helper";
 import { $TsConfig } from "../../src/configs/tsConfig";
@@ -109,7 +109,8 @@ export const ViteConfigFactory = (options: {
 
               ts ??= await getTypescript();
               debug("need emitDecoratorMetadata", source);
-              const program = ts.transpileModule(tsSource, parsedTsConfig);
+              // fix ts.transpileModule is not a function
+              const program = (ts?.transpileModule ?? transpileModule)(tsSource, parsedTsConfig);
               // log(program.outputText);
               return program.outputText;
             } catch (err) {
