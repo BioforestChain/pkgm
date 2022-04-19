@@ -10,19 +10,21 @@ export class TscPanel extends Panel<"Tsc"> {
     return (this._tscLoggerKit ??= this.createLoggerKit({ name: "tsc", order: 9 }));
   }
   protected $tscLogAllContent = "";
-  writeTscLog(text: string) {
+  writeTscLog(text: string, updateStatus: boolean = true) {
     this.tscLoggerKit.writer(text);
 
-    const foundErrors = text.match(/Found (\d+) error/);
-    if (foundErrors !== null) {
-      const errorCount = parseInt(foundErrors[1]);
-      if (errorCount > 0) {
-        this.updateStatus("error");
+    if (updateStatus) {
+      const foundErrors = text.match(/Found (\d+) error/);
+      if (foundErrors !== null) {
+        const errorCount = parseInt(foundErrors[1]);
+        if (errorCount > 0) {
+          this.updateStatus("error");
+        } else {
+          this.updateStatus("success");
+        }
       } else {
-        this.updateStatus("success");
+        this.updateStatus("loading");
       }
-    } else {
-      this.updateStatus("loading");
     }
   }
   clearTscLog() {

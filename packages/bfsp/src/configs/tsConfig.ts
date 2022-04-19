@@ -316,6 +316,7 @@ const _generateUser_CompilerOptionsBase = (bfspUserConfig: $BfspUserConfig) => {
       forceConsistentCasingInFileNames: true,
       emitDecoratorMetadata: true,
       experimentalDecorators: true,
+
       // baseUrl: "./",
       // types: ["node"],
 
@@ -328,10 +329,13 @@ const _generateUser_CompilerOptionsBase = (bfspUserConfig: $BfspUserConfig) => {
       isolatedModules: true,
       noEmit: false,
       emitDeclarationOnly: false,
+      typeRoots: [] as string[],
+      types: [] as string[],
     },
     typingsJson: {
       isolatedModules: false,
       noEmit: false,
+      emitDeclarationOnly: true,
     },
   };
 };
@@ -568,7 +572,7 @@ export const watchTsConfig = (
     follower.push(tsConfig);
   });
   (async () => {
-    const watcher = await getWatcher(projectDirpath,logger);
+    const watcher = await getWatcher(projectDirpath, logger);
     const doUnWatch = await watcher.doWatch(
       {
         expression: [

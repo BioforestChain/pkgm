@@ -11,7 +11,7 @@ import {
 import util from "node:util";
 import type { RollupError } from "@bfchain/pkgm-base/lib/rollup";
 import { consoleLogger } from "./consoleLogger";
-import { $LoggerKit, getTui, hasTui } from "../tui/index";
+import { $LoggerKit, getTui, hasTui, PanelStatus } from "../tui/index";
 import { EasyWeakMap } from "@bfchain/pkgm-base/util/extends_map";
 
 export const LogLevels: Record<LogLevel, number> = {
@@ -162,8 +162,9 @@ let createViteLogger = (viteLoggerKit: $LoggerKit, level: LogLevel = "info", opt
 };
 
 export type $TscLogger = {
-  write: (s: string) => void;
+  write: (s: string, updateStatus?: boolean) => void;
   clear: () => void;
+  updateStatus: (s: PanelStatus) => void;
 };
 let _tscLogger: $TscLogger | undefined;
 let createTscLogger = () => {
@@ -172,6 +173,7 @@ let createTscLogger = () => {
     _tscLogger = {
       write: tscPanel.writeTscLog.bind(tscPanel),
       clear: tscPanel.clearTscLog.bind(tscPanel),
+      updateStatus: tscPanel.updateStatus.bind(tscPanel),
     };
   }
   return _tscLogger;
@@ -185,6 +187,7 @@ if (!useScreen) {
         console.log(s);
       },
       clear() {},
+      updateStatus(s: PanelStatus) {},
     };
   };
   createViteLogger = () => {

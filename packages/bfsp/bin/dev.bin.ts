@@ -48,7 +48,7 @@ export const devCommand = defineCommand(
     const logger = getTui().getPanel("Dev").logger;
     try {
       const options = { logger: logger };
-      const tscLogger = createTscLogger();
+      
 
       const bfspUserConfig = await getBfspUserConfig(root, options);
       const projectConfig = { projectDirpath: root, bfspUserConfig };
@@ -58,12 +58,12 @@ export const devCommand = defineCommand(
       const configStreams = watchBfspProjectConfig(projectConfig, subConfigs, options);
 
       /* const tscStoppable = */
-      runTsc({
-        watch: true,
-        tsconfigPath: path.join(root, "tsconfig.json"),
-        onMessage: (s) => tscLogger.write(s),
-        onClear: () => tscLogger.clear(),
-      });
+      // runTsc({
+      //   watch: true,
+      //   tsconfigPath: path.join(root, "tsconfig.json"),
+      //   onMessage: (s) => tscLogger.write(s),
+      //   onClear: () => tscLogger.clear(),
+      // });
 
       doDevBfsp({
         root,
