@@ -75,4 +75,13 @@ export const PathInfoParser = (
   };
   return info;
 };
+/**
+ * 截取分隔路径的符号，返回数组
+ * @param path 
+ * @returns path[]
+ */
+export const truncateWords = (path:string) => {
+  if(!path) return [];
+  return path.replace(/[\:"\?\!\$%#_/&\=\+\(\)\^\<\>\*\|\?\·\.\—\ˉ\°\-\–\\]/g, " ").split(/\s+/);
+}
 export type $PathInfo = ReturnType<typeof PathInfoParser>;
