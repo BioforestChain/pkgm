@@ -9,11 +9,8 @@ import { SharedAsyncIterable, SharedFollower, Loopable } from "../../sdk/toolkit
 import { DevLogger } from "../../sdk/logger/logger";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
-import { getTui } from "../../sdk";
 const debug = DevLogger("bfsp:config/package.json");
 // const format
-const bundlePanel = getTui().getPanel("Build")
-const success = bundlePanel.logger.success
 export const generatePackageJson = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
@@ -66,7 +63,7 @@ export const generatePackageJson = async (
       console.error(`no found output by input: '${input}'`);
       continue;
     }
-    
+
     if (posixKey !== "." && !comparedExportProject(packageJson.name,posixKey)) continue;
 
     packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
