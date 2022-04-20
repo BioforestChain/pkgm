@@ -64,7 +64,7 @@ export const generatePackageJson = async (
       continue;
     }
 
-    if (posixKey !== "." && !comparedExportProject(packageJson.name,posixKey)) continue;
+    if (posixKey !== "." && !filterProfiles(bfspUserConfig,posixKey)) continue;
 
     packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
@@ -94,7 +94,6 @@ export const generatePackageJson = async (
     }
     const trimedKey = key.substring(2); // removes './'
   
-    if (!comparedExportProject(packageJson.name,trimedKey)) continue;
 
     typesVersionsEntries[trimedKey] = [(exportEntry as any).types];
   }
@@ -236,13 +235,23 @@ export const watchPackageJson = (
  * @param trimedKey 
  * @returns booblean
  */
-const comparedExportProject = (name:string,trimedKey:string) => {
-  const nameArr = truncateWords(name);
+const filterProfiles = (bfspUserConfig:$BfspUserConfig,trimedKey:string) => {
+  // 没有传profiles直接全部导入
+  if (!bfspUserConfig || !bfspUserConfig.userConfig || !bfspUserConfig.userConfig.profiles) return true;
+  const profiles =  bfspUserConfig.userConfig.profiles;
   const keyArr = truncateWords(trimedKey);
-  // 如果不是数组，直接放行，不做导出限制
-  if (!Array.isArray(nameArr) || !Array.isArray(keyArr)) return true;
-  for(let index = 0; index < nameArr.length; index++) {
-    if (nameArr[index] !== keyArr[index]) return false;
+  // 如果profiles传了个字符串
+  if (!Array.isArray(profiles) && keyArr.indexOf(profiles) !== -1) {
+    return true
   }
-  return true;
+
+  const pro = new Set();
+  profiles.map((item) => {
+    pro.add(item)
+  })
+
+  for(let index = 0; index < keyArr.length; index++) {
+    if (pro.has(keyArr[index])) return true;
+  }
+  return false;
 }
