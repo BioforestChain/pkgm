@@ -30,7 +30,6 @@ export const buildCommand = defineCommand(
     if (profiles.length === 0) {
       profiles.push("default");
     }
-    console.log(args);
     let root = process.cwd();
     let maybeRoot = args[0];
     if (maybeRoot !== undefined) {
