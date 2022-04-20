@@ -3,15 +3,17 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { writeJsonConfig } from "../../sdk/toolkit/toolkit.fs";
-import { toPosixPath } from "../../sdk/toolkit/toolkit.path";
+import { toPosixPath, truncateWords } from "../../sdk/toolkit/toolkit.path";
 import { jsonClone } from "../../sdk/toolkit/toolkit.util";
 import { SharedAsyncIterable, SharedFollower, Loopable } from "../../sdk/toolkit/toolkit.stream";
 import { DevLogger } from "../../sdk/logger/logger";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
+import { getTui } from "../../sdk";
 const debug = DevLogger("bfsp:config/package.json");
 // const format
-
+const bundlePanel = getTui().getPanel("Build")
+const success = bundlePanel.logger.success
 export const generatePackageJson = async (
   projectDirpath: string,
   bfspUserConfig: $BfspUserConfig,
@@ -64,6 +66,9 @@ export const generatePackageJson = async (
       console.error(`no found output by input: '${input}'`);
       continue;
     }
+    
+    if (posixKey !== "." && !comparedExportProject(packageJson.name,posixKey)) continue;
+
     packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
       import: getDistFilepath("esm", output),
@@ -91,6 +96,9 @@ export const generatePackageJson = async (
       continue;
     }
     const trimedKey = key.substring(2); // removes './'
+  
+    if (!comparedExportProject(packageJson.name,trimedKey)) continue;
+
     typesVersionsEntries[trimedKey] = [(exportEntry as any).types];
   }
   if (Object.keys(typesVersionsEntries).length > 0) {
@@ -224,3 +232,20 @@ export const watchPackageJson = (
   looper.loop();
   return new SharedAsyncIterable<$PackageJson>(follower);
 };
+
+/**
+ * 对比导出的模块是否相同
+ * @param name 
+ * @param trimedKey 
+ * @returns booblean
+ */
+const comparedExportProject = (name:string,trimedKey:string) => {
+  const nameArr = truncateWords(name);
+  const keyArr = truncateWords(trimedKey);
+  // 如果不是数组，直接放行，不做导出限制
+  if (!Array.isArray(nameArr) || !Array.isArray(keyArr)) return true;
+  for(let index = 0; index < nameArr.length; index++) {
+    if (nameArr[index] !== keyArr[index]) return false;
+  }
+  return true;
+}
