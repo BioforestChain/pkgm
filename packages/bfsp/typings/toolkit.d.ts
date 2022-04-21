@@ -4,3 +4,11 @@ declare interface AsyncGenerator<T> {
   toArray(): Promise<T[]>;
   toSharable(): import("../sdk/toolkit/toolkit.stream").SharedAsyncIterable<T>;
 }
+
+declare interface IExclusive {
+  [key:string]:string| string[],
+  web:string| string[],
+  node:string| string[],
+  prod:string| string[],
+  dev:string| string[],
+}
