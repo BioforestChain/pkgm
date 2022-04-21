@@ -18,6 +18,7 @@ import { runTsc } from "./tsc/runner";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
 import { jsonClone } from "../sdk/toolkit/toolkit.util";
+import { TypingsGenerator } from "./typingsGenerator";
 const debug = DevLogger("bfsp:bin/build");
 
 export const installBuildDeps = async (options: { root: string }) => {
@@ -125,51 +126,6 @@ const buildSingle = async (options: {
     logger,
   });
 
-  const compileTypings = async (tsConfig: $TsConfig) => {
-    const cfg = jsonClone(tsConfig.typingsJson);
-    cfg.files = [...cfg.files, ...tsConfig.isolatedJson.files];
-    cfg.compilerOptions.isolatedModules = false;
-    cfg.compilerOptions.noEmit = false;
-    cfg.compilerOptions.emitDeclarationOnly = false;
-
-    const p = path.join(root, "tsconfig.typings.json");
-    await writeJsonConfig(p, cfg);
-
-    return new Promise<ReturnType<typeof runTsc>>((resolve) => {
-      const ret = runTsc({
-        tsconfigPath: p,
-        watch: true,
-        onMessage: (s) => tscLogger.write(s),
-        onSuccess: () => resolve(ret),
-        onClear: () => tscLogger.clear(),
-      });
-    });
-  };
-  const compileIsolatedModules = async (tsConfig: $TsConfig) => {
-    const cfg = jsonClone(tsConfig.isolatedJson);
-    cfg.compilerOptions.isolatedModules = true;
-    cfg.compilerOptions.noEmit = false;
-    cfg.compilerOptions.emitDeclarationOnly = true;
-    cfg.compilerOptions.typeRoots = [path.join(tsConfig.typingsJson.compilerOptions.outDir, "..")];
-    cfg.compilerOptions.types = ["typings"];
-    Reflect.deleteProperty(cfg, "references");
-
-    const p = path.join(root, "tsconfig.isolated.json");
-    await writeJsonConfig(p, cfg);
-
-    return runTsc({
-      tsconfigPath: p,
-      watch: true,
-      onMessage: (s) => {
-        // TS1208,TS6307 才报出去
-        if (/TS1208|TS6307/.test(s)) {
-          tscLogger.write(s);
-        }
-      },
-      onClear: () => tscLogger.clear(),
-    });
-  };
-
   flag(`setting tsconfig.json`);
   await writeTsConfig(root, userConfig1, tsConfig1);
   success(`set tsconfig.json`);
@@ -198,30 +154,9 @@ const buildSingle = async (options: {
 
   //#region 编译typescript，生成 typings
   {
-    flag(`compiling typescript codes`);
-    await compileTypings(tsConfig1);
-    await compileIsolatedModules(tsConfig1);
-
-    // const generateTypings = new Promise<void>((resolve) => {
-    //   const tsc = runTsc({
-    //     tsconfigPath: path.resolve(path.join(root, "tsconfig.isolated.json")),
-    //     projectMode: false,
-    //     onMessage: (s) => {
-    //       // TS1208,TS6307 才报出去
-    //       // if (/TS1208|TS6307/.test(s)) {
-    //       tscLogger.write(s);
-    //       // }
-    //     },
-    //     onClear: () => tscLogger.clear(),
-    //     onExit: resolve,
-    //     watch: false,
-    //     onSuccess: () => {
-    //       tsc.stop();
-    //     },
-    //   });
-    // });
-    // await generateTypings;
-    success(`compiled typescript codes`);
+    flag(`generate typings`);
+    await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate();
+    success(`generated typings`);
 
     /// 按需拷贝 typings 文件
     const tscSafeRoot = path.resolve(buildOutDir, "source/typings");
@@ -232,7 +167,7 @@ const buildSingle = async (options: {
         await rePathProfileImports(tsConfig1.json.compilerOptions.paths, tscSafeRoot, filepath);
       }
     }
-    success("fix imports");
+    success("fixed imports");
 
     // 一个项目的类型文件只需要生成一次，也只支持一套类型文件
     // if (folderIO.has(tscSafeRoot) === false) {
