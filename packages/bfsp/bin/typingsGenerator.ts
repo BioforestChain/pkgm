@@ -75,9 +75,10 @@ export class TypingsGenerator {
   private async _generate() {
     const cfg = jsonClone(this._tsConfig.typingsJson);
     cfg.files = [...cfg.files, ...this._tsConfig.isolatedJson.files];
-    cfg.compilerOptions.isolatedModules = false;
-    cfg.compilerOptions.noEmit = false;
-    cfg.compilerOptions.emitDeclarationOnly = true;
+    const opts = cfg.compilerOptions;
+    opts.isolatedModules = false;
+    opts.noEmit = false;
+    opts.emitDeclarationOnly = true;
 
     const p = path.join(this._root, "tsconfig.typings.json");
     await writeJsonConfig(p, cfg);
@@ -94,10 +95,11 @@ export class TypingsGenerator {
   }
   private async _checkIsolated() {
     const cfg = jsonClone(this._tsConfig.isolatedJson);
-    cfg.compilerOptions.isolatedModules = true;
-    cfg.compilerOptions.noEmit = true;
-    cfg.compilerOptions.typeRoots = [path.join(this._tsConfig.typingsJson.compilerOptions.outDir, "..")];
-    cfg.compilerOptions.types = ["typings"];
+    const opts = cfg.compilerOptions;
+    opts.isolatedModules = true;
+    opts.noEmit = true;
+    opts.typeRoots = [path.join(this._tsConfig.typingsJson.compilerOptions.outDir, "..")];
+    opts.types = ["typings"];
     Reflect.deleteProperty(cfg, "references");
 
     const p = path.join(this._root, "tsconfig.isolated.json");

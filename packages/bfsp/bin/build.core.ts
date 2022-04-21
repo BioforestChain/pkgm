@@ -10,7 +10,7 @@ import { $TsConfig, generateTsConfig, writeTsConfig } from "../src/configs/tsCon
 import { generateViteConfig } from "../src/configs/viteConfig";
 import * as consts from "../src/consts";
 import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger";
-import { folderIO, walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
+import { fileIO, folderIO, walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
 import { toPosixPath } from "../sdk/toolkit/toolkit.path";
 import { getTui, PanelStatus } from "../sdk/tui/index";
 import { runTerser } from "./terser/runner";
@@ -19,6 +19,7 @@ import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
 import { jsonClone } from "../sdk/toolkit/toolkit.util";
 import { TypingsGenerator } from "./typingsGenerator";
+import os from "node:os";
 const debug = DevLogger("bfsp:bin/build");
 
 export const installBuildDeps = async (options: { root: string }) => {
@@ -119,10 +120,12 @@ const buildSingle = async (options: {
 
   const userConfig1 = $getBfspUserConfig(buildConfig);
 
+  const TYPINGS_DIR = "typings"; // #40，tsc只是用来生成类型
+
   flag(`generating tsconfig.json`);
   const tsConfig1 = await generateTsConfig(root, userConfig1, {
     outDirRoot: path.relative(root, buildOutDir),
-    outDirName: "source",
+    outDirName: TYPINGS_DIR,
     logger,
   });
 
@@ -135,8 +138,9 @@ const buildSingle = async (options: {
   /// 将 package.json 的 types 路径进行修改
   const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1, {
     packageTemplateJson: thePackageJson,
-    customTypesRoot: "./source/isolated",
+    customTypesRoot: "./typings",
   });
+
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
   //#region 安装依赖
   flag(`installing dependencies`);
@@ -158,8 +162,8 @@ const buildSingle = async (options: {
     await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate();
     success(`generated typings`);
 
-    /// 按需拷贝 typings 文件
-    const tscSafeRoot = path.resolve(buildOutDir, "source/typings");
+    /// 修复 typings 文件的导入
+    const tscSafeRoot = path.resolve(buildOutDir, TYPINGS_DIR);
 
     flag("fix imports");
     for await (const filepath of walkFiles(tscSafeRoot, { refreshCache: true })) {
@@ -168,27 +172,24 @@ const buildSingle = async (options: {
       }
     }
     success("fixed imports");
-
-    // 一个项目的类型文件只需要生成一次，也只支持一套类型文件
-    // if (folderIO.has(tscSafeRoot) === false) {
-    //   flag("copying typescript declaration files");
-    //   const tscOutRoot = tsConfig1.json.compilerOptions.outDir;
-    //   for await (const filepath of walkFiles(tscOutRoot, { refreshCache: true })) {
-    //     if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
-    //       const destFilepath = path.resolve(buildOutDir, "source", path.relative(tscOutRoot, filepath));
-    //       await folderIO.tryInit(path.dirname(destFilepath));
-    //       await copyFile(filepath, destFilepath);
-    //       await rePathProfileImports(
-    //         tsConfig1.json.compilerOptions.paths,
-    //         path.join(buildOutDir, "source/typings"),
-    //         destFilepath
-    //       );
-    //     }
-    //   }
-    //   success(`copying typescript declaration files`);
-    // }
   }
   //#endregion
+
+  {
+    flag("add type references");
+    const exp = packageJson.exports as any;
+    for (const x of Object.keys(exp)) {
+      const p = path.resolve(buildOutDir, exp[x].types);
+      const contents = await readFile(p);
+      const rp = path.relative(p, path.resolve(buildOutDir, TYPINGS_DIR, "refs.d.ts"));
+      const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
+      const buf = Buffer.alloc(contents.length + refSnippet.length);
+      buf.write(refSnippet);
+      contents.copy(buf, refSnippet.length);
+      await writeFile(p, buf);
+    }
+    success("added type references");
+  }
 
   //#region 使用 vite(rollup+typescript+esbuild) 编译打包代码
   flag(`generating bundle config`);
