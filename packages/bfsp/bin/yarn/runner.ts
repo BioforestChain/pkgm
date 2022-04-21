@@ -5,6 +5,8 @@ import cp from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { BlessedTree } from '../../sdk/tui'
+
 export interface RunYarnOption {
   root: string;
   onExit?: (done: boolean) => void;
@@ -295,6 +297,10 @@ const groupTree = (trees: Tree[], map = new Map<string, Tree>()) => {
       tree.sname = name_version[1];
       tree.rversion = name_version[2];
       tree.version = tree.rversion.replace(/^\^|^\~/, "");
+
+      const blessedTree = new BlessedTree({fg: 'green'})
+      blessedTree.focus();
+      blessedTree.setData(trees)
       //   console.log(name_version);
       if (tree.depth === 0) {
         map.set(tree.sname, tree);
