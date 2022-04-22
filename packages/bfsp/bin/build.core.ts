@@ -180,7 +180,12 @@ const buildSingle = async (options: {
     const exp = packageJson.exports as any;
     for (const x of Object.keys(exp)) {
       const p = path.resolve(buildOutDir, exp[x].types);
-      const contents = await readFile(p);
+      let contents;
+      try {
+        contents = await readFile(p);
+      } catch (e) {
+        continue;
+      }
       const rp = path.relative(p, path.resolve(buildOutDir, TYPINGS_DIR, "refs.d.ts"));
       const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
       const buf = Buffer.alloc(contents.length + refSnippet.length);
