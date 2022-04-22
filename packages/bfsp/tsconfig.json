@@ -60,6 +60,7 @@
     "bin/version.bin.ts",
     "bin/help.bin.ts",
     "bin/help.core.ts",
+    "bin/typingsGenerator.ts",
     "src/bin/@bin.types.ts",
     "src/bin/CommandContext.ts",
     "src/bin/ArgvParser.ts",

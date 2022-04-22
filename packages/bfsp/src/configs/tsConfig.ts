@@ -410,7 +410,7 @@ export const generateTsConfig = async (
     extends: "./tsconfig.json",
     compilerOptions: {
       ...userCompilerOptionsBase.isolatedJson,
-      outDir: TscIsolatedOutRootPath(options.outDirRoot, options.outDirName),
+      outDir: TscOutRootPath(options.outDirRoot, options.outDirName), //因为 #40 isolated没有任何输出，所以outDir就在输出根目录
     },
     files: getTsconfigFiles(tsFilesLists, "isolatedFiles"),
     references: userReferences.isolatedJson,
@@ -420,7 +420,7 @@ export const generateTsConfig = async (
     extends: "./tsconfig.json",
     compilerOptions: {
       ...userCompilerOptionsBase.typingsJson,
-      outDir: TscTypingsOutRootPath(options.outDirRoot, options.outDirName),
+      outDir: TscOutRootPath(options.outDirRoot, options.outDirName), //因为 #40 typings无需另外建立文件夹，isolated和typings只不过是生成类型的两个阶段而已
     },
     files: getTsconfigFiles(tsFilesLists, "typeFiles"),
     references: userReferences.typingsJson,
@@ -447,16 +447,16 @@ export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserC
       const { outDir } = tsConfig.typingsJson.compilerOptions;
       const outDirInfo = path.parse(outDir);
       /**index文件可以提交 */
-      const indexFilepath = resolve(projectDirpath, outDirInfo.dir, "index.d.ts");
+      // const indexFilepath = resolve(projectDirpath, outDirInfo.dir, "index.d.ts");
       /**dist文件不可以提交，所以自动生成的代码都在dist中，index中只保留对dist的引用 */
-      const distFilepath = resolve(projectDirpath, outDirInfo.dir, "dist.d.ts");
+      const refsFilePath = resolve(projectDirpath, outDirInfo.dir, "refs.d.ts");
       // const parseToEsmPath = (filepath: string) =>
       //   toPosixPath(path.relative("typings", filepath.slice(0, -path.extname(filepath).length)));
       const parseTypingFileToEsmPath = (filepath: string) =>
         toPosixPath(path.join(outDirInfo.base, filepath.slice(0, -path.extname(filepath).length) + ".d.ts"));
-      const indexFileCodeReg =
-        /\/\/▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼[\w\W]+?\/\/▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲/g;
-      const indexFileSnippet = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\n/// <reference path="./dist.d.ts"/>\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
+      // const indexFileCodeReg =
+      //   /\/\/▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼[\w\W]+?\/\/▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲/g;
+      // const indexFileSnippet = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\n/// <reference path="./dist.d.ts"/>\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
       const distFileContent =
         `/// ▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\n` +
         // `export * from "${parseToEsmPath(bfspUserConfig.exportsDetail.indexFile)}";\n` +
@@ -467,17 +467,17 @@ export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserC
 
       /// 自动创建的相关文件与代码
       await folderIO.tryInit(resolve(projectDirpath, outDir));
-      await fileIO.set(distFilepath, Buffer.from(distFileContent));
-      const indexFileContent = (await fileIO.has(indexFilepath)) ? (await fileIO.get(indexFilepath)).toString() : "";
+      await fileIO.set(refsFilePath, Buffer.from(distFileContent));
+      // const indexFileContent = (await fileIO.has(indexFilepath)) ? (await fileIO.get(indexFilepath)).toString() : "";
 
-      if (indexFileContent.match(indexFileCodeReg)?.[0] !== indexFileSnippet) {
-        // @todo 可能使用语法分析来剔除这个import会更好一些
-        // @todo 需要进行fmt
-        await fileIO.set(
-          indexFilepath,
-          Buffer.from(indexFileSnippet + "\n\n" + indexFileContent.replace(indexFileCodeReg, "").trimStart())
-        );
-      }
+      // if (indexFileContent.match(indexFileCodeReg)?.[0] !== indexFileSnippet) {
+      //   // @todo 可能使用语法分析来剔除这个import会更好一些
+      //   // @todo 需要进行fmt
+      //   await fileIO.set(
+      //     indexFilepath,
+      //     Buffer.from(indexFileSnippet + "\n\n" + indexFileContent.replace(indexFileCodeReg, "").trimStart())
+      //   );
+      // }
     })(),
   ]);
 };
