@@ -31,7 +31,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include":["**/**.ts"],
   "files": [
     "package.json",
     "assets/package.template.json",
@@ -91,7 +90,6 @@
     "sdk/tui/animtion.ts",
     "sdk/tui/Panel.ts",
     "sdk/tui/StatusBar.ts",
-    "sdk/tui/BlessedTree.ts",
     "sdk/tui/const.ts",
     "sdk/tui/Tui.ts",
     "sdk/tui/index.ts",
