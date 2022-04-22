@@ -185,8 +185,10 @@ const buildSingle = async (options: {
       const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
       const buf = Buffer.alloc(contents.length + refSnippet.length);
       buf.write(refSnippet);
-      contents.copy(buf, refSnippet.length);
-      await writeFile(p, buf);
+      if (contents.length > buf.length && contents.compare(buf, 0, buf.length, 0, buf.length) !== 0) {
+        contents.copy(buf, refSnippet.length);
+        await writeFile(p, buf);
+      }
     }
     success("added type references");
   }
