@@ -260,7 +260,7 @@ const filterProfiles = (bfspUserConfig:$BfspUserConfig,trimedKey:string,name:str
       return  mutuallyExclusive(pro,keyArr[index],nameArr[index]);
     }
   }
-  return false;
+  return true;
 }
 
 /**
