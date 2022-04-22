@@ -9,9 +9,6 @@
     "./lib/blessed": {
       "import": "./dist/main/lib/blessed.mjs"
     },
-    "./lib/blessedTree": {
-      "import": "./dist/main/lib/blessedTree.mjs"
-    },
     "./lib/chalk": {
       "import": "./dist/main/lib/chalk.mjs"
     },
