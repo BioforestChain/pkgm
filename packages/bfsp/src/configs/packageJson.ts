@@ -9,6 +9,7 @@ import { SharedAsyncIterable, SharedFollower, Loopable } from "../../sdk/toolkit
 import { DevLogger } from "../../sdk/logger/logger";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
+import { getTui } from "../../sdk";
 const debug = DevLogger("bfsp:config/package.json");
 // const format
 export const generatePackageJson = async (
@@ -64,7 +65,7 @@ export const generatePackageJson = async (
       continue;
     }
 
-    if (posixKey !== "." && !filterProfiles(bfspUserConfig,posixKey,packageJson.name)) continue;
+    if (posixKey !== "." && !filterProfiles(bfspUserConfig, posixKey, packageJson.name)) continue;
 
     packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
       require: getDistFilepath("cjs", output),
@@ -93,7 +94,6 @@ export const generatePackageJson = async (
       continue;
     }
     const trimedKey = key.substring(2); // removes './'
-  
 
     typesVersionsEntries[trimedKey] = [(exportEntry as any).types];
   }
@@ -231,38 +231,53 @@ export const watchPackageJson = (
 
 /**
  * 对比导出的模块是否相同
- * @param name 
- * @param trimedKey 
+ * @param name
+ * @param trimedKey
  * @returns booblean
  */
-const filterProfiles = (bfspUserConfig:$BfspUserConfig,trimedKey:string,name:string) => {
+const filterProfiles = (bfspUserConfig: $BfspUserConfig, trimedKey: string, name: string) => {
   // 没有传profiles直接全部导入
   if (!bfspUserConfig || !bfspUserConfig.userConfig || !bfspUserConfig.userConfig.profiles) return true;
-  const profiles =  bfspUserConfig.userConfig.profiles;
+  let profiles = bfspUserConfig.userConfig.profiles;
   const keyArr = truncateWords(trimedKey);
   const nameArr = truncateWords(name);
   // 如果profiles传了个字符串
   if (!Array.isArray(profiles) && keyArr.indexOf(profiles) !== -1) {
-    return true
+    return true;
   }
-
   const pro = new Set();
-  profiles.map((item) => {
-    pro.add(item)
-  })
 
-  for(let index = 0; index < keyArr.length; index++) {
+  // 合并build的profiles
+  const build = bfspUserConfig.userConfig.build;
+  if (build) {
+    for (const item of build) {
+      if (item.profiles) {
+        profiles = [...profiles, ...item.profiles];
+      }
+    }
+  }
+  profiles.map((item) => {
+    pro.add(item);
+  });
+
+  for (let index = 0; index < keyArr.length; index++) {
     /**
      *  处理语义互斥模块 web/node   prod/dev  =>  当profiles存在互斥，假如web/node都有 把web分配给web目录下，node分配给node目录下；
      * 假如：profiles没有node（或者没有web），把有的分配给两者
      */
     if (pro.has(keyArr[index])) {
-      return  mutuallyExclusive(pro,keyArr[index],nameArr[index]);
+      return mutuallyExclusive(pro, keyArr[index], nameArr[index]);
     }
   }
-  return true;
-}
-
+  return false;
+};
+// 后续有新的互斥在这里添加
+const exclusive: IExclusive = {
+  web: "node",
+  node: "web",
+  prod: "dev",
+  dev: "prod",
+};
 /**
  * 处理逻辑互斥
  * @param profiles set
@@ -270,31 +285,15 @@ const filterProfiles = (bfspUserConfig:$BfspUserConfig,trimedKey:string,name:str
  * @param name 当前写入的packages.name
  * @returns Booblean
  */
-const mutuallyExclusive = (profiles:Set<unknown>, key:string,name:string) => {
-  // 后续有新的互斥在这里添加
-  const exclusive:IExclusive = {
-    web:['node'],
-    node:'web',
-    prod:'dev',
-    dev:'prod',
-  };
+const mutuallyExclusive = (profiles: Set<unknown>, key: string, name: string) => {
+  if (exclusive[name] === key) return false;
   // 如果没有上面四个模块直接导出
   if (Object.keys(exclusive).indexOf(key) === -1) return true;
   const exc = exclusive[key];
-  if (!Array.isArray(exc)) {
-    if (!profiles.has(exc)) return true
-    if ((profiles.has(exc) && name === key)) {
-      return true;
-    }
-  } else {
-    // 处理互斥多个的情况
-    for (let item = 0; item < exc.length; item++) {
-      if (!profiles.has(exc[item])) return true
-      if ((profiles.has(exc[item]) && name === key)) {
-        return true;
-      }
-    }
+  if (!profiles.has(exc)) return true;
+  if (profiles.has(exc) && name === key) {
+    return true;
   }
-  return false;
-}
 
+  return false;
+};
