@@ -20,13 +20,14 @@ export const ViteConfigFactory = (options: {
   outRoot?: string;
   logger: PKGM.Logger;
 }) => {
-  const { userConfig, tsConfig, projectDirpath, viteConfig } = options;
+  const { userConfig, tsConfig, projectDirpath, viteConfig, profiles } = options;
   const logger = options.logger;
 
   const fe = parseExtensionAndFormat(options.format ?? "esm");
   const format = ALLOW_FORMATS.has(fe.format as any) ? (fe.format as Bfsp.JsFormat) : "esm";
+  const profile = Array.isArray(profiles) && profiles.length > 0 ? profiles[0] + "/" : "";
   const extension = fe.extension;
-  const outDir = path.resolve(options.outRoot ?? projectDirpath, options.outDir ?? `dist/${format}`);
+  const outDir = path.resolve(options.outRoot ?? projectDirpath, options.outDir ?? `dist/${profile}${format}`);
 
   const viteBuildConfig: Readonly<InlineConfig> = {
     root: projectDirpath,

@@ -208,6 +208,7 @@ const buildSingle = async (options: {
     outRoot: buildOutDir,
     logger: viteLoggerKit.logger,
     format: userConfig1.formatExts[0].format ?? "esm",
+    profiles: userConfig1.userConfig.profiles,
   });
   const distDir = jsBundleConfig.build!.outDir!;
 
@@ -270,6 +271,14 @@ const collectBuildConfigs = (rootConfig: Bfsp.UserConfig, configList: Omit<Bfsp.
       const buildConfig = {
         ...rootConfig,
         formats: [format],
+      };
+      collectBuildConfigs(buildConfig, configList);
+    }
+  } else if (Array.isArray(rootConfig.profiles) && rootConfig.profiles.length > 1) {
+    for (const profile of rootConfig.profiles) {
+      const buildConfig = {
+        ...rootConfig,
+        profiles: [profile],
       };
       collectBuildConfigs(buildConfig, configList);
     }
