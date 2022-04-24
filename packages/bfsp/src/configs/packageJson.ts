@@ -2,11 +2,11 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
+import { DevLogger } from "../../sdk/logger/logger";
 import { writeJsonConfig } from "../../sdk/toolkit/toolkit.fs";
 import { toPosixPath, truncateWords } from "../../sdk/toolkit/toolkit.path";
+import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream";
 import { jsonClone } from "../../sdk/toolkit/toolkit.util";
-import { SharedAsyncIterable, SharedFollower, Loopable } from "../../sdk/toolkit/toolkit.stream";
-import { DevLogger } from "../../sdk/logger/logger";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
 import { getTui } from "../../sdk";
@@ -256,20 +256,24 @@ const filterProfiles = (bfspUserConfig: $BfspUserConfig, trimedKey: string, name
       }
     }
   }
+  profiles = Array.from(new Set(profiles)); // 去重
+
   profiles.map((item) => {
     pro.add(item);
   });
 
+  /**
+   *  处理语义互斥模块 web/node   prod/dev  =>  当profiles存在互斥，假如web/node都有 把web分配给web目录下，node分配给node目录下；
+   * 假如：profiles没有node（或者没有web），把有的分配给两者
+   */
   for (let index = 0; index < keyArr.length; index++) {
-    /**
-     *  处理语义互斥模块 web/node   prod/dev  =>  当profiles存在互斥，假如web/node都有 把web分配给web目录下，node分配给node目录下；
-     * 假如：profiles没有node（或者没有web），把有的分配给两者
-     */
-    if (pro.has(keyArr[index])) {
+    // 存在profiles下，或者在自己的包里面
+    if (pro.has(keyArr[index]) || keyArr[index] === nameArr[index]) {
       return mutuallyExclusive(pro, keyArr[index], nameArr[index]);
     }
   }
-  return false;
+  // 因为现在是一个一个build，但是build的export里的profiles并没有自动继承外面的profiles，所以先这样处理
+  return build ? true : false;
 };
 // 后续有新的互斥在这里添加
 const exclusive: IExclusive = {

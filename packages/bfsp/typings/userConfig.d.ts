@@ -47,5 +47,9 @@ declare namespace Bfsp {
     mode: import("../src/index").BUILD_MODE;
   }
 
+  type TMap = {
+    [key: string];
+  };
+
   type Profile = `#${string}`;
 }

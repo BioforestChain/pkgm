@@ -1,25 +1,24 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { getVite } from "@bfchain/pkgm-base/lib/vite";
 import { existsSync } from "node:fs";
-import { copyFile, readFile, rm, writeFile } from "node:fs/promises";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
-import { $BfspUserConfig, $getBfspUserConfig, getBfspUserConfig } from "../src/configs/bfspUserConfig";
-import { writeBfspProjectConfig } from "../src/bfspConfig";
-import { $PackageJson, generatePackageJson } from "../src/configs/packageJson";
-import { $TsConfig, generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
-import { generateViteConfig } from "../src/configs/viteConfig";
-import * as consts from "../src/consts";
 import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger";
-import { fileIO, folderIO, walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
+import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
 import { toPosixPath } from "../sdk/toolkit/toolkit.path";
 import { getTui, PanelStatus } from "../sdk/tui/index";
+import { writeBfspProjectConfig } from "../src/bfspConfig";
+import { $BfspUserConfig, $getBfspUserConfig } from "../src/configs/bfspUserConfig";
+import { $PackageJson, generatePackageJson } from "../src/configs/packageJson";
+import { generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
+import { generateViteConfig } from "../src/configs/viteConfig";
+import * as consts from "../src/consts";
 import { runTerser } from "./terser/runner";
 import { runTsc } from "./tsc/runner";
+import { TypingsGenerator } from "./typingsGenerator";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
-import { jsonClone } from "../sdk/toolkit/toolkit.util";
-import { TypingsGenerator } from "./typingsGenerator";
-import os from "node:os";
 const debug = DevLogger("bfsp:bin/build");
 
 export const installBuildDeps = async (options: { root: string }) => {
@@ -190,8 +189,10 @@ const buildSingle = async (options: {
       const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
       const buf = Buffer.alloc(contents.length + refSnippet.length);
       buf.write(refSnippet);
-      contents.copy(buf, refSnippet.length);
-      await writeFile(p, buf);
+      if (contents.length > buf.length && contents.compare(buf, 0, buf.length, 0, buf.length) !== 0) {
+        contents.copy(buf, refSnippet.length);
+        await writeFile(p, buf);
+      }
     }
     success("added type references");
   }

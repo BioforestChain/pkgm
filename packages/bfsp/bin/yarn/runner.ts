@@ -1,10 +1,11 @@
-import { getYarnPath } from "@bfchain/pkgm-base/lib/yarn";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { getYarnPath } from "@bfchain/pkgm-base/lib/yarn";
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 import cp from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+
 export interface RunYarnOption {
   root: string;
   onExit?: (done: boolean) => void;
@@ -85,7 +86,10 @@ export const runYarn = (args: RunYarnOption) => {
         // 这个参数一定要给，否则有些时候环境变量可能会被未知的程序改变，传递的环境变量会进一步改变默认 yarn install 的默认行为
         "--production=false",
       ],
-      { cwd: root, env: {}, signal: ac.signal }
+      { cwd: root, 
+        env: process.env, 
+        signal: ac.signal,
+      }
     );
 
     /**
