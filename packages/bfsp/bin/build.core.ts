@@ -248,6 +248,12 @@ const buildSingle = async (options: {
  */
 const collectBuildConfigs = (rootConfig: Bfsp.UserConfig, configList: Omit<Bfsp.UserConfig, "build">[] = []) => {
   if (rootConfig.build?.length) {
+    rootConfig.build.map((child) => {
+      if (child.profiles && rootConfig.profiles) {
+        const childProfiles = [...rootConfig.profiles, ...child.profiles]; // 让build的profiles继承外部的profiles
+        child.profiles = Array.from(new Set(childProfiles)); // 去重
+      }
+    });
     for (const buildPartial of rootConfig.build) {
       let buildConfig = {
         ...rootConfig,
