@@ -101,7 +101,6 @@ const buildSingle = async (options: {
 
   thePackageJson: $PackageJson;
   bfspUserConfig: $BfspUserConfig;
-  buildConfig: Bfsp.BuildConfig;
   buildLogger: BuildLogger;
 }) => {
   const tscLogger = createTscLogger();
@@ -113,7 +112,6 @@ const buildSingle = async (options: {
     thePackageJson,
     buildOutDir,
     bfspUserConfig,
-    buildConfig,
   } = options;
 
   const { debug, flag, success, info, warn, error, logger } = options.buildLogger;
@@ -201,6 +199,7 @@ const buildSingle = async (options: {
   //#region 使用 vite(rollup+typescript+esbuild) 编译打包代码
   flag(`generating bundle config`);
   const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
+  const buildConfig = bfspUserConfig.userConfig as Bfsp.BuildConfig;
   const jsBundleConfig = ViteConfigFactory({
     userConfig: buildConfig,
     projectDirpath: root,
@@ -365,7 +364,6 @@ export const doBuild = async (args: {
           /// 配置
           thePackageJson,
           bfspUserConfig: { ...bfspUserConfig, userConfig },
-          buildConfig: userConfig,
           /// 服务
           buildLogger,
         });
@@ -377,6 +375,8 @@ export const doBuild = async (args: {
       buildLogger.info(`${chalk.green(">>>")} finished ${taskTitle} ${buildTimeSpan}`);
       buildLogger.prompts.pop();
     }
+    // TODO: 更新package.json， 把所有build项的deps合并再写入
+    // 适配器，确定npm生态exports的web/node
     buildLogger.flag(chalk.magenta("🎉 build finished 🎊"), false);
     buildLogger.updateStatus("success");
   } catch (e) {
