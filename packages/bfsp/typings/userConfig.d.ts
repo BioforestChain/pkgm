@@ -9,11 +9,10 @@ declare namespace Bfsp {
     optionalDependencies?: Dependencies;
     [name: string]: unknown;
   };
-  type BuildNpmOptions = { path: string; format?: Format; profiles: string[] };
-  type BuildNpmResult = {
-    buildOptions: BuildNpmOptions;
-    packageJson: Bfsp.PackageJson;
-  };
+
+  interface BuildConfig extends Omit<UserConfig, "build"> {
+    path: string;
+  }
 
   interface UserConfig {
     name: string;
@@ -28,9 +27,9 @@ declare namespace Bfsp {
     target?: string | string[];
     formats?: Format[];
     profiles?: string[];
-    build?: Partial<Omit<UserConfig, "build">>[];
+    build?: Partial<BuildConfig>[];
     deps?: string[];
-    packageJson?: BuildNpmResult | BuildNpmResult[];
+    packageJson?: PackageJson;
     tsConfig?: Bfsp.TsConfig;
     internal?: Iterable<string> | InternalPredict;
   }

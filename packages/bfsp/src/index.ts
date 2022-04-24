@@ -15,10 +15,3 @@ export const defineConfig = (cb: (info: Bfsp.ConfigEnvInfo) => Bfsp.UserConfig) 
     relativePath: "./",
   };
 };
-
-export const buildNpm = (opts: Bfsp.BuildNpmOptions, packageJson: Bfsp.PackageJson): Bfsp.BuildNpmResult => {
-  return {
-    buildOptions: opts,
-    packageJson,
-  };
-};

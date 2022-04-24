@@ -127,14 +127,7 @@ export const generatePackageJson = async (
 
   // 版本
 
-  const buildResults = Array.isArray(bfspUserConfig.userConfig.packageJson)
-    ? bfspUserConfig.userConfig.packageJson
-    : [bfspUserConfig.userConfig.packageJson];
-
-  const userConfigPackageJson = buildResults.reduce((acc, cur) => {
-    acc = Object.assign(acc, cur?.packageJson);
-    return acc;
-  }, {}) as Bfsp.PackageJson;
+  const userConfigPackageJson = bfspUserConfig.userConfig.packageJson ?? {};
   if (typeof userConfigPackageJson.version === "string") {
     packageJson.version = userConfigPackageJson.version;
   }
