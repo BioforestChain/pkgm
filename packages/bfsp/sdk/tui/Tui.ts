@@ -10,7 +10,7 @@ import {
   DevPanel,
   RightSidePanelGroup,
   TscPanel,
-  WorkspacesPanel,
+  WorkspacesPanel
 } from "./internalPanels";
 import { StatusBar } from "./StatusBar";
 

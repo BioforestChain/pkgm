@@ -2,14 +2,14 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
+import { DevLogger } from "../../sdk/logger/logger";
 import { writeJsonConfig } from "../../sdk/toolkit/toolkit.fs";
 import { toPosixPath, truncateWords } from "../../sdk/toolkit/toolkit.path";
+import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream";
 import { jsonClone } from "../../sdk/toolkit/toolkit.util";
-import { SharedAsyncIterable, SharedFollower, Loopable } from "../../sdk/toolkit/toolkit.stream";
-import { DevLogger } from "../../sdk/logger/logger";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { $TsConfig } from "./tsConfig";
-import { getTui } from "../../sdk";
+
 const debug = DevLogger("bfsp:config/package.json");
 // const format
 export const generatePackageJson = async (
@@ -247,7 +247,7 @@ const filterProfiles = (bfspUserConfig: $BfspUserConfig, trimedKey: string, name
   }
   const pro = new Set();
 
-  // 合并build的profiles
+  // 合并build的profiles;
   const build = bfspUserConfig.userConfig.build;
   if (build) {
     for (const item of build) {
@@ -256,20 +256,22 @@ const filterProfiles = (bfspUserConfig: $BfspUserConfig, trimedKey: string, name
       }
     }
   }
+  profiles = Array.from(new Set(profiles)); // 去重
+
   profiles.map((item) => {
     pro.add(item);
   });
-
+  /**
+   *  处理语义互斥模块 web/node   prod/dev  =>  当profiles存在互斥，假如web/node都有 把web分配给web目录下，node分配给node目录下；
+   * 假如：profiles没有node（或者没有web），把有的分配给两者
+   */
   for (let index = 0; index < keyArr.length; index++) {
-    /**
-     *  处理语义互斥模块 web/node   prod/dev  =>  当profiles存在互斥，假如web/node都有 把web分配给web目录下，node分配给node目录下；
-     * 假如：profiles没有node（或者没有web），把有的分配给两者
-     */
-    if (pro.has(keyArr[index])) {
+    // 存在profiles下，或者存在需要排除的模块
+    if (pro.has(keyArr[index]) || Object.keys(exclusive).indexOf(keyArr[index]) !== -1) {
       return mutuallyExclusive(pro, keyArr[index], nameArr[index]);
     }
   }
-  return false;
+  return true;
 };
 // 后续有新的互斥在这里添加
 const exclusive: IExclusive = {
@@ -286,14 +288,11 @@ const exclusive: IExclusive = {
  * @returns Booblean
  */
 const mutuallyExclusive = (profiles: Set<unknown>, key: string, name: string) => {
+  // 如果存在互斥
   if (exclusive[name] === key) return false;
-  // 如果没有上面四个模块直接导出
-  if (Object.keys(exclusive).indexOf(key) === -1) return true;
-  const exc = exclusive[key];
-  if (!profiles.has(exc)) return true;
-  if (profiles.has(exc) && name === key) {
+  // 如果存在profiles里面，或者在自己模块下
+  if (profiles.has(key) || name === key) {
     return true;
   }
-
   return false;
 };
