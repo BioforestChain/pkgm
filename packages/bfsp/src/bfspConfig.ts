@@ -92,7 +92,10 @@ export const watchBfspProjectConfig = (
         runInstall: true,
         runListGetter() {
           const userConfig = projectConfig.bfspUserConfig.userConfig;
-          return [userConfig.packageJson?.name ?? userConfig.name];
+          const packageJson = Array.isArray(userConfig.packageJson)
+            ? userConfig.packageJson[0]
+            : userConfig.packageJson;
+          return [packageJson?.packageJson.name ?? userConfig.name];
         },
       }));
     },
