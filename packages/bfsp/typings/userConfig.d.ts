@@ -1,5 +1,20 @@
 declare namespace Bfsp {
   type InternalPredict = (src: string) => boolean;
+  type PackageJson = {
+    name?: string;
+    version?: string;
+    dependencies?: Dependencies;
+    devDependencies?: Dependencies;
+    peerDependencies?: Dependencies;
+    optionalDependencies?: Dependencies;
+    [name: string]: unknown;
+  };
+  type BuildNpmOptions = { path: string; format?: Format; profiles: string[] };
+  type BuildNpmResult = {
+    buildOptions: BuildNpmOptions;
+    packageJson: Bfsp.PackageJson;
+  };
+
   interface UserConfig {
     name: string;
     exports: {
@@ -15,15 +30,7 @@ declare namespace Bfsp {
     profiles?: string[];
     build?: Partial<Omit<UserConfig, "build">>[];
     deps?: string[];
-    packageJson?: {
-      name?: string;
-      version?: string;
-      dependencies?: Dependencies;
-      devDependencies?: Dependencies;
-      peerDependencies?: Dependencies;
-      optionalDependencies?: Dependencies;
-      [name: string]: unknown;
-    };
+    packageJson?: BuildNpmResult | BuildNpmResult[];
     tsConfig?: Bfsp.TsConfig;
     internal?: Iterable<string> | InternalPredict;
   }

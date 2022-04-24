@@ -99,7 +99,7 @@ const buildSingle = async (options: {
   root: string;
   buildOutDir: string;
 
-  thePackageJson: $PackageJson;
+  // thePackageJson: $PackageJson;
   bfspUserConfig: $BfspUserConfig;
 
   buildLogger: BuildLogger;
@@ -110,137 +110,147 @@ const buildSingle = async (options: {
   const {
     //
     root,
-    thePackageJson,
+    // thePackageJson,
     buildOutDir,
     bfspUserConfig,
   } = options;
+
+  const buildResults = bfspUserConfig.userConfig.packageJson;
+
+  const npmBuilds = Array.isArray(buildResults) ? buildResults! : [buildResults!];
+
   const buildConfig = bfspUserConfig.userConfig;
   const { debug, flag, success, info, warn, error, logger } = options.buildLogger;
+  for (const npmBuild of npmBuilds) {
+    flag(`building for ${npmBuild.buildOptions.path}`);
+    buildConfig.profiles = npmBuild.buildOptions.profiles;
 
-  const userConfig1 = $getBfspUserConfig(buildConfig);
+    const userConfig1 = $getBfspUserConfig(buildConfig);
 
-  const TYPINGS_DIR = "typings"; // #40，tsc只是用来生成类型
+    const TYPINGS_DIR = "typings"; // #40，tsc只是用来生成类型
 
-  flag(`generating tsconfig.json`);
-  const tsConfig1 = await generateTsConfig(root, userConfig1, {
-    outDirRoot: path.relative(root, buildOutDir),
-    outDirName: TYPINGS_DIR,
-    logger,
-  });
+    flag(`generating tsconfig.json`);
+    const tsConfig1 = await generateTsConfig(root, userConfig1, {
+      outDirRoot: path.relative(root, buildOutDir),
+      outDirName: TYPINGS_DIR,
+      logger,
+    });
 
-  flag(`setting tsconfig.json`);
-  await writeTsConfig(root, userConfig1, tsConfig1);
-  success(`set tsconfig.json`);
+    flag(`setting tsconfig.json`);
+    await writeTsConfig(root, userConfig1, tsConfig1);
+    success(`set tsconfig.json`);
 
-  //#region 生成 package.json
-  flag(`generating package.json`);
-  /// 将 package.json 的 types 路径进行修改
-  const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1, {
-    packageTemplateJson: thePackageJson,
-    customTypesRoot: "./typings",
-  });
+    //#region 生成 package.json
+    flag(`generating package.json`);
+    /// 将 package.json 的 types 路径进行修改
+    const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1, {
+      packageTemplateJson: npmBuild.packageJson,
+      customTypesRoot: "./typings",
+    });
 
-  await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
-  //#region 安装依赖
-  flag(`installing dependencies`);
-  await installBuildDeps({ root });
-  success(`installed dependencies`);
-  //#endregion
+    await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
+    //#region 安装依赖
+    flag(`installing dependencies`);
+    await installBuildDeps({ root });
+    success(`installed dependencies`);
+    //#endregion
 
-  /// 写入package.json
-  flag(`writing package.json`);
-  Reflect.deleteProperty(packageJson, "scripts");
-  Reflect.deleteProperty(packageJson, "private");
-  await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
-  success(`wrote package.json`);
-  //#endregion
+    /// 写入package.json
+    flag(`writing package.json`);
+    Reflect.deleteProperty(packageJson, "scripts");
+    Reflect.deleteProperty(packageJson, "private");
+    await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
+    success(`wrote package.json`);
+    //#endregion
 
-  //#region 编译typescript，生成 typings
-  {
-    flag(`generate typings`);
-    await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate();
-    success(`generated typings`);
+    //#region 编译typescript，生成 typings
+    {
+      flag(`generate typings`);
+      await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate();
+      success(`generated typings`);
 
-    /// 修复 typings 文件的导入
-    const tscSafeRoot = path.resolve(buildOutDir, TYPINGS_DIR);
+      /// 修复 typings 文件的导入
+      const tscSafeRoot = path.resolve(buildOutDir, TYPINGS_DIR);
 
-    flag("fix imports");
-    for await (const filepath of walkFiles(tscSafeRoot, { refreshCache: true })) {
-      if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
-        await rePathProfileImports(tsConfig1.json.compilerOptions.paths, tscSafeRoot, filepath);
+      flag("fix imports");
+      for await (const filepath of walkFiles(tscSafeRoot, { refreshCache: true })) {
+        if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
+          await rePathProfileImports(tsConfig1.json.compilerOptions.paths, tscSafeRoot, filepath);
+        }
       }
+      success("fixed imports");
     }
-    success("fixed imports");
-  }
-  //#endregion
+    //#endregion
 
-  {
-    flag("add type references");
-    const exp = packageJson.exports as any;
-    for (const x of Object.keys(exp)) {
-      const p = path.resolve(buildOutDir, exp[x].types);
-      let contents;
-      try {
-        contents = await readFile(p);
-      } catch (e) {
-        continue;
+    {
+      flag("add type references");
+      const exp = packageJson.exports as any;
+      for (const x of Object.keys(exp)) {
+        const p = path.resolve(buildOutDir, exp[x].types);
+        let contents;
+        try {
+          contents = await readFile(p);
+        } catch (e) {
+          continue;
+        }
+        const rp = path.relative(p, path.resolve(buildOutDir, TYPINGS_DIR, "refs.d.ts"));
+        const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
+        const buf = Buffer.alloc(contents.length + refSnippet.length);
+        buf.write(refSnippet);
+        if (contents.length > buf.length && contents.compare(buf, 0, buf.length, 0, buf.length) !== 0) {
+          contents.copy(buf, refSnippet.length);
+          await writeFile(p, buf);
+        }
       }
-      const rp = path.relative(p, path.resolve(buildOutDir, TYPINGS_DIR, "refs.d.ts"));
-      const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
-      const buf = Buffer.alloc(contents.length + refSnippet.length);
-      buf.write(refSnippet);
-      if (contents.length > buf.length && contents.compare(buf, 0, buf.length, 0, buf.length) !== 0) {
-        contents.copy(buf, refSnippet.length);
-        await writeFile(p, buf);
-      }
+      success("added type references");
     }
-    success("added type references");
-  }
 
-  //#region 使用 vite(rollup+typescript+esbuild) 编译打包代码
-  flag(`generating bundle config`);
-  const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
-  const jsBundleConfig = ViteConfigFactory({
-    userConfig: buildConfig,
-    projectDirpath: root,
-    viteConfig: viteConfig1,
-    tsConfig: tsConfig1,
-    outRoot: buildOutDir,
-    logger: viteLoggerKit.logger,
-    format: userConfig1.formatExts[0].format ?? "esm",
-    profiles: userConfig1.userConfig.profiles,
-  });
-  const distDir = jsBundleConfig.build!.outDir!;
+    //#region 使用 vite(rollup+typescript+esbuild) 编译打包代码
+    flag(`generating bundle config`);
+    const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
+    let f = userConfig1.formatExts[0].format;
+    f = f ?? npmBuild.buildOptions.format;
+    const jsBundleConfig = ViteConfigFactory({
+      userConfig: buildConfig,
+      projectDirpath: root,
+      viteConfig: viteConfig1,
+      tsConfig: tsConfig1,
+      outRoot: buildOutDir,
+      logger: viteLoggerKit.logger,
+      format: f ?? "esm",
+      outSubPath: npmBuild.buildOptions.path,
+    });
+    const distDir = jsBundleConfig.build!.outDir!;
 
-  /// vite 打包
-  flag(`bundling javascript codes`);
-  await getVite().build({
-    ...jsBundleConfig,
-    build: {
-      ...jsBundleConfig.build,
-      minify: false,
-      watch: null,
-      rollupOptions: {
-        ...jsBundleConfig.build?.rollupOptions,
-        onwarn: (err) => warn(err),
+    /// vite 打包
+    flag(`bundling javascript codes`);
+    await getVite().build({
+      ...jsBundleConfig,
+      build: {
+        ...jsBundleConfig.build,
+        minify: false,
+        watch: null,
+        rollupOptions: {
+          ...jsBundleConfig.build?.rollupOptions,
+          onwarn: (err) => warn(err),
+        },
       },
-    },
-    mode: "production",
-    customLogger: viteLogger,
-  });
-  success(viteLoggerKit.content.all.trim());
-  viteLoggerKit.clearScreen();
+      mode: "production",
+      customLogger: viteLogger,
+    });
+    success(viteLoggerKit.content.all.trim());
+    viteLoggerKit.clearScreen();
 
-  success(`bundled javascript codes`);
+    success(`bundled javascript codes`);
 
-  //#endregion
+    //#endregion
 
-  /// 执行代码压缩
-  flag(`minifying javascript codes`);
-  await runTerser({ sourceDir: distDir, logError: error }); // 压缩
-  success(`minified javascript codes`);
-
-  return tsConfig1;
+    /// 执行代码压缩
+    flag(`minifying javascript codes`);
+    await runTerser({ sourceDir: distDir, logError: error }); // 压缩
+    success(`minified javascript codes`);
+    success(`built ${npmBuild.buildOptions.path}`);
+  }
 };
 
 /**
@@ -330,7 +340,7 @@ export const doBuild = async (args: {
   const BUILD_OUT_ROOT = path.resolve(path.join(root, consts.BuildOutRootPath));
 
   /**基本的 package.json */
-  const thePackageJson = subConfigs.packageJson;
+  // const thePackageJson = subConfigs.packageJson;
 
   buildLogger.debug("running bfsp build!");
   try {
@@ -364,7 +374,7 @@ export const doBuild = async (args: {
           buildOutDir,
 
           /// 配置
-          thePackageJson,
+          // thePackageJson,
           bfspUserConfig: { ...bfspUserConfig, userConfig },
 
           /// 服务

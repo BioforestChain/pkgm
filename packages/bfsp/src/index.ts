@@ -8,12 +8,17 @@ export const enum BUILD_MODE {
 }
 
 export const defineConfig = (cb: (info: Bfsp.ConfigEnvInfo) => Bfsp.UserConfig) => {
-  new Error().stack;
-
   return {
     ...cb({
       mode: process.env.mode?.startsWith("prod") ? BUILD_MODE.PRODUCTION : BUILD_MODE.DEVELOPMENT,
     }),
     relativePath: "./",
+  };
+};
+
+export const buildNpm = (opts: Bfsp.BuildNpmOptions, packageJson: Bfsp.PackageJson): Bfsp.BuildNpmResult => {
+  return {
+    buildOptions: opts,
+    packageJson,
   };
 };
