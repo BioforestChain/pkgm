@@ -11,7 +11,12 @@ declare namespace Bfsp {
   };
 
   interface BuildConfig extends Omit<UserConfig, "build"> {
-    path: string;
+    /**
+     * build输出的路径，正常是`dist`
+     * 假如设置了 outSubPath: "node"
+     * 那么，输出的路径就会变成 `dist/node`
+     */
+    outSubPath: string;
   }
 
   interface UserConfig {
@@ -25,7 +30,6 @@ declare namespace Bfsp {
      * 1. default is follow tsConfig.compilerOptions.target
      */
     target?: string | string[];
-    path?: string;
     formats?: Format[];
     profiles?: string[];
     build?: Partial<BuildConfig>[];
