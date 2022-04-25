@@ -381,7 +381,6 @@ export const doBuild = async (args: {
     const aggregatedPackageJsonMap = new Map<string /*buildOutDir */, any>();
 
     for (const [index, userConfig] of buildUserConfigList.entries()) {
-      getTui().getPanel("Tsc").logger.info("333333333333333333333333:", index, userConfig.name, userConfig.profiles);
       const buildTitle = chalk.gray(`${userConfig.name}::${userConfig.formats?.[0] ?? "esm"}`);
       buildLogger.prompts.push(buildTitle);
       const startTime = Date.now();
