@@ -141,7 +141,7 @@ const buildSingle = async (options: {
   const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1, {
     packageTemplateJson: thePackageJson,
     customTypesRoot: "./typings",
-    customDistRoot: `dist/${buildConfig.path}`,
+    customDistRoot: `dist/${buildConfig.outSubPath}`,
   });
 
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
@@ -207,6 +207,7 @@ const buildSingle = async (options: {
   flag("aggregating package.json");
   const exp = packageJson.exports as any;
   const { aggregatedPackageJson } = options;
+  // 对依赖进行聚合操作
   const aggregateDep = (key: keyof $PackageJson) => {
     (aggregatedPackageJson as any)[key] = Object.assign(aggregatedPackageJson[key] ?? {}, packageJson[key]);
     (packageJson as any)[key] = aggregatedPackageJson[key];
@@ -220,11 +221,26 @@ const buildSingle = async (options: {
   if (!aggregatedPackageJson.exports) {
     aggregatedPackageJson.exports = {} as any;
   }
+
+  /// 生成package.json的条件导出
   const aggregatedExports = aggregatedPackageJson.exports as any;
   Object.keys(exp).forEach((x) => {
     const exportsObject = exp[x];
     aggregatedExports[x] = Object.assign(
       aggregatedExports[x] ?? {},
+      /*
+      profiles的项作为导出的key，例如['web','node'] 转换成
+      "web":{
+        import:"",
+        require:"",
+        types:""
+      },
+      "node":{
+        import:"",
+        require:"",
+        types:""
+      },
+      */
       buildConfig.profiles?.reduce((acc, cur) => {
         const obj = {} as any;
         obj[cur] = exportsObject;
@@ -249,7 +265,7 @@ const buildSingle = async (options: {
     outRoot: buildOutDir,
     logger: viteLoggerKit.logger,
     format: userConfig1.formatExts[0].format ?? "esm",
-    outSubPath: buildConfig.path,
+    outSubPath: buildConfig.outSubPath,
   });
   const distDir = jsBundleConfig.build!.outDir!;
 
@@ -308,7 +324,7 @@ const collectBuildConfigs = (rootConfig: Bfsp.UserConfig, configList: Bfsp.Build
       collectBuildConfigs(buildConfig, configList);
     }
   } else {
-    configList.push({ ...rootConfig, path: (rootConfig as Bfsp.BuildConfig).path ?? "./default" });
+    configList.push({ ...rootConfig, outSubPath: (rootConfig as Bfsp.BuildConfig).outSubPath ?? "./default" });
   }
   return configList;
 };
