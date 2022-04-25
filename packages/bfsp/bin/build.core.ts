@@ -141,7 +141,7 @@ const buildSingle = async (options: {
   const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1, {
     packageTemplateJson: thePackageJson,
     customTypesRoot: "./typings",
-    customDistRoot: `${buildConfig.path}/dist`,
+    customDistRoot: `dist/${buildConfig.path}`,
   });
 
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
@@ -316,7 +316,7 @@ const collectBuildConfigs = (rootConfig: Bfsp.UserConfig, configList: Bfsp.Build
       collectBuildConfigs(buildConfig, configList);
     }
   } else {
-    configList.push({ ...rootConfig, path: rootConfig.path ?? "./default" });
+    configList.push({ ...rootConfig, path: (rootConfig as Bfsp.BuildConfig).path ?? "./default" });
   }
   return configList;
 };
@@ -378,7 +378,7 @@ export const doBuild = async (args: {
     // 用于给buildSingle提供用于聚合操作的状态
     // 基本逻辑是，buildSingle每次执行，都会使用Object.assign做exports和deps的字段合并
     // 每个buildOutDir为一个聚合基本单位
-    const aggregatedPackageJsonMap = new Map<string /*buildOutDir */, any>();
+    const aggregatedPackageJsonMap = new Map<string /*buildOutDir */, $PackageJson>();
 
     for (const [index, userConfig] of buildUserConfigList.entries()) {
       const buildTitle = chalk.gray(`${userConfig.name}::${userConfig.formats?.[0] ?? "esm"}`);
@@ -391,7 +391,7 @@ export const doBuild = async (args: {
         /**要输出的文件夹根路径 */
         const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfig.name!);
         if (!aggregatedPackageJsonMap.has(buildOutDir)) {
-          aggregatedPackageJsonMap.set(buildOutDir, {});
+          aggregatedPackageJsonMap.set(buildOutDir, {} as any);
         }
 
         /// 按需移除 build 文件夹
@@ -407,7 +407,7 @@ export const doBuild = async (args: {
 
           /// 配置
           thePackageJson,
-          aggregatedPackageJson: aggregatedPackageJsonMap.get(buildOutDir), // 用来给buildSingle做聚合操作
+          aggregatedPackageJson: aggregatedPackageJsonMap.get(buildOutDir)!, // 用来给buildSingle做聚合操作
           bfspUserConfig: { ...bfspUserConfig, userConfig },
           /// 服务
           buildLogger,
