@@ -1,4 +1,5 @@
-import { execSync } from "node:child_process";
+import { getYarnPath } from "../lib/yarn";
+import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ExternalOption } from "rollup";
@@ -49,28 +50,19 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
     "zlib",
   ]);
 
-  let yarnList;
+  const yarnPath = getYarnPath();
 
   const getYarn = () => {
-    return execSync("yarn list --prod --json", { stdio: ["pipe", "pipe", "ignore"] })
-      .toString()
-      .split("\n")
-      .map((line) => {
-        try {
-          return JSON.parse(line);
-        } catch {}
-      })
-      .filter(Boolean);
+    try {
+      const listSpawn = spawnSync("node", [yarnPath, "list", "--json", "--prod"]);
+      const data = JSON.parse(String(listSpawn.stdout));
+      if (data.type === "tree" && data.data.type === "list") {
+        return data;
+      }
+    } catch {}
   };
 
-  try {
-    yarnList = getYarn();
-  } catch (e) {
-    execSync("yarn install", { stdio: ["pipe", "pipe", "ignore"] });
-    yarnList = getYarn();
-  }
-
-  const depsInfo = yarnList.find((info) => info.type === "tree");
+  const depsInfo = getYarn();
   if (currentPkgName === undefined) {
     currentPkgName = JSON.parse(readFileSync(path.resolve(dirname, "package.json"), "utf-8")).name as string;
   }
