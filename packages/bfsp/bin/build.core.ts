@@ -333,9 +333,7 @@ export const doBuild = async (args: {
 
     /**已经清理过的文件夹目录，避免重复清理 */
     const rmDirs = new Set<string>();
-    getTui().getPanel("Tsc").logger.info("2222222222222222222222222:", buildUserConfigList);
     for (const [index, userConfig] of buildUserConfigList.entries()) {
-      getTui().getPanel("Tsc").logger.info("333333333333333333333333:", index, userConfig.name, userConfig.profiles);
       const buildTitle = chalk.gray(`${userConfig.name}::${userConfig.formats?.[0] ?? "esm"}`);
       buildLogger.prompts.push(buildTitle);
       const startTime = Date.now();
