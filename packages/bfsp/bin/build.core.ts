@@ -220,7 +220,7 @@ const buildSingle = async (options: {
   aggregateDep("optionalDependencies");
 
   if (!aggregatedPackageJson.exports) {
-    aggregatedPackageJson.exports = {} as any;
+    aggregatedPackageJson.exports = Object.assign({}, packageJson.exports);
   }
 
   /// 生成package.json的条件导出
