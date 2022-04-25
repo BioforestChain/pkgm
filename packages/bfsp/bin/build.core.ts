@@ -139,6 +139,7 @@ const buildSingle = async (options: {
   flag(`generating package.json`);
   /// 将 package.json 的 types 路径进行修改
   const packageJson = await generatePackageJson(root, userConfig1, tsConfig1, {
+    logger,
     packageTemplateJson: thePackageJson,
     customTypesRoot: "./typings",
     customDistRoot: `dist/${buildConfig.outSubPath}`,

@@ -17,6 +17,7 @@ export const generatePackageJson = async (
   bfspUserConfig: $BfspUserConfig,
   tsConfig: $TsConfig,
   options: {
+    logger?: PKGM.TuiLogger;
     customTypesRoot?: string;
     customDistRoot?: string;
     packageTemplateJson?: {};
@@ -62,7 +63,7 @@ export const generatePackageJson = async (
   for (const [posixKey, input] of Object.entries(bfspUserConfig.exportsDetail.formatedExports)) {
     const output = exportsMap.getOutput(input);
     if (output === undefined) {
-      console.error(`no found output by input: '${input}'`);
+      options.logger?.error(`no found output by input: '${input}'`);
       continue;
     }
 
@@ -118,7 +119,7 @@ export const generatePackageJson = async (
 
     const outputFilename = exportsMap.getOutput(bin);
     if (outputFilename === undefined) {
-      console.error(`no found output file for bin '${bin}'`);
+      options.logger?.error(`no found output file for bin '${bin}'`);
       continue;
     }
     packageJson.bin[binName] = getDistFilepath(defaultFormat.format, outputFilename);
