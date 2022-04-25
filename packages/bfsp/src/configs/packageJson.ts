@@ -18,7 +18,7 @@ export const generatePackageJson = async (
   tsConfig: $TsConfig,
   options: {
     customTypesRoot?: string;
-    customDistRoot?:string;
+    customDistRoot?: string;
     packageTemplateJson?: {};
   } = {}
 ) => {
@@ -53,7 +53,7 @@ export const generatePackageJson = async (
         }
         break;
     }
-    return toPosixPath(path.join(`${options.customDistRoot??'dist'}/${fe.format}`, `${outputName}${fe.extension}`));
+    return toPosixPath(path.join(`${options.customDistRoot ?? "dist"}/${fe.format}`, `${outputName}${fe.extension}`));
   };
 
   const packageJsonKeys = new Set<string>();

@@ -133,12 +133,12 @@ const buildSingle = async (options: {
   await writeTsConfig(root, userConfig1, tsConfig1);
   success(`set tsconfig.json`);
 
-  const buildConfig = bfspUserConfig.userConfig as Bfsp.BuildConfig;
+  const buildConfig = userConfig1.userConfig as Bfsp.BuildConfig;
 
   //#region 生成 package.json
   flag(`generating package.json`);
   /// 将 package.json 的 types 路径进行修改
-  const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1, {
+  const packageJson = await generatePackageJson(root, userConfig1, tsConfig1, {
     packageTemplateJson: thePackageJson,
     customTypesRoot: "./typings",
     customDistRoot: `dist/${buildConfig.path}`,
