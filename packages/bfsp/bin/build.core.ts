@@ -307,14 +307,6 @@ const collectBuildConfigs = (rootConfig: Bfsp.UserConfig, configList: Bfsp.Build
       };
       collectBuildConfigs(buildConfig, configList);
     }
-  } else if (Array.isArray(rootConfig.profiles) && rootConfig.profiles.length > 1) {
-    for (const profile of rootConfig.profiles) {
-      const buildConfig = {
-        ...rootConfig,
-        profiles: [profile],
-      };
-      collectBuildConfigs(buildConfig, configList);
-    }
   } else {
     configList.push({ ...rootConfig, path: (rootConfig as Bfsp.BuildConfig).path ?? "./default" });
   }
