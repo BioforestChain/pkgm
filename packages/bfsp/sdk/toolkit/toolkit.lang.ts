@@ -48,7 +48,7 @@ export const isBinFile = (projectDirpath: string, filepath: string) => {
   if (filepath.startsWith("./bin/")) {
     const exts = getTwoExtnames(filepath);
     if (exts !== undefined) {
-      return isTsExt(exts.ext2) && (".cmd" === exts.ext2 || ".tui" === exts.ext2);
+      return isTsExt(exts.ext1) && (".cmd" === exts.ext2 || ".tui" === exts.ext2);
     }
   }
   return false;

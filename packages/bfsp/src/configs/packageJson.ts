@@ -121,7 +121,7 @@ export const generatePackageJson = async (
       console.error(`no found output file for bin '${bin}'`);
       continue;
     }
-    packageJson.bin[binName] = toPosixPath(path.join(`dist/esm`, `${outputFilename}.mjs`));
+    packageJson.bin[binName] = getDistFilepath(defaultFormat.format, outputFilename);
   }
   packageJsonKeys.add("bin");
   //#endregion
