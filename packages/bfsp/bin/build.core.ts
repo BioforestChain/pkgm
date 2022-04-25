@@ -4,6 +4,7 @@ import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { jsonClone } from "../sdk";
 import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger";
 import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
 import { toPosixPath } from "../sdk/toolkit/toolkit.path";
@@ -102,6 +103,7 @@ const buildSingle = async (options: {
   thePackageJson: $PackageJson;
   bfspUserConfig: $BfspUserConfig;
   buildLogger: BuildLogger;
+  aggregatedPackageJson: $PackageJson;
 }) => {
   const tscLogger = createTscLogger();
   const { viteLoggerKit } = getTui().getPanel("Build");
@@ -131,12 +133,15 @@ const buildSingle = async (options: {
   await writeTsConfig(root, userConfig1, tsConfig1);
   success(`set tsconfig.json`);
 
+  const buildConfig = bfspUserConfig.userConfig as Bfsp.BuildConfig;
+
   //#region 生成 package.json
   flag(`generating package.json`);
   /// 将 package.json 的 types 路径进行修改
   const packageJson = await generatePackageJson(root, bfspUserConfig, tsConfig1, {
     packageTemplateJson: thePackageJson,
     customTypesRoot: "./typings",
+    customDistRoot: `${buildConfig.path}/dist`,
   });
 
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
@@ -188,7 +193,10 @@ const buildSingle = async (options: {
       const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
       const buf = Buffer.alloc(contents.length + refSnippet.length);
       buf.write(refSnippet);
-      if (contents.length > buf.length && contents.compare(buf, 0, buf.length, 0, buf.length) !== 0) {
+      if (
+        contents.length > refSnippet.length &&
+        contents.compare(buf, 0, refSnippet.length, 0, refSnippet.length) !== 0
+      ) {
         contents.copy(buf, refSnippet.length);
         await writeFile(p, buf);
       }
@@ -196,10 +204,43 @@ const buildSingle = async (options: {
     success("added type references");
   }
 
+  flag("aggregating package.json");
+  const exp = packageJson.exports as any;
+  const { aggregatedPackageJson } = options;
+  const aggregateDep = (key: keyof $PackageJson) => {
+    (aggregatedPackageJson as any)[key] = Object.assign(aggregatedPackageJson[key] ?? {}, packageJson[key]);
+    (packageJson as any)[key] = aggregatedPackageJson[key];
+  };
+
+  aggregateDep("dependencies");
+  aggregateDep("devDependencies");
+  aggregateDep("peerDependencies");
+  aggregateDep("optionalDependencies");
+
+  if (!aggregatedPackageJson.exports) {
+    aggregatedPackageJson.exports = {} as any;
+  }
+  const aggregatedExports = aggregatedPackageJson.exports as any;
+  Object.keys(exp).forEach((x) => {
+    const exportsObject = exp[x];
+    aggregatedExports[x] = Object.assign(
+      aggregatedExports[x] ?? {},
+      buildConfig.profiles?.reduce((acc, cur) => {
+        const obj = {} as any;
+        obj[cur] = exportsObject;
+        acc = Object.assign(acc, obj);
+        return acc;
+      }, {})
+    );
+  });
+  packageJson.exports = aggregatedExports;
+  await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
+  success(`package.json aggregated`);
+
   //#region 使用 vite(rollup+typescript+esbuild) 编译打包代码
   flag(`generating bundle config`);
   const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
-  const buildConfig = bfspUserConfig.userConfig as Bfsp.BuildConfig;
+
   const jsBundleConfig = ViteConfigFactory({
     userConfig: buildConfig,
     projectDirpath: root,
@@ -247,12 +288,6 @@ const buildSingle = async (options: {
  */
 const collectBuildConfigs = (rootConfig: Bfsp.UserConfig, configList: Bfsp.BuildConfig[] = []) => {
   if (rootConfig.build?.length) {
-    // rootConfig.build.map((child) => {
-    //   if (child.profiles && rootConfig.profiles) {
-    //     const childProfiles = [...rootConfig.profiles, ...child.profiles]; // 让build的profiles继承外部的profiles
-    //     child.profiles = Array.from(new Set(childProfiles)); // 去重
-    //   }
-    // });
     for (const buildPartial of rootConfig.build) {
       let buildConfig = {
         ...rootConfig,
@@ -339,6 +374,12 @@ export const doBuild = async (args: {
 
     /**已经清理过的文件夹目录，避免重复清理 */
     const rmDirs = new Set<string>();
+
+    // 用于给buildSingle提供用于聚合操作的状态
+    // 基本逻辑是，buildSingle每次执行，都会使用Object.assign做exports和deps的字段合并
+    // 每个buildOutDir为一个聚合基本单位
+    const aggregatedPackageJsonMap = new Map<string /*buildOutDir */, any>();
+
     for (const [index, userConfig] of buildUserConfigList.entries()) {
       const buildTitle = chalk.gray(`${userConfig.name}::${userConfig.formats?.[0] ?? "esm"}`);
       buildLogger.prompts.push(buildTitle);
@@ -349,6 +390,9 @@ export const doBuild = async (args: {
       {
         /**要输出的文件夹根路径 */
         const buildOutDir = path.resolve(BUILD_OUT_ROOT, userConfig.name!);
+        if (!aggregatedPackageJsonMap.has(buildOutDir)) {
+          aggregatedPackageJsonMap.set(buildOutDir, {});
+        }
 
         /// 按需移除 build 文件夹
         if (rmDirs.has(buildOutDir) === false) {
@@ -363,6 +407,7 @@ export const doBuild = async (args: {
 
           /// 配置
           thePackageJson,
+          aggregatedPackageJson: aggregatedPackageJsonMap.get(buildOutDir), // 用来给buildSingle做聚合操作
           bfspUserConfig: { ...bfspUserConfig, userConfig },
           /// 服务
           buildLogger,
@@ -375,8 +420,6 @@ export const doBuild = async (args: {
       buildLogger.info(`${chalk.green(">>>")} finished ${taskTitle} ${buildTimeSpan}`);
       buildLogger.prompts.pop();
     }
-    // TODO: 更新package.json， 把所有build项的deps合并再写入
-    // 适配器，确定npm生态exports的web/node
     buildLogger.flag(chalk.magenta("🎉 build finished 🎊"), false);
     buildLogger.updateStatus("success");
   } catch (e) {
