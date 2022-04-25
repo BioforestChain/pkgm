@@ -48,15 +48,28 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
     "worker_threads",
     "zlib",
   ]);
-  const yarnList = execSync("yarn list --prod --json", { stdio: ["pipe", "pipe", "ignore"] })
-    .toString()
-    .split("\n")
-    .map((line) => {
-      try {
-        return JSON.parse(line);
-      } catch {}
-    })
-    .filter(Boolean);
+
+  let yarnList;
+
+  const getYarn = () => {
+    return execSync("yarn list --prod --json", { stdio: ["pipe", "pipe", "ignore"] })
+      .toString()
+      .split("\n")
+      .map((line) => {
+        try {
+          return JSON.parse(line);
+        } catch {}
+      })
+      .filter(Boolean);
+  };
+
+  try {
+    yarnList = getYarn();
+  } catch (e) {
+    execSync("yarn install", { stdio: ["pipe", "pipe", "ignore"] });
+    yarnList = getYarn();
+  }
+
   const depsInfo = yarnList.find((info) => info.type === "tree");
   if (currentPkgName === undefined) {
     currentPkgName = JSON.parse(readFileSync(path.resolve(dirname, "package.json"), "utf-8")).name as string;

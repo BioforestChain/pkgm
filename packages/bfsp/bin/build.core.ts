@@ -316,7 +316,7 @@ const collectBuildConfigs = (rootConfig: Bfsp.UserConfig, configList: Bfsp.Build
       collectBuildConfigs(buildConfig, configList);
     }
   } else {
-    configList.push({ ...rootConfig, path: (rootConfig as any).path ?? "./default" });
+    configList.push({ ...rootConfig, path: rootConfig.path ?? "./default" });
   }
   return configList;
 };

@@ -25,6 +25,7 @@ declare namespace Bfsp {
      * 1. default is follow tsConfig.compilerOptions.target
      */
     target?: string | string[];
+    path?: string;
     formats?: Format[];
     profiles?: string[];
     build?: Partial<BuildConfig>[];
