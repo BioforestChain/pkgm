@@ -1,6 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { getVite } from "@bfchain/pkgm-base/lib/vite";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync, rmdirSync, symlinkSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -268,6 +268,8 @@ const buildSingle = async (options: {
     outSubPath: buildConfig.outSubPath,
   });
   const distDir = jsBundleConfig.build!.outDir!;
+  createSymLink(buildOutDir);
+  getTui().getPanel("Deps").logger.info("distDirdistDirdistDirdistDirdistDir", jsBundleConfig);
 
   /// vite 打包
   flag(`bundling javascript codes`);
@@ -297,6 +299,19 @@ const buildSingle = async (options: {
   await runTerser({ sourceDir: distDir, logError: error }); // 压缩
   success(`minified javascript codes`);
 };
+/**
+ * 给build创建软连接
+ * @param targetSrc
+ */
+function createSymLink(targetSrc: string) {
+  const src = targetSrc.split("build");
+  const prefixSrc = src[0];
+  const nodeModulesSrc = path.join(prefixSrc, "node_modules", path.basename(targetSrc));
+  if (existsSync(nodeModulesSrc)) {
+    rmdirSync(nodeModulesSrc);
+  }
+  symlinkSync(targetSrc, nodeModulesSrc, "dir");
+}
 
 /**
  * 整理出要执行 build 的配置
