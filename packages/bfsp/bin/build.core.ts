@@ -4,7 +4,6 @@ import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { jsonClone } from "../sdk";
 import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger";
 import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
 import { toPosixPath } from "../sdk/toolkit/toolkit.path";

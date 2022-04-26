@@ -15,6 +15,9 @@
     "./lib/debug": {
       "import": "./dist/main/lib/debug.mjs"
     },
+    "./lib/dep_graph": {
+      "import": "./dist/main/lib/dep_graph.mjs"
+    },
     "./lib/esbuild": {
       "import": "./dist/main/lib/esbuild.mjs"
     },
@@ -85,6 +88,7 @@
     "blessed": "^0.1.81",
     "chalk": "5.0.0",
     "debug": "^4.3.2",
+    "dependency-graph": "^0.11.0",
     "fb-watchman": "^2.0.1",
     "ignore": "^5.2.0",
     "prettier": "^2.5.1",

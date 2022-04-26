@@ -44,8 +44,7 @@
   "license": "MIT",
   "dependencies": {
     "@bfchain/pkgm-base": "^2.6.5",
-    "@bfchain/pkgm-bfsp": "^2.6.5",
-    "dependency-graph": "^0.11.0"
+    "@bfchain/pkgm-bfsp": "^2.6.5"
   },
   "devDependencies": {
     "@bfchain/pkgm-base": "link:../base",
