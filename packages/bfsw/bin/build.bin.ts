@@ -109,7 +109,10 @@ const dependencyAnalysis = (projects: Bfsw.WorkspaceUserConfig[]) => {
   }
 
   const sortDeps: Bfsw.WorkspaceUserConfig[] = [];
-
+  const sortGraph = graph.overallOrder();
+  if (sortGraph.length === 0) {
+    return projects;
+  }
   graph.overallOrder().map((item) => {
     projects.map((project) => {
       if (project.name === item) {
