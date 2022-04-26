@@ -63,6 +63,7 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
   };
 
   const depsInfo = getYarn();
+  if (!depsInfo.data) return;
   if (currentPkgName === undefined) {
     currentPkgName = JSON.parse(readFileSync(path.resolve(dirname, "package.json"), "utf-8")).name as string;
   }
