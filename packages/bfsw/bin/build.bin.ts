@@ -12,6 +12,7 @@ import path from "node:path";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 import { doInit } from "./init.core";
+import { DepGraph } from "@bfchain/pkgm-base/lib/dep_graph";
 
 export const buildCommand = defineCommand(
   "build",
@@ -71,13 +72,15 @@ export const buildCommand = defineCommand(
         });
       };
       await tscCompilation();
+      // 依赖分析排序
+      const projects = dependencyAnalysis(workspaceConfig.projects);
 
       const buildLogger = getTui().getPanel("Build").logger;
-      workspaceConfig.projects.forEach(async (x) => {
+      projects.forEach(async (x) => {
         const projectRoot = path.join(root, x.relativePath);
 
         const bfspUserConfig = await getBfspUserConfig(projectRoot, { logger: buildLogger });
-        
+
         // 填充 `extendsService` 內容
         bfspUserConfig.extendsService.tsRefs = workspaceConfig.states.calculateRefsByPath(projectRoot);
         bfspUserConfig.extendsService.dependencies = workspaceConfig.states.calculateDepsByPath(projectRoot);
@@ -85,10 +88,43 @@ export const buildCommand = defineCommand(
           { projectDirpath: projectRoot, bfspUserConfig },
           { logger: buildLogger }
         );
-
         await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
         logger.info(`${chalk.green(x.name)} built successfully`);
       });
     }
   }
 );
+
+/**
+ * 对互相依赖的包进行排序
+ * @param projects
+ * @returns sortDeps
+ */
+const dependencyAnalysis = (projects: Bfsw.WorkspaceUserConfig[]) => {
+  const graph = new DepGraph();
+  for (const project of projects) {
+    if (project.deps && project.deps.length !== 0) {
+      addGraph(project.deps, project.name);
+    }
+  }
+
+  const sortDeps: Bfsw.WorkspaceUserConfig[] = [];
+
+  graph.overallOrder().map((item) => {
+    projects.map((project) => {
+      if (project.name === item) {
+        sortDeps.push(project);
+      }
+    });
+  });
+
+  function addGraph(deps: string[], name: string) {
+    graph.addNode(name);
+    deps.map((dep) => {
+      graph.addNode(dep);
+      graph.addDependency(name, dep);
+    });
+  }
+
+  return sortDeps;
+};
