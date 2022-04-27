@@ -1,10 +1,8 @@
 import {
   defineCommand,
-  runTsc,
   doBuild,
   DevLogger,
   getTui,
-  createTscLogger,
   getBfspUserConfig,
   writeBfspProjectConfig,
 } from "@bfchain/pkgm-bfsp/sdk";
@@ -57,21 +55,6 @@ export const buildCommand = defineCommand(
       // 清除 doInit 留下的日志
       initLoggerKit.destroy();
 
-      const tscCompilation = () => {
-        return new Promise((resolve) => {
-          const tscLogger = createTscLogger();
-          runTsc({
-            watch: true,
-            tsconfigPath: path.join(root, "tsconfig.json"),
-            onMessage: (s) => tscLogger.write(s),
-            onClear: () => tscLogger.clear(),
-            onSuccess: () => {
-              resolve(undefined);
-            },
-          });
-        });
-      };
-      await tscCompilation();
       // 依赖分析排序
       const { projects, sortGraph } = dependencyAnalysis(workspaceConfig.projects);
 
@@ -108,6 +91,9 @@ const dependencyAnalysis = (projects: Bfsw.WorkspaceUserConfig[]) => {
   for (const project of projects) {
     if (project.deps && project.deps.length !== 0) {
       addGraph(project.deps, project.name);
+    } else {
+      // 就算没有依赖，自身也是个节点
+      graph.addNode(project.name);
     }
   }
 
