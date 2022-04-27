@@ -361,7 +361,6 @@ export const doBuild = async (args: {
   root?: string;
   subConfigs: Awaited<ReturnType<typeof writeBfspProjectConfig>>;
   bfspUserConfig: $BfspUserConfig;
-  sortGraph: string[];
 }) => {
   const { root = process.cwd(), subConfigs, bfspUserConfig } = args; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
   const buildLogger = new BuildLogger([bfspUserConfig.userConfig.name]);
@@ -388,18 +387,8 @@ export const doBuild = async (args: {
     // 每个buildOutDir为一个聚合基本单位
     const aggregatedPackageJsonMap = new Map<string /*buildOutDir */, $PackageJson>();
 
-    // 重新排序，解决tui会堵塞函数导致build顺序混乱
-    let buildList: Bfsp.UserConfig[] = [];
-    args.sortGraph.map((sort) => {
-      buildUserConfigList.map((build) => {
-        if (build.name === sort) buildList.push(build);
-      });
-    });
-    if (args.sortGraph.length === 0) {
-      buildList = buildUserConfigList;
-    }
     const buildResults = new Map<string /*name */, string /*buildOutDir */>();
-    for (const [index, userConfig] of buildList.entries()) {
+    for (const [index, userConfig] of buildUserConfigList.entries()) {
       const buildTitle = chalk.gray(`${userConfig.name}::${userConfig.formats?.[0] ?? "esm"}`);
       buildLogger.prompts.push(buildTitle);
       const startTime = Date.now();
