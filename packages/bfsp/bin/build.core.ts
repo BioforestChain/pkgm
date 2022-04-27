@@ -210,8 +210,9 @@ const buildSingle = async (options: {
       const buf = Buffer.alloc(contents.length + refSnippet.length);
       buf.write(refSnippet);
       if (
-        contents.length > refSnippet.length &&
-        contents.compare(buf, 0, refSnippet.length, 0, refSnippet.length) !== 0
+        (contents.length >= refSnippet.length &&
+          contents.compare(buf, 0, refSnippet.length, 0, refSnippet.length) !== 0) ||
+        contents.length < refSnippet.length
       ) {
         contents.copy(buf, refSnippet.length);
         await writeFile(p, buf);
