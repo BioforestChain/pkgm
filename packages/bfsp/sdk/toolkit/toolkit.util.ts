@@ -56,3 +56,21 @@ export function rearrange<T>(numContainer: number, items: T[], cb: (items: T[]) 
     cb(slicedItems);
   }
 }
+
+/**
+ * 解决对象循环引用 -> const obj = {};obj.name = obj;
+ * 使用方法 const result = JSON.stringify(obj, getCircularReplacer());
+ * @returns
+ */
+export const getCircularReplacer = () => {
+  const seen = new WeakSet();
+  return (_key: any, value: object | null) => {
+    if (typeof value === "object" && value !== null) {
+      if (seen.has(value)) {
+        return;
+      }
+      seen.add(value);
+    }
+    return value;
+  };
+};
