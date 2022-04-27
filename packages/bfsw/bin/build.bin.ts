@@ -109,7 +109,7 @@ export const createBuildSymLink = (root: string, buildOutDir: string, name: stri
  * @returns sortDeps
  */
 const dependencyAnalysis = (projects: Bfsw.WorkspaceUserConfig[]) => {
-  const graph = new DepGraph();
+  const graph = new DepGraph({ circular: true });
   for (const project of projects) {
     if (project.deps && project.deps.length !== 0) {
       addGraph(project.deps, project.name);
