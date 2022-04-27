@@ -19,14 +19,14 @@ const bfswTsconfigFilepath = createTsconfigForEsbuild(bfswTsconfigContent);
 export const LoadConfig = async (
   workspaceRoot: string,
   options: {
-    single?: AbortSignal;
+    signal?: AbortSignal;
     watch?: (config: Bfsw.Workspace) => void;
     logger: PKGM.TuiLogger;
   }
 ) => {
   const debug = DevLogger("bfsw:config/load");
 
-  const { single, logger, watch } = options;
+  const { signal, logger, watch } = options;
 
   for (const filename of await folderIO.get(workspaceRoot)) {
     if (filename === "#bfsw.ts" || filename === "#bfsw.mts" || filename === "#bfsw.mtsx") {
@@ -77,7 +77,7 @@ export const LoadConfig = async (
             },
           },
         });
-        if (single?.aborted) {
+        if (signal?.aborted) {
           return;
         }
 
@@ -86,7 +86,7 @@ export const LoadConfig = async (
         if (typeof buildResult.stop === "function") {
           logger.info.pin(`watch:${filename}`, `watching ${chalk.blue(filename)} changes...`);
           // 监听模式
-          single?.addEventListener("abort", buildResult.stop.bind(buildResult));
+          signal?.addEventListener("abort", buildResult.stop.bind(buildResult));
         } else if (hasError) {
           return;
         }

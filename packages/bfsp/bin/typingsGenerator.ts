@@ -98,8 +98,9 @@ export class TypingsGenerator {
     const opts = cfg.compilerOptions;
     opts.isolatedModules = true;
     opts.noEmit = true;
-    opts.typeRoots = [path.join(this._tsConfig.typingsJson.compilerOptions.outDir, "..")];
-    opts.types = ["typings"];
+    const typingsOutDir = this._tsConfig.typingsJson.compilerOptions.outDir;
+    opts.typeRoots = [path.dirname(typingsOutDir)];
+    opts.types = [path.basename(typingsOutDir)];
     Reflect.deleteProperty(cfg, "references");
 
     const p = path.join(this._root, "tsconfig.isolated.json");

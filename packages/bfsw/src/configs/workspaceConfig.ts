@@ -21,7 +21,7 @@ export class WorkspaceConfig extends WorkspaceConfigBase {
 
     (async () => {
       const initConfig = await LoadConfig(workspaceRoot, {
-        single: ac.signal,
+        signal: ac.signal,
         watch: (newConfig) => {
           if (wcPo.value === undefined) {
             const wc = new WorkspaceConfig(workspaceRoot, newConfig, logger);
