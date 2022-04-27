@@ -7,6 +7,7 @@ import {
   writeBfspProjectConfig,
 } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
+import { existsSync, rmdirSync, symlinkSync } from "node:fs";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 import { doInit } from "./init.core";
@@ -73,13 +74,29 @@ export const buildCommand = defineCommand(
           { projectDirpath: projectRoot, bfspUserConfig },
           { logger: buildLogger }
         );
-        await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
+        const buildResults = await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
+        buildResults?.forEach((buildOutDir, name) => {
+          createBuildSymLink(root, buildOutDir, name);
+        });
         logger.info(`${chalk.green(x.name)} built successfully`);
       }
-      workspacePanel.logger.log.pin("progress", `all projects built`);
+      workspacePanel.logger.log.pin("progress", `🎉 ${chalk.green("All projects built successfully")}`);
     }
   }
 );
+
+/**
+ * 给build创建软连接
+ * @param targetSrc
+ */
+export const createBuildSymLink = (root: string, buildOutDir: string, name: string) => {
+  const nodeModulesDir = path.resolve(root, "node_modules", name);
+  // 如果存在的话先删除创建新的
+  if (existsSync(nodeModulesDir)) {
+    rmdirSync(nodeModulesDir);
+  }
+  symlinkSync(buildOutDir, nodeModulesDir, "junction");
+};
 
 /**
  * 对互相依赖的包进行排序
