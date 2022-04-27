@@ -75,12 +75,17 @@ export const buildCommand = defineCommand(
           { logger: buildLogger }
         );
         const buildResults = await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
-        buildResults?.forEach((buildOutDir, name) => {
+        if (!buildResults) {
+          break;
+        }
+        buildResults.forEach((buildOutDir, name) => {
           createBuildSymLink(root, buildOutDir, name);
         });
         logger.info(`${chalk.green(x.name)} built successfully`);
       }
-      workspacePanel.logger.log.pin("progress", `🎉 ${chalk.green("All projects built successfully")}`);
+      if (i === projects.length) {
+        workspacePanel.logger.log.pin("progress", `🎉 ${chalk.green("All projects built successfully")}`);
+      }
     }
   }
 );
