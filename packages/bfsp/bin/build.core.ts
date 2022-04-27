@@ -379,6 +379,7 @@ export const doBuild = async (args: {
   root?: string;
   subConfigs: Awaited<ReturnType<typeof writeBfspProjectConfig>>;
   bfspUserConfig: $BfspUserConfig;
+  sortGraph: string[];
 }) => {
   const { root = process.cwd(), subConfigs, bfspUserConfig } = args; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
   const buildLogger = new BuildLogger([bfspUserConfig.userConfig.name]);
@@ -395,7 +396,6 @@ export const doBuild = async (args: {
   try {
     /**拆分出一个个独立的 build 作业 */
     const buildUserConfigList = collectBuildConfigs(bfspUserConfig.userConfig);
-
     buildLogger.updateStatus("loading");
 
     /**已经清理过的文件夹目录，避免重复清理 */
@@ -406,7 +406,17 @@ export const doBuild = async (args: {
     // 每个buildOutDir为一个聚合基本单位
     const aggregatedPackageJsonMap = new Map<string /*buildOutDir */, $PackageJson>();
 
-    for (const [index, userConfig] of buildUserConfigList.entries()) {
+    // 重新排序，解决tui会堵塞函数导致build顺序混乱
+    let buildList: Bfsp.UserConfig[] = [];
+    args.sortGraph.map((sort) => {
+      buildUserConfigList.map((build) => {
+        if (build.name === sort) buildList.push(build);
+      });
+    });
+    if (args.sortGraph.length === 0) {
+      buildList = buildUserConfigList;
+    }
+    for (const [index, userConfig] of buildList.entries()) {
       const buildTitle = chalk.gray(`${userConfig.name}::${userConfig.formats?.[0] ?? "esm"}`);
       buildLogger.prompts.push(buildTitle);
       const startTime = Date.now();
@@ -419,7 +429,6 @@ export const doBuild = async (args: {
         if (!aggregatedPackageJsonMap.has(buildOutDir)) {
           aggregatedPackageJsonMap.set(buildOutDir, {} as any);
         }
-
         /// 按需移除 build 文件夹
         if (rmDirs.has(buildOutDir) === false) {
           rmDirs.add(buildOutDir);

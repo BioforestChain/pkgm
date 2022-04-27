@@ -73,7 +73,7 @@ export const buildCommand = defineCommand(
       };
       await tscCompilation();
       // 依赖分析排序
-      const projects = dependencyAnalysis(workspaceConfig.projects);
+      const { projects, sortGraph } = dependencyAnalysis(workspaceConfig.projects);
 
       const buildLogger = getTui().getPanel("Build").logger;
       projects.forEach(async (x) => {
@@ -88,7 +88,7 @@ export const buildCommand = defineCommand(
           { projectDirpath: projectRoot, bfspUserConfig },
           { logger: buildLogger }
         );
-        await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
+        await doBuild({ root: projectRoot, bfspUserConfig, subConfigs, sortGraph });
         logger.info(`${chalk.green(x.name)} built successfully`);
       });
     }
@@ -111,9 +111,10 @@ const dependencyAnalysis = (projects: Bfsw.WorkspaceUserConfig[]) => {
   const sortDeps: Bfsw.WorkspaceUserConfig[] = [];
   const sortGraph = graph.overallOrder();
   if (sortGraph.length === 0) {
-    return projects;
+    return { projects, sortGraph };
   }
-  graph.overallOrder().map((item) => {
+  // 根据依赖规则排序
+  sortGraph.map((item) => {
     projects.map((project) => {
       if (project.name === item) {
         sortDeps.push(project);
@@ -129,5 +130,5 @@ const dependencyAnalysis = (projects: Bfsw.WorkspaceUserConfig[]) => {
     });
   }
 
-  return sortDeps;
+  return { projects: sortDeps, sortGraph };
 };
