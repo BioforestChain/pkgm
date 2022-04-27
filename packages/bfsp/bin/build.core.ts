@@ -1,6 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { getVite } from "@bfchain/pkgm-base/lib/vite";
-import { existsSync, rmdirSync, symlinkSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -20,22 +20,6 @@ import { TypingsGenerator } from "./typingsGenerator";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
 const debug = DevLogger("bfsp:bin/build");
-
-/**
- * 给build创建软连接
- * @param targetSrc
- */
-export const createBuildSymLink = (targetSrc: string) => {
-  const src = targetSrc.split("build");
-  const prefixSrc = src[0];
-  if (!prefixSrc) return;
-  const nodeModulesSrc = path.join(prefixSrc, "node_modules", path.basename(targetSrc));
-  // 如果存在的话先删除创建新的
-  if (existsSync(nodeModulesSrc)) {
-    rmdirSync(nodeModulesSrc);
-  }
-  symlinkSync(targetSrc, nodeModulesSrc, "junction");
-};
 
 export const installBuildDeps = async (options: { root: string }) => {
   const { root } = options;
@@ -285,8 +269,6 @@ const buildSingle = async (options: {
     outSubPath: buildConfig.outSubPath,
   });
   const distDir = jsBundleConfig.build!.outDir!;
-  // 创建软链接，将build指向node_modules
-  createBuildSymLink(buildOutDir);
 
   /// vite 打包
   flag(`bundling javascript codes`);
@@ -380,7 +362,6 @@ export const doBuild = async (args: {
   root?: string;
   subConfigs: Awaited<ReturnType<typeof writeBfspProjectConfig>>;
   bfspUserConfig: $BfspUserConfig;
-  sortGraph: string[];
 }) => {
   const { root = process.cwd(), subConfigs, bfspUserConfig } = args; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
   const buildLogger = new BuildLogger([bfspUserConfig.userConfig.name]);
@@ -407,17 +388,8 @@ export const doBuild = async (args: {
     // 每个buildOutDir为一个聚合基本单位
     const aggregatedPackageJsonMap = new Map<string /*buildOutDir */, $PackageJson>();
 
-    // 重新排序，解决tui会堵塞函数导致build顺序混乱
-    let buildList: Bfsp.UserConfig[] = [];
-    args.sortGraph.map((sort) => {
-      buildUserConfigList.map((build) => {
-        if (build.name === sort) buildList.push(build);
-      });
-    });
-    if (args.sortGraph.length === 0) {
-      buildList = buildUserConfigList;
-    }
-    for (const [index, userConfig] of buildList.entries()) {
+    const buildResults = new Map<string /*name */, string /*buildOutDir */>();
+    for (const [index, userConfig] of buildUserConfigList.entries()) {
       const buildTitle = chalk.gray(`${userConfig.name}::${userConfig.formats?.[0] ?? "esm"}`);
       buildLogger.prompts.push(buildTitle);
       const startTime = Date.now();
@@ -448,6 +420,7 @@ export const doBuild = async (args: {
           /// 服务
           buildLogger,
         });
+        buildResults.set(userConfig.name, buildOutDir);
 
         // await buildService.afterSingleBuild({ buildOutDir, config: userConfig });
       }
@@ -458,6 +431,7 @@ export const doBuild = async (args: {
     }
     buildLogger.flag(chalk.magenta("🎉 build finished 🎊"), false);
     buildLogger.updateStatus("success");
+    return buildResults;
   } catch (e) {
     buildLogger.flag(chalk.red("build failed"), false);
     buildLogger.error(e);
