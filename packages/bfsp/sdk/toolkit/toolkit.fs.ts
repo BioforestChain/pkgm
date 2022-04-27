@@ -2,12 +2,13 @@ import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { ignore } from "@bfchain/pkgm-base/lib/ignore";
-import { existsSync, mkdirSync, statSync, readFileSync, unlinkSync } from "node:fs";
+import { existsSync, mkdirSync, statSync, readFileSync, rmdirSync, symlinkSync } from "node:fs";
 import { copyFile, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import type { ModuleFormat } from "@bfchain/pkgm-base/lib/rollup";
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 
 import { DevLogger } from "../logger/logger";
+import { getCircularReplacer } from "./toolkit.util";
 
 const log = DevLogger("toolkit");
 
@@ -387,7 +388,8 @@ export const DebounceLoadConfig = <T>(filepath: string, logger: PKGM.TuiLogger, 
 
 export async function writeJsonConfig(filepath: string, config: any) {
   await folderIO.tryInit(path.dirname(filepath));
-  await fileIO.set(filepath, Buffer.from(JSON.stringify(config, null, 2)), true);
+  // getCircularReplacer解决对象循环引用
+  await fileIO.set(filepath, Buffer.from(JSON.stringify(config, getCircularReplacer(), 2)), true);
 }
 
 export const getBfspDir = () => {
@@ -455,4 +457,20 @@ export const getBfswPackageJson = () => {
 };
 export const getBfswVersion = () => {
   return getBfswPackageJson().version;
+};
+
+/**
+ * 给build创建软连接
+ * @param targetSrc
+ */
+export const createBuildSymLink = (targetSrc: string) => {
+  const src = targetSrc.split("build");
+  const prefixSrc = src[0];
+  if (!prefixSrc) return;
+  const nodeModulesSrc = path.join(prefixSrc, "node_modules", path.basename(targetSrc));
+  // 如果存在的话先删除创建新的
+  if (existsSync(nodeModulesSrc)) {
+    rmdirSync(nodeModulesSrc);
+  }
+  symlinkSync(targetSrc, nodeModulesSrc, "dir");
 };
