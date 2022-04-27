@@ -377,7 +377,6 @@ export const doBuild = async (args: {
   try {
     /**拆分出一个个独立的 build 作业 */
     const buildUserConfigList = collectBuildConfigs(bfspUserConfig.userConfig);
-
     buildLogger.updateStatus("loading");
 
     /**已经清理过的文件夹目录，避免重复清理 */
@@ -402,7 +401,6 @@ export const doBuild = async (args: {
         if (!aggregatedPackageJsonMap.has(buildOutDir)) {
           aggregatedPackageJsonMap.set(buildOutDir, {} as any);
         }
-
         /// 按需移除 build 文件夹
         if (rmDirs.has(buildOutDir) === false) {
           rmDirs.add(buildOutDir);
