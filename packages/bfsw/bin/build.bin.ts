@@ -57,7 +57,7 @@ export const buildCommand = defineCommand(
       initLoggerKit.destroy();
 
       // 依赖分析排序
-      const { projects, sortGraph } = dependencyAnalysis(workspaceConfig.projects);
+      const projects = dependencyAnalysis(workspaceConfig.projects);
 
       const buildLogger = getTui().getPanel("Build").logger;
       let i = 0;
@@ -117,7 +117,7 @@ const dependencyAnalysis = (projects: Bfsw.WorkspaceUserConfig[]) => {
   const sortDeps: Bfsw.WorkspaceUserConfig[] = [];
   const sortGraph = graph.overallOrder();
   if (sortGraph.length === 0) {
-    return { projects, sortGraph };
+    return projects;
   }
   // 根据依赖规则排序
   sortGraph.map((item) => {
@@ -136,5 +136,5 @@ const dependencyAnalysis = (projects: Bfsw.WorkspaceUserConfig[]) => {
     });
   }
 
-  return { projects: sortDeps, sortGraph };
+  return sortDeps;
 };
