@@ -1,11 +1,11 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { getVite } from "@bfchain/pkgm-base/lib/vite";
-import { existsSync, mkdirSync, rmdirSync, symlinkSync } from "node:fs";
+import { existsSync, rmdirSync, symlinkSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger";
-import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
+import { createBuildSymLink, walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
 import { toPosixPath } from "../sdk/toolkit/toolkit.path";
 import { getTui, PanelStatus } from "../sdk/tui/index";
 import { writeBfspProjectConfig } from "../src/bfspConfig";
@@ -268,8 +268,8 @@ const buildSingle = async (options: {
     outSubPath: buildConfig.outSubPath,
   });
   const distDir = jsBundleConfig.build!.outDir!;
-  createSymLink(buildOutDir);
-  getTui().getPanel("Deps").logger.info("distDirdistDirdistDirdistDirdistDir", jsBundleConfig);
+  // 创建软链接，将build指向node_modules
+  createBuildSymLink(buildOutDir);
 
   /// vite 打包
   flag(`bundling javascript codes`);
@@ -299,19 +299,6 @@ const buildSingle = async (options: {
   await runTerser({ sourceDir: distDir, logError: error }); // 压缩
   success(`minified javascript codes`);
 };
-/**
- * 给build创建软连接
- * @param targetSrc
- */
-function createSymLink(targetSrc: string) {
-  const src = targetSrc.split("build");
-  const prefixSrc = src[0];
-  const nodeModulesSrc = path.join(prefixSrc, "node_modules", path.basename(targetSrc));
-  if (existsSync(nodeModulesSrc)) {
-    rmdirSync(nodeModulesSrc);
-  }
-  symlinkSync(targetSrc, nodeModulesSrc, "dir");
-}
 
 /**
  * 整理出要执行 build 的配置
