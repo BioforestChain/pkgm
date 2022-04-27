@@ -214,7 +214,7 @@ const runYarnList = (args: RunYarnListOption) => {
         const trees: Tree[] = data.data.trees;
         const treeMap = groupTree(trees);
         const rootNames = new Set(args.rootPackageNameList);
-        const logs = logTree(treeMap, trees, (tree) => rootNames.has(tree.sname));
+        const logs = logTree(treeMap, trees, (tree) => rootNames.has(tree.sname), args.rootPackageNameList);
         logger.log.unpin("yarn-list");
         logger.clear();
         const title = chalk.cyanBright("Dependencies list by yarn");
@@ -246,11 +246,18 @@ const logTree = (
   map: Map<string, Tree>,
   trees: Tree[],
   isRoot = (tree: Tree) => true,
+  rootPackageNameList: string[] = [],
   logs: string[] = [],
   prefix = "",
   depth = 2
 ) => {
-  const filteredTree = trees.filter(isRoot);
+  let filteredTree = trees.filter(isRoot);
+
+  // 如果是bfsp,直接全部打印
+  if (filteredTree.length === 0 && rootPackageNameList[0]) {
+    filteredTree.push(...trees);
+  }
+
   const lastTree = filteredTree.at(-1);
 
   for (const tree of filteredTree) {
@@ -283,7 +290,7 @@ const logTree = (
     if (depth > 1) {
       const children = tree.children ?? map.get(tree.sname)?.children;
       if (children) {
-        logTree(map, children, () => true, logs, childPrefix, depth - 1);
+        logTree(map, children, () => true, [], logs, childPrefix, depth - 1);
       }
     }
   }

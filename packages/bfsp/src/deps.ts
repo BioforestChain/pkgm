@@ -4,7 +4,6 @@ import { $PackageJson } from "./configs/packageJson";
 import { DevLogger } from "../sdk/logger/logger";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../sdk/toolkit/toolkit.stream";
 import { getTui } from "../sdk/tui";
-import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 
 const debug = DevLogger("bfsp:deps");
 type DepsEventCallback = () => unknown;
@@ -20,7 +19,6 @@ const comparablePackageJsonDependencies = (packageJson: $PackageJson) => {
   combine(packageJson.devDependencies, "dev:");
   combine(packageJson.peerDependencies, "peer:");
   combine(packageJson.optionalDependencies, "opt:");
-  printDeps(packageJson);
   return Deps;
 };
 
@@ -90,27 +88,4 @@ export const doWatchDeps = (
   const stream = new SharedAsyncIterable<InstallDepsStates>(follower);
 
   return stream;
-};
-
-/**
- * 打印依赖信息
- * @param packageJson
- */
-const printDeps = (packageJson: Bfsp.TMap) => {
-  const log = getTui().getPanel("Deps").logger;
-  log.clear();
-  const prints = ["dependencies", "devDependencies", "peerDependencies", "optionalDependencies"];
-  prints.forEach((dep) => {
-    const depObject = packageJson[dep];
-    if (Object.keys(depObject).length !== 0) {
-      print(depObject, dep);
-    }
-  });
-
-  function print(dep: Bfsp.Dependencies, flag: string) {
-    log.info(`\n${chalk.bold.cyan(flag)}:`);
-    Object.keys(dep).map((item) => {
-      log.info(` ${chalk.bold.green(item)}\t${chalk.blue(dep[item])}`);
-    });
-  }
 };
