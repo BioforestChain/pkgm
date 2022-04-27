@@ -119,7 +119,8 @@ const buildSingle = async (options: {
 
   const userConfig1 = $getBfspUserConfig(bfspUserConfig.userConfig);
 
-  const TYPINGS_DIR = "typings"; // #40，tsc只是用来生成类型
+  const buildConfig = userConfig1.userConfig as Bfsp.BuildConfig;
+  const TYPINGS_DIR = `typings/${buildConfig.outSubPath}`; // #40，tsc只是用来生成类型
 
   flag(`generating tsconfig.json`);
   const tsConfig1 = await generateTsConfig(root, userConfig1, {
@@ -132,15 +133,13 @@ const buildSingle = async (options: {
   await writeTsConfig(root, userConfig1, tsConfig1);
   success(`set tsconfig.json`);
 
-  const buildConfig = userConfig1.userConfig as Bfsp.BuildConfig;
-
   //#region 生成 package.json
   flag(`generating package.json`);
   /// 将 package.json 的 types 路径进行修改
   const packageJson = await generatePackageJson(root, userConfig1, tsConfig1, {
     logger,
     packageTemplateJson: thePackageJson,
-    customTypesRoot: "./typings",
+    customTypesRoot: `./typings/${buildConfig.outSubPath}`,
     customDistRoot: `dist/${buildConfig.outSubPath}`,
   });
 
