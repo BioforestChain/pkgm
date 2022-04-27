@@ -458,19 +458,3 @@ export const getBfswPackageJson = () => {
 export const getBfswVersion = () => {
   return getBfswPackageJson().version;
 };
-
-/**
- * 给build创建软连接
- * @param targetSrc
- */
-export const createBuildSymLink = (targetSrc: string) => {
-  const src = targetSrc.split("build");
-  const prefixSrc = src[0];
-  if (!prefixSrc) return;
-  const nodeModulesSrc = path.join(prefixSrc, "node_modules", path.basename(targetSrc));
-  // 如果存在的话先删除创建新的
-  if (existsSync(nodeModulesSrc)) {
-    rmdirSync(nodeModulesSrc);
-  }
-  symlinkSync(targetSrc, nodeModulesSrc, "dir");
-};
