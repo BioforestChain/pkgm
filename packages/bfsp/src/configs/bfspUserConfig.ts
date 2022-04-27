@@ -31,12 +31,12 @@ export const readUserConfig = async (
   projectRoot: string,
   options: {
     unlink?: boolean;
-    single?: AbortSignal;
+    signal?: AbortSignal;
     watch?: (config: Bfsp.UserConfig) => void;
     logger: PKGM.TuiLogger;
   }
 ): Promise<Bfsp.UserConfig | undefined> => {
-  const { single, logger, watch } = options;
+  const { signal, logger, watch } = options;
 
   for (const filename of await folderIO.get(projectRoot)) {
     if (filename === "#bfsp.ts" || filename === "#bfsp.mts" || filename === "#bfsp.mtsx") {
@@ -75,7 +75,7 @@ export const readUserConfig = async (
         },
       });
 
-      if (single?.aborted) {
+      if (signal?.aborted) {
         return;
       }
 
@@ -84,7 +84,7 @@ export const readUserConfig = async (
       if (typeof buildResult.stop === "function") {
         logger.info.pin(`watch:${filename}`, `watching ${chalk.blue(filename)} changes...`);
         // 监听模式
-        single?.addEventListener("abort", buildResult.stop.bind(buildResult));
+        signal?.addEventListener("abort", buildResult.stop.bind(buildResult));
       } else if (hasError) {
         return;
       }
@@ -129,7 +129,7 @@ export const getBfspUserConfig = (
   dirname = process.cwd(),
   options: {
     refresh?: boolean;
-    single?: AbortSignal;
+    signal?: AbortSignal;
     watch?: (config: $BfspUserConfig) => void;
     logger: PKGM.Logger;
   }
@@ -194,7 +194,7 @@ export const watchBfspUserConfig = (
 
   let curBfspUserConfig: $BfspUserConfig | undefined;
   const abortController = new AbortController();
-  const abortSingle = abortController.signal;
+  const abortsignal = abortController.signal;
 
   (async () => {
     if (curBfspUserConfig === undefined) {
@@ -218,7 +218,7 @@ export const watchBfspUserConfig = (
 
     const userConfig = await readUserConfig(projectDirpath, {
       unlink: true,
-      single: abortSingle,
+      signal: abortsignal,
       watch: tryPushUserConfig,
       logger,
     });
