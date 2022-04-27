@@ -76,7 +76,9 @@ export const buildCommand = defineCommand(
       const projects = dependencyAnalysis(workspaceConfig.projects);
 
       const buildLogger = getTui().getPanel("Build").logger;
-      projects.forEach(async (x) => {
+      let i = 0;
+      for (const x of projects) {
+        workspacePanel.logger.log.pin("progress", ` building ${x.name} [${++i}/${projects.length}]`);
         const projectRoot = path.join(root, x.relativePath);
 
         const bfspUserConfig = await getBfspUserConfig(projectRoot, { logger: buildLogger });
@@ -90,7 +92,8 @@ export const buildCommand = defineCommand(
         );
         await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
         logger.info(`${chalk.green(x.name)} built successfully`);
-      });
+      }
+      workspacePanel.logger.log.pin("progress", `all projects built`);
     }
   }
 );
