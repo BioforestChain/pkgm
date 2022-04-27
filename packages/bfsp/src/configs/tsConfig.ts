@@ -2,8 +2,7 @@ import { existsSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-
-import { TscIsolatedOutRootPath, TscOutRootPath, TscTypingsOutRootPath } from "../consts";
+import {  TscOutRootPath } from "../consts";
 import { DevLogger } from "../../sdk/logger/logger";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { ListArray, ListSet, List } from "../../sdk/toolkit/toolkit";

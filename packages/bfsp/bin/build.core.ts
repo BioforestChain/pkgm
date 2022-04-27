@@ -1,6 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { getVite } from "@bfchain/pkgm-base/lib/vite";
-import { existsSync, rmdirSync, symlinkSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -20,22 +20,6 @@ import { TypingsGenerator } from "./typingsGenerator";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { runYarn } from "./yarn/runner";
 const debug = DevLogger("bfsp:bin/build");
-
-/**
- * 给build创建软连接
- * @param targetSrc
- */
-export const createBuildSymLink = (targetSrc: string) => {
-  const src = targetSrc.split("build");
-  const prefixSrc = src[0];
-  if (!prefixSrc) return;
-  const nodeModulesSrc = path.join(prefixSrc, "node_modules", path.basename(targetSrc));
-  // 如果存在的话先删除创建新的
-  if (existsSync(nodeModulesSrc)) {
-    rmdirSync(nodeModulesSrc);
-  }
-  symlinkSync(targetSrc, nodeModulesSrc, "junction");
-};
 
 export const installBuildDeps = async (options: { root: string }) => {
   const { root } = options;
@@ -135,7 +119,8 @@ const buildSingle = async (options: {
 
   const userConfig1 = $getBfspUserConfig(bfspUserConfig.userConfig);
 
-  const TYPINGS_DIR = "typings"; // #40，tsc只是用来生成类型
+  const buildConfig = userConfig1.userConfig as Bfsp.BuildConfig;
+  const TYPINGS_DIR = `typings/${buildConfig.outSubPath}`; // #40，tsc只是用来生成类型
 
   flag(`generating tsconfig.json`);
   const tsConfig1 = await generateTsConfig(root, userConfig1, {
@@ -148,15 +133,13 @@ const buildSingle = async (options: {
   await writeTsConfig(root, userConfig1, tsConfig1);
   success(`set tsconfig.json`);
 
-  const buildConfig = userConfig1.userConfig as Bfsp.BuildConfig;
-
   //#region 生成 package.json
   flag(`generating package.json`);
   /// 将 package.json 的 types 路径进行修改
   const packageJson = await generatePackageJson(root, userConfig1, tsConfig1, {
     logger,
     packageTemplateJson: thePackageJson,
-    customTypesRoot: "./typings",
+    customTypesRoot: `./typings/${buildConfig.outSubPath}`,
     customDistRoot: `dist/${buildConfig.outSubPath}`,
   });
 
@@ -210,8 +193,9 @@ const buildSingle = async (options: {
       const buf = Buffer.alloc(contents.length + refSnippet.length);
       buf.write(refSnippet);
       if (
-        contents.length > refSnippet.length &&
-        contents.compare(buf, 0, refSnippet.length, 0, refSnippet.length) !== 0
+        (contents.length >= refSnippet.length &&
+          contents.compare(buf, 0, refSnippet.length, 0, refSnippet.length) !== 0) ||
+        contents.length < refSnippet.length
       ) {
         contents.copy(buf, refSnippet.length);
         await writeFile(p, buf);
@@ -284,8 +268,6 @@ const buildSingle = async (options: {
     outSubPath: buildConfig.outSubPath,
   });
   const distDir = jsBundleConfig.build!.outDir!;
-  // 创建软链接，将build指向node_modules
-  createBuildSymLink(buildOutDir);
 
   /// vite 打包
   flag(`bundling javascript codes`);
@@ -416,6 +398,7 @@ export const doBuild = async (args: {
     if (args.sortGraph.length === 0) {
       buildList = buildUserConfigList;
     }
+    const buildResults = new Map<string /*name */, string /*buildOutDir */>();
     for (const [index, userConfig] of buildList.entries()) {
       const buildTitle = chalk.gray(`${userConfig.name}::${userConfig.formats?.[0] ?? "esm"}`);
       buildLogger.prompts.push(buildTitle);
@@ -447,6 +430,7 @@ export const doBuild = async (args: {
           /// 服务
           buildLogger,
         });
+        buildResults.set(userConfig.name, buildOutDir);
 
         // await buildService.afterSingleBuild({ buildOutDir, config: userConfig });
       }
@@ -457,6 +441,7 @@ export const doBuild = async (args: {
     }
     buildLogger.flag(chalk.magenta("🎉 build finished 🎊"), false);
     buildLogger.updateStatus("success");
+    return buildResults;
   } catch (e) {
     buildLogger.flag(chalk.red("build failed"), false);
     buildLogger.error(e);

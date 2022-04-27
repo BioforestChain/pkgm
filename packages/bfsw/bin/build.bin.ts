@@ -1,14 +1,13 @@
 import {
   defineCommand,
-  runTsc,
   doBuild,
   DevLogger,
   getTui,
-  createTscLogger,
   getBfspUserConfig,
   writeBfspProjectConfig,
 } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
+import { existsSync, rmdirSync, symlinkSync } from "node:fs";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 import { doInit } from "./init.core";
@@ -57,26 +56,13 @@ export const buildCommand = defineCommand(
       // 清除 doInit 留下的日志
       initLoggerKit.destroy();
 
-      const tscCompilation = () => {
-        return new Promise((resolve) => {
-          const tscLogger = createTscLogger();
-          runTsc({
-            watch: true,
-            tsconfigPath: path.join(root, "tsconfig.json"),
-            onMessage: (s) => tscLogger.write(s),
-            onClear: () => tscLogger.clear(),
-            onSuccess: () => {
-              resolve(undefined);
-            },
-          });
-        });
-      };
-      await tscCompilation();
       // 依赖分析排序
       const { projects, sortGraph } = dependencyAnalysis(workspaceConfig.projects);
 
       const buildLogger = getTui().getPanel("Build").logger;
-      projects.forEach(async (x) => {
+      let i = 0;
+      for (const x of projects) {
+        workspacePanel.logger.log.pin("progress", ` building ${x.name} [${++i}/${projects.length}]`);
         const projectRoot = path.join(root, x.relativePath);
 
         const bfspUserConfig = await getBfspUserConfig(projectRoot, { logger: buildLogger });
@@ -88,12 +74,29 @@ export const buildCommand = defineCommand(
           { projectDirpath: projectRoot, bfspUserConfig },
           { logger: buildLogger }
         );
-        await doBuild({ root: projectRoot, bfspUserConfig, subConfigs, sortGraph });
+        const buildResults = await doBuild({ root: projectRoot, bfspUserConfig, subConfigs, sortGraph });
+        buildResults?.forEach((buildOutDir, name) => {
+          createBuildSymLink(root, buildOutDir, name);
+        });
         logger.info(`${chalk.green(x.name)} built successfully`);
-      });
+      }
+      workspacePanel.logger.log.pin("progress", `🎉 ${chalk.green("All projects built successfully")}`);
     }
   }
 );
+
+/**
+ * 给build创建软连接
+ * @param targetSrc
+ */
+export const createBuildSymLink = (root: string, buildOutDir: string, name: string) => {
+  const nodeModulesDir = path.resolve(root, "node_modules", name);
+  // 如果存在的话先删除创建新的
+  if (existsSync(nodeModulesDir)) {
+    rmdirSync(nodeModulesDir);
+  }
+  symlinkSync(buildOutDir, nodeModulesDir, "junction");
+};
 
 /**
  * 对互相依赖的包进行排序
@@ -105,6 +108,9 @@ const dependencyAnalysis = (projects: Bfsw.WorkspaceUserConfig[]) => {
   for (const project of projects) {
     if (project.deps && project.deps.length !== 0) {
       addGraph(project.deps, project.name);
+    } else {
+      // 就算没有依赖，自身也是个节点
+      graph.addNode(project.name);
     }
   }
 
