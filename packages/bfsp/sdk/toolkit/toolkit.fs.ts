@@ -2,7 +2,7 @@ import path from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { isDeepStrictEqual } from "node:util";
 import { ignore } from "@bfchain/pkgm-base/lib/ignore";
-import { existsSync, mkdirSync, statSync, readFileSync, rmdirSync, symlinkSync } from "node:fs";
+import { existsSync, mkdirSync, statSync, readFileSync, rmdirSync, symlinkSync, unlinkSync } from "node:fs";
 import { copyFile, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import type { ModuleFormat } from "@bfchain/pkgm-base/lib/rollup";
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
@@ -340,7 +340,7 @@ export const $readFromMjs = async <T>(filename: string, logger: PKGM.Logger, unl
     logger.error(err);
   } finally {
     if (unlink) {
-      // existsSync(filename) && unlinkSync(filename);
+      existsSync(filename) && unlinkSync(filename);
     }
   }
 };
