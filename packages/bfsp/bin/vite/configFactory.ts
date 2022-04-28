@@ -147,7 +147,7 @@ export const ViteConfigFactory = (options: {
                    * 
                    * 因此选择在这边直接load
                    */
-                  this.load(resolution); // preload
+                  await this.load(resolution); // preload
                 } else {
                   debug.error(`unable to resolve:  ${source}`);
                   return source; // can't resolve
