@@ -139,6 +139,14 @@ export const ViteConfigFactory = (options: {
                 const id = path.resolve(projectDirpath, imports[0]);
                 const resolution = await this.resolve(id, importer, { skipSelf: true, ...options });
                 if (resolution) {
+                  /**
+                   * 之前这边用的是resolveId/load，通过添加#PROFILE#前缀的方案，但是这个方案在这个场景下有问题：
+                   *
+                   * 当有嵌套profile出现的时候，比如 从 #lib 引用了 #module， 那么当解析到#module的时候，importer就会
+                   * 因为路径前面带了#PROFILE#而变得不正常了
+                   * 
+                   * 因此选择在这边直接load
+                   */
                   this.load(resolution); // preload
                 } else {
                   debug.error(`unable to resolve:  ${source}`);
