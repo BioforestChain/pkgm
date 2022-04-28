@@ -59,7 +59,9 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
       if (data.type === "tree" && data.data.type === "list") {
         return data;
       }
-    } catch {}
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   const depsInfo = getYarn();
@@ -73,7 +75,7 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
     allowExternals.add(pkgName);
   }
 
-  const node_module_dirname = path.join(dirname, "node_module").replace(/\\/g, "/") + "/";
+  const node_module_dirname = path.join(dirname, "node_modules").replace(/\\/g, "/") + "/";
 
   const viteInnerSources = new Set(["vite/preload-helper"]);
   const ext: ExternalOption = (source, importer, isResolved) => {
