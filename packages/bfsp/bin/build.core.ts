@@ -219,7 +219,12 @@ const buildSingle = async (options: {
   aggregateDep("optionalDependencies");
 
   if (!aggregatedPackageJson.exports) {
-    aggregatedPackageJson.exports = Object.assign({}, packageJson.exports);
+    // 把packageJson.exports的keys抄过来，值填{}
+    const exp = {} as any;
+    Object.keys(packageJson.exports).forEach((x) => {
+      exp[x] = {};
+    });
+    aggregatedPackageJson.exports = exp;
   }
 
   /// 生成package.json的条件导出
