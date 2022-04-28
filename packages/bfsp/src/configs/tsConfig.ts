@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import path, { resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import {  TscOutRootPath } from "../consts";
+import { TscOutRootPath } from "../consts";
 import { DevLogger } from "../../sdk/logger/logger";
 import type { $BfspUserConfig } from "./bfspUserConfig";
 import { ListArray, ListSet, List } from "../../sdk/toolkit/toolkit";
@@ -12,6 +12,7 @@ import { getWatcher } from "../../sdk/toolkit/toolkit.watcher";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream";
 import { fileIO, folderIO, walkFiles, writeJsonConfig } from "../../sdk/toolkit/toolkit.fs";
 import { isTsFile, notGitIgnored, isBinFile, isTestFile, isTypeFile } from "../../sdk/toolkit/toolkit.lang";
+import { getTui } from "../../sdk";
 const debug = DevLogger("bfsp:config/tsconfig");
 
 // export const getFilename = (somepath: string) => {
@@ -390,6 +391,15 @@ export const generateTsConfig = async (
   /// 生成配置
   const userCompilerOptionsBase = _generateUser_CompilerOptionsBase(bfspUserConfig);
   const userReferences = await _generateUser_References(bfspUserConfig);
+
+  // 如果没有index.ts 没有在根目录，那么需要把类型文件也相对index.ts文件位置移动,否则会报类型不存在
+  if (
+    path.dirname(bfspUserConfig.exportsDetail.indexFile) !== "." &&
+    options.outDirRoot === undefined &&
+    options.outDirName === undefined
+  ) {
+    options.outDirName = path.join("tsc", path.dirname(bfspUserConfig.exportsDetail.indexFile));
+  }
 
   /// 组合配置
   const tsConfig = {
