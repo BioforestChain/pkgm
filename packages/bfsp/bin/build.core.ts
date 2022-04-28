@@ -220,11 +220,16 @@ const buildSingle = async (options: {
 
   if (!aggregatedPackageJson.exports) {
     // 把packageJson.exports的keys抄过来，值填{}
-    const exp = {} as any;
-    Object.keys(packageJson.exports).forEach((x) => {
-      exp[x] = {};
-    });
-    aggregatedPackageJson.exports = exp;
+    if (buildConfig.outSubPath !== "./default") {
+      // @fixme： 临时使用./default来判断。不是默认导出才做package.json的条件导出
+      const exp = {} as any;
+      Object.keys(packageJson.exports).forEach((x) => {
+        exp[x] = {};
+      });
+      aggregatedPackageJson.exports = exp;
+    } else {
+      aggregatedPackageJson.exports = Object.assign({}, packageJson.exports);
+    }
   }
 
   /// 生成package.json的条件导出
