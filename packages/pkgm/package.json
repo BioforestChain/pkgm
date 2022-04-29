@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm",
-  "version": "2.7.5",
+  "version": "2.7.10",
   "publishConfig": {
     "access": "public"
   },
@@ -9,8 +9,8 @@
     "bfsw": "./bfsw/bin.mjs"
   },
   "dependencies": {
-    "@bfchain/pkgm-bfsp": "^2.7.5",
-    "@bfchain/pkgm-bfsw": "^2.7.5"
+    "@bfchain/pkgm-bfsp": "^2.7.10",
+    "@bfchain/pkgm-bfsw": "^2.7.10"
   },
   "devDependencies": {
     "@bfchain/pkgm-bfsp": "link:../bfsp",

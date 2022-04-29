@@ -51,7 +51,7 @@ export const doDevBfsp = (
         const tsConfig = await subStreams.tsConfigStream.waitCurrent();
 
         typingsGenerator = new TypingsGenerator({ root, logger: tscLogger, tsConfig });
-        await typingsGenerator.generate();
+        await typingsGenerator.generate(userConfig.exportsDetail.indexFile);
 
         const viteConfigBuildOptions = {
           userConfig: userConfig.userConfig,

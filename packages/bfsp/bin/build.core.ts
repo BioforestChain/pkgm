@@ -141,6 +141,7 @@ const buildSingle = async (options: {
     packageTemplateJson: thePackageJson,
     customTypesRoot: `./typings/${buildConfig.outSubPath}`,
     customDistRoot: `dist/${buildConfig.outSubPath}`,
+    formatExts: bfspUserConfig.formatExts,
   });
 
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
@@ -161,7 +162,9 @@ const buildSingle = async (options: {
   //#region 编译typescript，生成 typings
   {
     flag(`generate typings`);
-    await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate();
+    await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate(
+      userConfig1.exportsDetail.indexFile
+    );
     success(`generated typings`);
 
     /// 修复 typings 文件的导入
@@ -219,13 +222,26 @@ const buildSingle = async (options: {
   aggregateDep("optionalDependencies");
 
   if (!aggregatedPackageJson.exports) {
-    aggregatedPackageJson.exports = Object.assign({}, packageJson.exports);
+    // 把packageJson.exports的keys抄过来，值填{}
+    if (buildConfig.outSubPath !== "./default") {
+      // @fixme： 临时使用./default来判断。不是默认导出才做package.json的条件导出
+      const exp = {} as any;
+      Object.keys(packageJson.exports).forEach((x) => {
+        exp[x] = {};
+      });
+      aggregatedPackageJson.exports = exp;
+    } else {
+      aggregatedPackageJson.exports = Object.assign({}, packageJson.exports);
+    }
   }
 
   /// 生成package.json的条件导出
   const aggregatedExports = aggregatedPackageJson.exports as any;
   Object.keys(exp).forEach((x) => {
     const exportsObject = exp[x];
+    if (buildConfig.outSubPath === "./default") {
+      return;
+    }
     aggregatedExports[x] = Object.assign(
       aggregatedExports[x] ?? {},
       /*

@@ -4,11 +4,10 @@ import { defineCommand } from "../bin";
 import { watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { getBfspUserConfig } from "../src/configs/bfspUserConfig";
 import { getTui } from "../sdk/tui";
-import { createTscLogger, DevLogger } from "../sdk/logger/logger";
+import { DevLogger } from "../sdk/logger/logger";
 import { ALLOW_FORMATS } from "../sdk/toolkit/toolkit.fs";
 import { doDevBfsp } from "./dev.core";
 import { helpOptions } from "./help.core";
-import { runTsc } from "./tsc/runner";
 
 export const devCommand = defineCommand(
   "dev",
@@ -48,7 +47,6 @@ export const devCommand = defineCommand(
     const logger = getTui().getPanel("Dev").logger;
     try {
       const options = { logger: logger };
-      
 
       const bfspUserConfig = await getBfspUserConfig(root, options);
       const projectConfig = { projectDirpath: root, bfspUserConfig };
