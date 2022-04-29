@@ -97,7 +97,7 @@ export class ExportsMap {
     this.io.set(input, output);
   }
   autoOutput(input: string, inputAlias: string) {
-    let output = this.oi.get(input);
+    let output = this.io.get(input);
     if (output !== undefined) {
       return output;
     }
