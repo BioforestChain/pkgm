@@ -21,6 +21,7 @@ export class TypingsGenerator {
     this._tsConfig = opts.tsConfig;
     this._logger = this._createAggregatedLogger(opts.logger);
   }
+
   // 为了让Tsc面板的状态能够正确显示。
   private _createAggregatedLogger(tscLogger: ReturnType<typeof createTscLogger>) {
     const err = this._errors;
@@ -59,12 +60,17 @@ export class TypingsGenerator {
       },
     };
   }
-  async generate() {
+
+  /**
+   *
+   * @param indexFile 传递入口给tsc
+   */
+  async generate(indexFile: string) {
     if (!this._generateStoppable) {
       this._generateStoppable = await this._generate();
     }
     if (!this._checkIsolatedStoppable) {
-      this._checkIsolatedStoppable = await this._checkIsolated();
+      this._checkIsolatedStoppable = await this._checkIsolated(indexFile);
     }
   }
   stop() {
@@ -93,14 +99,23 @@ export class TypingsGenerator {
       });
     });
   }
-  private async _checkIsolated() {
+
+  private async _checkIsolated(indexFile: string) {
     const cfg = jsonClone(this._tsConfig.isolatedJson);
     const opts = cfg.compilerOptions;
     opts.isolatedModules = true;
     opts.noEmit = true;
+
     const typingsOutDir = this._tsConfig.typingsJson.compilerOptions.outDir;
-    opts.typeRoots = [path.dirname(typingsOutDir)];
-    opts.types = [path.basename(typingsOutDir)];
+    // 如果入口没有在根目录，那么需要把类型文件也相对入口文件位置移动,否则会报类型不存在
+    if (path.dirname(indexFile) !== ".") {
+      opts.typeRoots = [typingsOutDir];
+      opts.types = [path.basename(path.dirname(indexFile))];
+    } else {
+      // 如果入口函数在根目录，不用加上入口函数的相对位置
+      opts.typeRoots = [path.dirname(typingsOutDir)];
+      opts.types = [path.basename(typingsOutDir)];
+    }
     Reflect.deleteProperty(cfg, "references");
 
     const p = path.join(this._root, "tsconfig.isolated.json");

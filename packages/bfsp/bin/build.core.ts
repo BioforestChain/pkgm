@@ -162,7 +162,9 @@ const buildSingle = async (options: {
   //#region 编译typescript，生成 typings
   {
     flag(`generate typings`);
-    await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate();
+    await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate(
+      userConfig1.exportsDetail.indexFile
+    );
     success(`generated typings`);
 
     /// 修复 typings 文件的导入
