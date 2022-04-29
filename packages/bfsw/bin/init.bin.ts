@@ -24,13 +24,7 @@ export const initCommand = defineCommand(
       }
     }
 
-    const workspaceConfig = await WorkspaceConfig.From(root, ctx.logger);
-    if (workspaceConfig === undefined) {
-      ctx.logger.error(`no found workspace config file: '${chalk.blue("#bfsw.ts")}'`);
-      return;
-    }
-
-    await doInit({ workspaceConfig }, ctx);
+    await doInit(root, ctx);
     process.exit(0);
   }
 );

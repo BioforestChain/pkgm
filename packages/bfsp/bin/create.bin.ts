@@ -4,7 +4,6 @@ import { defineCommand } from "../bin";
 import { doCreateBfsp } from "./create.core";
 import { helpOptions } from "./help.core";
 import { doInit } from "./init.core";
-import { linkBFChainPkgmModules } from "./yarn/runner";
 
 export const createCommand = defineCommand(
   "create",
@@ -36,9 +35,6 @@ export const createCommand = defineCommand(
     }
 
     const logger = ctx.logger;
-
-    /// 先确保将 pkgm 的包安置好
-    linkBFChainPkgmModules(projectRoot);
 
     /// 创建核心文件
     await doCreateBfsp({ root: projectRoot, name: projectName, license: params.license }, logger);
