@@ -9,6 +9,7 @@ import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
 
 import { DevLogger } from "../logger/logger";
 import { getCircularReplacer } from "./toolkit.util";
+import { require } from "./toolkit.require";
 
 const log = DevLogger("toolkit");
 
@@ -393,58 +394,19 @@ export async function writeJsonConfig(filepath: string, config: any) {
 }
 
 export const getBfspDir = () => {
-  const importer = import.meta.url;
-  const idx = importer.lastIndexOf("@bfchain/pkgm-bfsp");
-  let p = "";
-  if (idx >= 0) {
-    // 全局安装
-    const baseNodeModulesDir = fileURLToPath(importer.substring(0, idx));
-    p = path.join(baseNodeModulesDir, "@bfchain/pkgm-bfsp"); // yarn global
-    if (!existsSync(p)) {
-      // npm i -g
-      p = baseNodeModulesDir;
-    }
-  } else {
-    // 本地调试
-    const lidx = importer.lastIndexOf("/dist/");
-    const bfspDir = fileURLToPath(importer.substring(0, lidx));
-    p = bfspDir;
-  }
-  return p;
+  const pkg = require.resolve("@bfchain/pkgm-bfsp/package.json");
+  return path.dirname(pkg);
 };
 
 export const getBfswDir = () => {
-  const importer = import.meta.url;
-  const idx = importer.lastIndexOf("@bfchain/pkgm-bfsw");
-  let p = "";
-  if (idx >= 0) {
-    // 全局安装
-    const baseNodeModulesDir = fileURLToPath(importer.substring(0, idx));
-    p = path.join(baseNodeModulesDir, "@bfchain/pkgm-bfsw"); // yarn global
-    if (!existsSync(p)) {
-      // npm i -g
-      p = baseNodeModulesDir;
-    }
-  } else {
-    // 本地调试
-    const lidx = importer.lastIndexOf("/dist/");
-    const bfspDir = fileURLToPath(importer.substring(0, lidx));
-    p = bfspDir;
-  }
-  p = p.replace("bfsp", "bfsw");
-
-  return p;
+  const pkg = require.resolve("@bfchain/pkgm-bfsw/package.json");
+  return path.dirname(pkg);
 };
 export const getBfspWorkerDir = () => {
   return path.join(getBfspDir(), "dist/main");
 };
-let bfspPkgJson: any;
 export const getBfspPackageJson = () => {
-  if (bfspPkgJson === undefined) {
-    const p = path.join(getBfspDir(), "package.json");
-    bfspPkgJson = new Function(`return ${readFileSync(p, "utf-8")}`)();
-  }
-  return bfspPkgJson;
+  return require("@bfchain/pkgm-bfsp/package.json");
 };
 export const getBfspVersion = () => {
   const version = getBfspPackageJson().version;
@@ -452,8 +414,7 @@ export const getBfspVersion = () => {
 };
 
 export const getBfswPackageJson = () => {
-  const p = path.join(getBfswDir(), "package.json");
-  return new Function(`return ${readFileSync(p, "utf-8")}`)();
+  return require("@bfchain/pkgm-bfsw/package.json");
 };
 export const getBfswVersion = () => {
   return getBfswPackageJson().version;
