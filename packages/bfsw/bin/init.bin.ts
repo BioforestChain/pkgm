@@ -1,5 +1,5 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { defineCommand } from "@bfchain/pkgm-bfsp/sdk";
+import { defineCommand, linkBFChainPkgmModules } from "@bfchain/pkgm-bfsp/sdk";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
@@ -24,7 +24,16 @@ export const initCommand = defineCommand(
       }
     }
 
-    await doInit(root, ctx);
+    /// 先确保将 pkgm 的包安置好
+    linkBFChainPkgmModules(root);
+
+    const workspaceConfig = await WorkspaceConfig.From(root, ctx.logger);
+    if (workspaceConfig === undefined) {
+      ctx.logger.error(`no found workspace config file: '${chalk.blue("#bfsw.ts")}'`);
+      return;
+    }
+
+    await doInit({ workspaceConfig }, ctx);
     process.exit(0);
   }
 );

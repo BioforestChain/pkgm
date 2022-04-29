@@ -3,7 +3,8 @@ import { doInit } from "./init.core";
 import { helpOptions } from "./help.core";
 import path from "node:path";
 import { existsSync } from "node:fs";
-import  { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { chalk } from "@bfchain/pkgm-base/lib/chalk";
+import { linkBFChainPkgmModules } from "./yarn/runner";
 
 export const initCommand = defineCommand(
   "init",
@@ -23,6 +24,9 @@ export const initCommand = defineCommand(
         throw new Error(chalk.red(`Cannot found directory '${root}'`));
       }
     }
+
+    /// 先确保将 pkgm 的包安置好
+    linkBFChainPkgmModules(root);
 
     await doInit({ root }, ctx.logger);
     process.exit(0);
