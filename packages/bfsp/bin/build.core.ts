@@ -141,6 +141,7 @@ const buildSingle = async (options: {
     packageTemplateJson: thePackageJson,
     customTypesRoot: `./typings/${buildConfig.outSubPath}`,
     customDistRoot: `dist/${buildConfig.outSubPath}`,
+    formatExts: bfspUserConfig.formatExts,
   });
 
   await writeJsonConfig(path.resolve(root, "package.json"), packageJson);

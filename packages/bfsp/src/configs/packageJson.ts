@@ -3,7 +3,7 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageJsonTemplate from "../../assets/package.template.json?raw";
 import { DevLogger } from "../../sdk/logger/logger";
-import { writeJsonConfig } from "../../sdk/toolkit/toolkit.fs";
+import { parseFormats, writeJsonConfig } from "../../sdk/toolkit/toolkit.fs";
 import { toPosixPath, truncateWords } from "../../sdk/toolkit/toolkit.path";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream";
 import { jsonClone } from "../../sdk/toolkit/toolkit.util";
@@ -21,6 +21,7 @@ export const generatePackageJson = async (
     customTypesRoot?: string;
     customDistRoot?: string;
     packageTemplateJson?: {};
+    formatExts?: ReturnType<typeof parseFormats>;
   } = {}
 ) => {
   const packageJson = options.packageTemplateJson
@@ -29,7 +30,7 @@ export const generatePackageJson = async (
   packageJson.name = bfspUserConfig.userConfig.name;
   const { exportsMap } = bfspUserConfig.exportsDetail;
 
-  const { formatExts } = bfspUserConfig;
+  const formatExts = options?.formatExts ?? bfspUserConfig.formatExts;
   const hasCjs = formatExts.find((fe) => fe.format === "cjs");
   const hasEsm = formatExts.find((fe) => fe.format === "esm");
   const hasIife = formatExts.find((fe) => fe.format === "iife");
@@ -69,17 +70,19 @@ export const generatePackageJson = async (
 
     if (posixKey !== "." && !filterProfiles(bfspUserConfig, posixKey, packageJson.name)) continue;
 
-    packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = {
-      require: getDistFilepath("cjs", output),
-      import: getDistFilepath("esm", output),
-      types: toPosixPath(
-        path.join(
-          options.customTypesRoot ?? tsConfig.isolatedJson.compilerOptions.outDir,
-          input.replace(/\.ts$/, ".d.ts")
-        )
-      ),
-      // types: `./${toPosixPath(path.join("./", input.replace(/\.ts$/, ".d.ts")))}`,
-    };
+    packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = Object.assign(
+      hasCjs ? { require: getDistFilepath("cjs", output) } : {},
+      hasEsm ? { import: getDistFilepath("esm", output) } : {},
+      {
+        types: toPosixPath(
+          path.join(
+            options.customTypesRoot ?? tsConfig.isolatedJson.compilerOptions.outDir,
+            input.replace(/\.ts$/, ".d.ts")
+          )
+        ),
+        // types: `./${toPosixPath(path.join("./", input.replace(/\.ts$/, ".d.ts")))}`,
+      }
+    );
   }
   const defaultExportConfig = packageJson.exports["."];
   if (defaultExportConfig !== undefined) {
