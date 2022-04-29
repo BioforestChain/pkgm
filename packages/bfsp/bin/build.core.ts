@@ -236,6 +236,9 @@ const buildSingle = async (options: {
   const aggregatedExports = aggregatedPackageJson.exports as any;
   Object.keys(exp).forEach((x) => {
     const exportsObject = exp[x];
+    if (buildConfig.outSubPath === "./default") {
+      return;
+    }
     aggregatedExports[x] = Object.assign(
       aggregatedExports[x] ?? {},
       /*
