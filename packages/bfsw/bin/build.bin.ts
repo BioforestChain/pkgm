@@ -5,6 +5,7 @@ import {
   getTui,
   getBfspUserConfig,
   writeBfspProjectConfig,
+  linkBFChainPkgmModules,
 } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
 import { existsSync, rmdirSync, symlinkSync } from "node:fs";
@@ -35,6 +36,8 @@ export const buildCommand = defineCommand(
     if (maybeRoot !== undefined) {
       root = path.resolve(root, maybeRoot);
     }
+    /// 先确保将 pkgm 的包安置好
+    linkBFChainPkgmModules(root);
 
     const TUI = getTui();
 

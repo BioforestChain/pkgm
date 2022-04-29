@@ -4,9 +4,6 @@ import { linkBFChainPkgmModules, runYarn } from "./yarn/runner";
 
 export const doInit = async (args: { root: string }, logger: PKGM.Logger) => {
   const { root } = args;
-
-  /// 先确保将 pkgm 的包安置好
-  linkBFChainPkgmModules(root);
   
   /// 生成配套的配置文件
   logger.info("generate config files");
