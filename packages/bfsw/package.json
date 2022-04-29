@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm-bfsw",
-  "version": "2.7.10",
+  "version": "2.7.11",
   "description": "",
   "type": "module",
   "types": "./src/index.ts",
@@ -43,8 +43,8 @@
   "author": "bnqkl",
   "license": "MIT",
   "dependencies": {
-    "@bfchain/pkgm-base": "^2.7.10",
-    "@bfchain/pkgm-bfsp": "^2.7.10"
+    "@bfchain/pkgm-base": "^2.7.11",
+    "@bfchain/pkgm-bfsp": "^2.7.11"
   },
   "devDependencies": {
     "@bfchain/pkgm-base": "link:../base",
