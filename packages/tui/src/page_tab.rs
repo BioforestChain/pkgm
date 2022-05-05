@@ -13,6 +13,14 @@ pub enum TabStatus {
     Loading,
     Info,
 }
+
+pub enum Placement {
+    VerticalLeft,
+    VerticalRight,
+    HorizontalTop,
+    HorizontalBottom,
+}
+
 // impl IndexMut<TabStatus> for HashMap<TabStatus,dyn Any> {
 //     fn index_mut<'a>(&'a mut self, index: TabStatus) -> &'a mut Weight {
 //         println!("Accessing {:?}-side of balance mutably", index);

@@ -1,20 +1,30 @@
 [package]
-name = "cursive_example"
-version = "0.1.0"
 edition = "2021"
+license = "ISC"
+name = "tui"
+version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# [lib]
+# crate-type = ["cdylib"]
 
 [dependencies]
+crossbeam = "0.8"
+cursive_core = "0.3"
 lazy_static = "1"
 log = "0.4"
 
 # cursive = "*"
 
 [dependencies.cursive]
-version = "*"
 default-features = false
 features = ["crossterm-backend"]
+version = "*"
+
+# [dependencies.neon]
+# default-features = false
+# features = ["napi-6"]
+# version = "0.9"
 
 # [features]
 # default = ["ncurses-backend"]

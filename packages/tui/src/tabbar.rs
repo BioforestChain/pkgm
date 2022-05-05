@@ -1,25 +1,42 @@
-use crate::page_tab::PageTab;
+use crate::page_tab::{PageTab, Placement};
 use core::cell::RefCell;
 
 use cursive::view::{Resizable, SizeConstraint, View};
-
 use cursive::views::{LinearLayout, ResizedView};
 use cursive::{Printer, Vec2};
 
 use std::cmp::max;
 use std::rc::Rc;
 
+struct PositionWrap<T: View> {
+    view: T,
+    pub pos: Vec2,
+    pub key: String,
+}
+
 // #[derive(Clone)]
 pub struct BrowserTabBarViewer {
     tabs: Rc<RefCell<Vec<Rc<RefCell<PageTab>>>>>,
-    // view: Rc<RefCell<ResizedView<LinearLayout>>>,
-    // width: usize,
+    sizes: Vec<Vec2>,
+    bar_size: Vec2,
+    placement: Placement,
+    cursor: Option<usize>,
+    active: Option<usize>,
+    invalidated: bool, // 是否有效
+                       // view: Rc<RefCell<ResizedView<LinearLayout>>>,
+                       // width: usize,
 }
 
 impl Clone for BrowserTabBarViewer {
     fn clone(&self) -> BrowserTabBarViewer {
         BrowserTabBarViewer {
             tabs: self.tabs.clone(),
+            sizes: Vec::new(),
+            bar_size: Vec2::zero(),
+            cursor: None,
+            active: None,
+            placement: Placement::HorizontalTop,
+            invalidated: false,
         }
     }
 }
@@ -29,6 +46,12 @@ impl BrowserTabBarViewer {
         // let width: usize = 10;
         BrowserTabBarViewer {
             tabs: Rc::new(RefCell::new(Vec::new())),
+            sizes: Vec::new(),
+            cursor: None,
+            active: None,
+            placement: Placement::HorizontalTop,
+            bar_size: Vec2::zero(),
+            invalidated: true,
             // view: Rc::new(RefCell::new(
             //     LinearLayout::horizontal().fixed_size(cursive::XY::new(width, 1)),
             // )),
@@ -37,6 +60,9 @@ impl BrowserTabBarViewer {
     }
     pub fn add_tab(self: &mut BrowserTabBarViewer, tab: Rc<RefCell<PageTab>>) {
         self.tabs.borrow_mut().push(tab);
+        self.cursor = Some(self.tabs.borrow_mut().len() - 1);
+        self.active = Some(self.tabs.borrow_mut().len() - 1);
+        self.invalidated = true;
     }
     // pub fn set_width(self: &mut TabBar, width: usize) {
     //     self.view

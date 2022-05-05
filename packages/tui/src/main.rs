@@ -1,8 +1,8 @@
 mod browser;
+mod browser_content;
 mod page;
 mod page_tab;
 mod tabbar;
-mod browser_content;
 
 use browser::*;
 use core::cell::RefCell;
@@ -28,8 +28,8 @@ fn main() {
 
     let mut browser = Browser::new("left".to_string());
     // browser.add_page("xxx", "xxxx\nyyyyy");
-    browser.add_page("tab1".to_owned());
-    browser.add_page("tab2".to_owned());
+    browser.add_page("[1] tsc".to_owned());
+    browser.add_page("[2] dev".to_owned());
 
     siv.add_fullscreen_layer(browser
         // LinearLayout::horizontal()
