@@ -1,30 +1,51 @@
-use crate::page_tab::{PageTab, Placement};
+use crate::panel::{Align, Placement};
 use core::cell::RefCell;
 
 use cursive::view::{Resizable, SizeConstraint, View};
-use cursive::views::{LinearLayout, ResizedView};
+use cursive::views::{Button, ResizedView};
 use cursive::{Printer, Vec2};
 
-use std::cmp::max;
-use std::rc::Rc;
+/// 定义标签栏应该能够处理哪些基本操作的特征
+pub trait Bar {
+    fn add_button(&mut self, tx: Sender<String>, key: &str);
+    fn remove_button(&mut self, key: &str);
+    fn swap_button(&mut self, left: &str, right: &str);
+    fn add_button_at(&mut self, tx: Sender<String>, key: &str, pos: usize);
+}
 
+// 视图周围的快速包装器能够设置它们的位置
 struct PositionWrap<T: View> {
     view: T,
     pub pos: Vec2,
     pub key: String,
 }
 
+impl<T: View> ViewWrapper for PositionWrap<T> {
+    wrap_impl!(self.view: T);
+}
+
+impl<T: View> PositionWrap<T> {
+    pub fn new(view: T, key: String) -> Self {
+        Self {
+            view,
+            pos: Vec2::zero(),
+            key,
+        }
+    }
+}
+
 // #[derive(Clone)]
 pub struct BrowserTabBarViewer {
-    tabs: Rc<RefCell<Vec<Rc<RefCell<PageTab>>>>>,
-    sizes: Vec<Vec2>,
+    children: Vec<PositionWrap<Button>>,
     bar_size: Vec2,
+    align: Align,
+    last_rendered_size: Vec2, // 累计的数量
+    sizes: Vec<Vec2>,
     placement: Placement,
     cursor: Option<usize>,
     active: Option<usize>,
+    rx: Receiver<String>,
     invalidated: bool, // 是否有效
-                       // view: Rc<RefCell<ResizedView<LinearLayout>>>,
-                       // width: usize,
 }
 
 impl Clone for BrowserTabBarViewer {
