@@ -57,8 +57,8 @@ pub use panel::{Align, Placement, TabPanel};
 /// Main struct which manages views
 pub struct TabView {
     current_id: Option<String>,
-    // Version 0.6 changes this to only contain NamedViews, in the map this remains the same type though
-    // as NamedViews cannot be sized properly due to their enclosed view trait object
+    // 0.6 版将其更改为仅包含 NamedViews，但在地图中这仍然是相同的类型
+    // 因为 NamedViews 由于其封闭的视图特征对象而无法正确调整大小
     map: HashMap<String, Box<dyn View>>,
     key_order: Vec<String>,
     bar_rx: Option<Receiver<String>>,
@@ -109,7 +109,7 @@ impl TabView {
             .and_then(|k| self.map.get(k).map(|v| &**v))
     }
 
-    /// Returns a mutable reference to the underlying view.
+    /// 返回对基础视图的可变引用。
     pub fn active_view_mut(&mut self) -> Option<&mut dyn View> {
         if let Some(k) = self.current_id.as_ref() {
             self.map.get_mut(k).map(|v| &mut **v)
@@ -127,8 +127,8 @@ impl TabView {
         self.map.values_mut().map(|v| &mut **v).collect()
     }
 
-    /// Set the currently active (visible) tab.
-    /// If the tab id is not known, an error is returned and no action is performed.
+    /// 设置当前活动（可见）选项卡。
+    /// 如果不知道tab id，则返回错误，不执行任何操作。
     pub fn set_active_tab(&mut self, id: &str) -> Result<(), error::IdNotFound> {
         if self.map.contains_key(id) {
             if let Some(sender) = &self.active_key_tx {
@@ -148,10 +148,10 @@ impl TabView {
         }
     }
 
-    /// Set the currently active (visible) tab.
-    /// If the tab id is not known, an error is returned and no action is performed.
+    /// 设置当前活动（可见）选项卡。
+    /// 如果不知道tab id，则返回错误，不执行任何操作。
     ///
-    /// This is the consumable variant.
+    /// 这是消耗品变体。
     pub fn with_active_tab(mut self, id: &str) -> Result<Self, Self> {
         match self.set_active_tab(id) {
             Ok(_) => Ok(self),
@@ -159,8 +159,8 @@ impl TabView {
         }
     }
 
-    /// Add a new tab to the tab view.
-    /// The new tab will be set active and will be the visible tab for this tab view.
+    /// 在标签视图中添加一个新标签。
+    /// 新选项卡将被设置为活动状态，并将成为此选项卡视图的可见选项卡。
     pub fn add_tab<T: View>(&mut self, view: NamedView<T>) {
         let id = view.name().to_owned();
         self.map.insert(id.clone(), Box::new(view));
@@ -168,19 +168,19 @@ impl TabView {
         self.current_id = Some(id);
     }
 
-    /// Add a new tab to the tab view.
-    /// The new tab will be set active and will be the visible tab for this tab view.
+    /// 在标签视图中添加一个新标签。
+    /// 新选项卡将被设置为活动状态，并将成为此选项卡视图的可见选项卡。
     ///
-    /// This is the consumable variant.
+    /// 这是消耗品变体。
     pub fn with_tab<T: View>(mut self, view: NamedView<T>) -> Self {
         self.add_tab(view);
         self
     }
 
-    /// Add a new tab at a given position.
-    /// The new tab will be set active and will be the visible tab for this tab view.
+    /// 在给定位置添加一个新标签。
+    /// 新选项卡将被设置为活动状态，并将成为此选项卡视图的可见选项卡。
     ///
-    /// This is designed to not fail, if the given position is greater than the number of current tabs, it simply will be appended.
+    /// 这被设计成不会失败，如果给定的位置大于当前标签的数量，它会被简单地追加。
     pub fn add_tab_at<T: View>(&mut self, view: NamedView<T>, pos: usize) {
         let id = view.name().to_owned();
         self.map.insert(id.clone(), Box::new(view));
@@ -201,18 +201,18 @@ impl TabView {
         }
     }
 
-    /// Add a new tab at a given position.
-    /// The new tab will be set active and will be the visible tab for this tab view.
+    /// 在给定位置添加一个新标签。
+    /// 新选项卡将被设置为活动状态，并将成为此选项卡视图的可见选项卡。
     ///
-    /// It is designed to be fail-safe, if the given position is greater than the number of current tabs, it simply will be appended.
+    /// 它被设计成故障安全的，如果给定的位置大于当前选项卡的数量，它将被简单地附加。
     ///
-    /// This is the consumable variant.
+    /// 这是消耗品变体。
     pub fn with_tab_at<T: View>(mut self, view: NamedView<T>, pos: usize) -> Self {
         self.add_tab_at(view, pos);
         self
     }
 
-    /// Swap the tabs position.
+    ///交换标签的位置
     /// If one of the given key cannot be found, then no operation is performed.
     pub fn swap_tabs(&mut self, fst: &str, snd: &str) {
         let mut fst_pos: Option<usize> = None;
@@ -238,9 +238,9 @@ impl TabView {
         }
     }
 
-    /// Removes a tab with the given id from the `TabView`.
-    /// If the removed tab is active at the moment, the `TabView` will unfocus it and
-    /// the focus needs to be set manually afterwards, or a new view has to be inserted.
+    /// 从 `TabView` 中删除具有给定 id 的选项卡。
+    /// 如果移除的选项卡此时处于活动状态，则 `TabView` 将取消焦点并
+    /// 之后需要手动设置焦点，否则必须插入新视图。
     pub fn remove_tab(&mut self, id: &str) -> Result<(), error::IdNotFound> {
         if self.map.remove(id).is_some() {
             if let Some(key) = &self.current_id {
@@ -258,16 +258,16 @@ impl TabView {
         }
     }
 
-    /// Returns the current order of keys in a vector.
-    /// When you're implementing your own tab bar, be aware that this is the current
-    /// tab bar and is only a copy of the original order, modification will not be
-    /// transferred and future updates in the original not displayed.
+    /// 返回向量中键的当前顺序。
+    /// 当您实现自己的标签栏时，请注意这是当前的
+    /// tab bar 并且只是原始命令的一个副本，不会被修改
+    /// 已传输且未显示原始版本中的未来更新。
     pub fn tab_order(&self) -> Vec<String> {
         self.key_order.clone()
     }
 
-    // Returns the index of the key, length of the vector if the key is not included
-    // This can be done with out sorting
+    // 返回键的索引，如果键不包含则返回向量的长度
+    // 这可以在没有排序的情况下完成
     fn index_key(cur_key: &str, key_order: &[String]) -> usize {
         for (idx, key) in key_order.iter().enumerate() {
             if *key == *cur_key {
@@ -277,7 +277,7 @@ impl TabView {
         key_order.len()
     }
 
-    /// Set the active tab to the next tab in order.
+    /// 按顺序将活动选项卡设置为下一个选项卡。
     pub fn next(&mut self) {
         if let Some(cur_key) = &self.current_id {
             let idx = (Self::index_key(&cur_key, &self.key_order) + 1) % self.key_order.len();

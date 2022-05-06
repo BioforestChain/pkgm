@@ -180,30 +180,30 @@ impl TabPanel {
         self
     }
 
-    /// Remove a tab of the enclosed `TabView`.
+    /// 删除随附的标签 `TabView`.
     pub fn remove_tab(&mut self, id: &str) -> Result<(), error::IdNotFound> {
         self.bar.remove_button(id);
         self.tabs.remove_tab(id)
     }
 
-    /// Proceeds to the next view in order of addition.
+    /// 下一个
     pub fn next(&mut self) {
         self.tabs.next()
     }
 
-    /// Go back to the previous view in order of addition.
+    /// 上一个
     pub fn prev(&mut self) {
         self.tabs.prev()
     }
 
-    /// Consumable & Chainable variant to set the bar alignment.
+    /// Consumable & Chainable variant 设置栏对齐。
     pub fn with_bar_alignment(mut self, align: Align) -> Self {
         self.set_bar_alignment(align);
 
         self
     }
 
-    /// Non-consuming variant to set the bar alignment.
+    ///设置条形对齐的非消耗variant。
     pub fn set_bar_alignment(&mut self, align: Align) {
         self.bar_align = align;
         self.bar.set_alignment(align);
@@ -219,12 +219,12 @@ impl TabPanel {
         self.bar.set_placement(placement);
     }
 
-    /// Returns the current order of tabs as an Vector with the keys of the views.
+    ///以带有视图键的 Vector 形式返回选项卡的当前顺序。
     pub fn tab_order(&self) -> Vec<String> {
         self.tabs.tab_order()
     }
 
-    // Print lines corresponding to the current placement
+    // 打印与当前位置对应的行
     fn draw_outer_panel(&self, printer: &Printer) {
         match self.bar_placement {
             Placement::HorizontalTop => {
@@ -271,7 +271,7 @@ impl TabPanel {
                 printer.print_vline((0, 0), printer.size.y, "│");
                 // Top lines
                 printer.print_hline((0, 0), printer.size.x, "─");
-                // Line draws too far here, needs to be overwritten with blanks
+                // 此处画线太远，需要用空格覆盖
                 printer.print_hline((0, printer.size.y - 1), printer.size.x, "─");
 
                 let right = clamp(printer.size.x - self.bar_size.x, 0, printer.size.x - 1);

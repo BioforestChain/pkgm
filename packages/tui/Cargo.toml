@@ -33,9 +33,9 @@ serde_json = "1.0.74"
 # version = "0.9"
 
 # [features]
-# default = ["ncurses-backend"]
+# blt-backend = ["cursive/blt-backend"]
+# crossterm-backend = ["cursive/crossterm-backend"]
+# default = ["crossterm-backend"]
 # ncurses-backend = ["cursive/ncurses-backend"]
 # pancurses-backend = ["cursive/pancurses-backend"]
 # termion-backend = ["cursive/termion-backend"]
-# crossterm-backend = ["cursive/crossterm-backend"]
-# blt-backend = ["cursive/blt-backend"]
