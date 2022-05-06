@@ -14,7 +14,6 @@ import { $PackageJson, generatePackageJson } from "../src/configs/packageJson";
 import { generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import * as consts from "../src/consts";
-import { runTerser } from "./terser/runner";
 import { runTsc } from "./tsc/runner";
 import { TypingsGenerator } from "./typingsGenerator";
 import { ViteConfigFactory } from "./vite/configFactory";
@@ -291,7 +290,8 @@ const buildSingle = async (options: {
     ...jsBundleConfig,
     build: {
       ...jsBundleConfig.build,
-      minify: false,
+      minify: "terser",
+      outDir: distDir,
       watch: null,
       rollupOptions: {
         ...jsBundleConfig.build?.rollupOptions,
@@ -307,11 +307,6 @@ const buildSingle = async (options: {
   success(`bundled javascript codes`);
 
   //#endregion
-
-  /// 执行代码压缩
-  flag(`minifying javascript codes`);
-  await runTerser({ sourceDir: distDir, logError: error }); // 压缩
-  success(`minified javascript codes`);
 };
 
 /**

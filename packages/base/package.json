@@ -33,9 +33,6 @@
     "./lib/rollup": {
       "import": "./dist/main/lib/rollup.mjs"
     },
-    "./lib/terser": {
-      "import": "./dist/main/lib/terser.mjs"
-    },
     "./lib/typescript": {
       "import": "./dist/main/lib/typescript.mjs"
     },
@@ -91,7 +88,6 @@
     "fb-watchman": "^2.0.1",
     "ignore": "^5.2.0",
     "prettier": "^2.5.1",
-    "terser": "^5.9.0",
     "tslib": "^2.3.1",
     "typescript": "^4.6.2",
     "vite": "^2.8.6",

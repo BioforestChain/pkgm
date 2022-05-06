@@ -7,9 +7,7 @@
     "sourceMap": false,
     "target": "es2020",
     "module": "es2020",
-    "lib": [
-      "ES2020"
-    ],
+    "lib": ["ES2020"],
     "outDir": "./node_modules/.bfsp/",
     "importHelpers": true,
     "isolatedModules": false,
@@ -24,9 +22,7 @@
     "moduleResolution": "node",
     "resolveJsonModule": true,
     // "baseUrl": "./",
-    "types": [
-      "node"
-    ],
+    "types": ["node"],
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
@@ -36,8 +32,6 @@
     "assets/package.template.json",
     "bin/tsc/worker.ts",
     "bin/tsc/runner.ts",
-    "bin/terser/worker.ts",
-    "bin/terser/runner.ts",
     "bin/yarn/runner.ts",
     "bin/vite/configFactory.ts",
     "bin/bfsp.cmd.ts",
@@ -100,7 +94,7 @@
     "tests/build.test.ts",
     "tests/util.test.ts",
     "test.ts",
-    "bin.ts",
+    "bin.ts"
   ],
   "references": [
     // {
