@@ -1,11 +1,12 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { getVite } from "@bfchain/pkgm-base/lib/vite";
+import { build as buildBfsp, type Platform } from "@bfchain/pkgm-base/lib/esbuild";
 import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger";
-import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
+import { walkFiles, writeJsonConfig, parseExtensionAndFormat, ALLOW_FORMATS } from "../sdk/toolkit/toolkit.fs";
 import { toPosixPath } from "../sdk/toolkit/toolkit.path";
 import { getTui, PanelStatus } from "../sdk/tui/index";
 import { writeBfspProjectConfig } from "../src/bfspConfig";
@@ -18,6 +19,7 @@ import { runTerser } from "./terser/runner";
 import { runTsc } from "./tsc/runner";
 import { TypingsGenerator } from "./typingsGenerator";
 import { ViteConfigFactory } from "./vite/configFactory";
+import { EsbuildConfigPlugins } from "./esbuild/configPlugins";
 import { runYarn } from "./yarn/runner";
 const debug = DevLogger("bfsp:bin/build");
 
@@ -273,45 +275,45 @@ const buildSingle = async (options: {
   flag(`generating bundle config`);
   const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
 
-  const jsBundleConfig = ViteConfigFactory({
-    userConfig: buildConfig,
-    projectDirpath: root,
-    viteConfig: viteConfig1,
-    tsConfig: tsConfig1,
-    outRoot: buildOutDir,
-    logger: viteLoggerKit.logger,
-    format: userConfig1.formatExts[0].format ?? "esm",
-    outSubPath: buildConfig.outSubPath,
-  });
-  const distDir = jsBundleConfig.build!.outDir!;
-
-  /// vite 打包
+  /// esbuild 打包
   flag(`bundling javascript codes`);
-  await getVite().build({
-    ...jsBundleConfig,
-    build: {
-      ...jsBundleConfig.build,
-      minify: false,
-      watch: null,
-      rollupOptions: {
-        ...jsBundleConfig.build?.rollupOptions,
-        onwarn: (err) => warn(err),
-      },
-    },
-    mode: "production",
-    customLogger: viteLogger,
-  });
+
+  const isPlatform = (platform: string): platform is Platform => {
+    return ["node", "browser", "neutral"].includes(platform);
+  };
+  let distDir = path.resolve(buildOutDir ?? root, `dist`);
+  if (buildConfig.outSubPath) {
+    distDir = path.join(distDir, buildConfig.outSubPath);
+  }
+  const fe = parseExtensionAndFormat(userConfig1.formatExts[0].format ?? "esm");
+  const format = ALLOW_FORMATS.has(fe.format as any) ? (fe.format as Bfsp.JsFormat) : "esm";
+  distDir = path.join(distDir, format);
+  const extension = fe.extension;
+
+  const jsBundleConfig = {
+    entryPoints: viteConfig1.viteInput,
+    absWorkingDir: root,
+    bundle: true,
+    platform:
+      userConfig1?.userConfig?.profiles?.[0] && isPlatform(userConfig1.userConfig.profiles[0])
+        ? userConfig1.userConfig.profiles[0]
+        : "node",
+    format: format,
+    write: true,
+    outdir: distDir,
+    tsconfig: path.join(root, "./tsconfig.json"),
+    target: "es2020",
+    minify: true,
+    external: ["/node_modules/*"],
+    outExtension: { ".js": extension },
+    plugins: EsbuildConfigPlugins({ projectDirpath: root, tsConfig: tsConfig1, logger }),
+  };
+
+  await buildBfsp(jsBundleConfig);
   success(viteLoggerKit.content.all.trim());
   viteLoggerKit.clearScreen();
 
   success(`bundled javascript codes`);
-
-  //#endregion
-
-  /// 执行代码压缩
-  flag(`minifying javascript codes`);
-  await runTerser({ sourceDir: distDir, logError: error }); // 压缩
-  success(`minified javascript codes`);
 };
 
 /**

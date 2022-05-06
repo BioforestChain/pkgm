@@ -31,4 +31,4 @@ export const getEsbuild = () => {
   return _esb;
 };
 export const { build } = getEsbuild();
-export type { Loader, Plugin, BuildResult } from "esbuild";
+export type { Loader, Plugin, BuildResult, Platform } from "esbuild";
