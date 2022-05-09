@@ -54,7 +54,7 @@ mod panel;
 // Reexports
 use bar::{Bar, TabBar};
 pub use panel::{Align, Placement, TabPanel};
-/// Main struct which manages views
+/// 管理视图的主要结构
 pub struct TabView {
     current_id: Option<String>,
     // 0.6 版将其更改为仅包含 NamedViews，但在地图中这仍然是相同的类型
@@ -288,7 +288,7 @@ impl TabView {
         }
     }
 
-    /// Set the active tab to the previous tab in order.
+    /// 设置上一个为活动选项卡
     pub fn prev(&mut self) {
         if let Some(cur_key) = self.current_id.as_ref().cloned() {
             let idx_key = Self::index_key(&cur_key, &self.key_order);

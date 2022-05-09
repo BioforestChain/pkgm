@@ -209,9 +209,9 @@ impl View for TabBar {
     fn draw(&self, printer: &Printer) {
         match self.placement {
             Placement::HorizontalBottom | Placement::HorizontalTop => {
-                // First draw the complete horizontal line
+                // 首先画出完整的水平线
                 printer.print_hline((0, 0), printer.size.x, "─");
-                // Spacing for padding & crop end
+                // 填充和作物末端的间距
                 let inner_printer = printer
                     // Alignment
                     .offset((
@@ -281,7 +281,7 @@ impl View for TabBar {
                 }
             }
             Placement::VerticalLeft | Placement::VerticalRight => {
-                // First draw the complete vertical line
+                // 首先画出完整的垂直线
                 let horizontal_offset = match self.placement {
                     Placement::VerticalLeft => printer.size.x - 1,
                     _ => 0,
@@ -300,16 +300,16 @@ impl View for TabBar {
                     let mut rel_sizes = self.sizes.clone();
                     rel_sizes.truncate(idx);
                     let mut print = inner_printer
-                        // Move the printer to the position of the child, respecting the height of all previous ones
+                        // 将打印机移动到孩子的位置，尊重所有先前的高度
                         .offset(
                             rel_sizes
                                 .iter()
                                 .fold(Vec2::new(0, 0), |acc, x| acc.stack_vertical(x))
                                 .keep_y(),
                         )
-                        // Spacing for first character of the current one and all previous ones
+                        //当前字符和所有先前字符的第一个字符的间距
                         .offset((0, idx))
-                        // Offset so that the right side when aligned to the left is on the panel border
+                        // 偏移，以便在与左侧对齐时右侧位于面板边框上
                         .offset((
                             if self.placement == Placement::VerticalLeft {
                                 self.bar_size.x - self.sizes[idx].x
@@ -318,7 +318,7 @@ impl View for TabBar {
                             },
                             0,
                         ))
-                        // Crop to size including the delimiters
+                        // 裁剪到大小，包括分隔符
                         .cropped({
                             if idx == 0 || idx == self.children.len() - 1 {
                                 self.sizes[idx].stack_vertical(&Vec2::new(1, 2))
@@ -391,9 +391,9 @@ impl View for TabBar {
 
     fn required_size(&mut self, cst: Vec2) -> Vec2 {
         while self.rx.len() > 1 {
-            // Discard old messages
-            // This may happen if more than one view gets added to before the event loop of cursive gets started, resulting
-            // in an incorrect start state
+            // 丢弃旧消息
+            // 如果在草书的事件循环开始之前添加了多个视图，则可能会发生这种情况，导致
+            // 处于不正确的开始状态
             match self.rx.try_recv() {
                 Ok(_) => debug!("Got too many requests dropping some..."),
                 Err(e) => debug!("Other side got dropped {:?}, ignoring this error", e),
@@ -432,8 +432,8 @@ impl View for TabBar {
             });
         // Total size of bar
         self.bar_size = total_size;
-        // Return max width and maximum height of child
-        // We need the max size of every side here so try again
+        // 返回孩子的最大宽度和最大高度
+        // 我们需要这里每边的最大尺寸，所以再试一次
         match self.placement {
             Placement::HorizontalTop | Placement::HorizontalBottom => {
                 (total_size.x * 2, total_size.y).into()
@@ -443,7 +443,7 @@ impl View for TabBar {
             }
         }
     }
-
+    /// 拿到交互事件
     fn on_event(&mut self, evt: Event) -> EventResult {
         if let Event::Mouse {
             offset,
@@ -459,7 +459,7 @@ impl View for TabBar {
                                 + Vec2::new(idx + 1, 0)
                                 + Vec2::new(
                                     self.align.get_offset(
-                                        // Length of buttons and delimiting characters
+                                        // 按钮和分隔符的长度
                                         self.bar_size.x + self.children.len() + 1,
                                         self.last_rendered_size.x,
                                     ),
@@ -472,7 +472,7 @@ impl View for TabBar {
                                 + Vec2::new(
                                     0,
                                     self.align.get_offset(
-                                        // Length of buttons and delimiting characters
+                                        // 按钮和分隔符的长度
                                         self.bar_size.y + self.children.len() + 1,
                                         self.last_rendered_size.y,
                                     ),

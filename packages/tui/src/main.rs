@@ -13,19 +13,22 @@ use std::rc::Rc;
 
 fn main() {
     let mut siv: cursive::CursiveRunnable = cursive::default();
-    let theme = siv
-        .current_theme()
-        .clone()
-        .with(|theme| theme.shadow = true);
+    let theme = siv.current_theme().clone().with(|theme| {
+        theme.palette[PaletteColor::View] = Color::Dark(BaseColor::Black);
+        theme.palette[PaletteColor::Primary] = Color::Light(BaseColor::White);
+        theme.palette[PaletteColor::TitlePrimary] = Color::Dark(BaseColor::Green);
+        theme.palette[PaletteColor::Highlight] = Color::Dark(BaseColor::White);
+        theme.shadow = true
+    });
     siv.set_theme(theme);
 
     let panel = TabPanel::new()
         .with_tab(TextView::new('1').with_name("[1] tsc"))
         .with_tab(TextView::new('2').with_name("[2] dev"))
         .with_tab(TextView::new('3').with_name("[3] prod"))
-        .with_tab(PaddedView::lrtb(2, 2, 1, 1, TextArea::new()).with_name("input"))
+        .with_tab(PaddedView::lrtb(2, 2, 1, 1, TextArea::new()).with_name("[4] input"))
         .with_bar_alignment(Align::Center)
-        .with_active_tab("[1] tsc")
+        .with_active_tab("[4] input")
         .unwrap_or_else(|_| {
             panic!("无法将第一个选项卡设置为活动选项卡！ 这可能是 lib 中实现的问题！");
         });

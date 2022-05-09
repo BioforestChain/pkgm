@@ -291,7 +291,18 @@ impl TabPanel {
             Placement::HorizontalBottom => self.tab_size.keep_y() + Vec2::new(0, 1),
             Placement::VerticalRight => self.tab_size.keep_x() + Vec2::new(1, 0),
         })) {
-            EventResult::Consumed(cb) => EventResult::Consumed(cb),
+            EventResult::Consumed(cb) => {
+                match evt {
+                    Event::Key(Key::Left) => {
+                        self.prev();
+                    }
+                    Event::Key(Key::Right) => {
+                        self.next();
+                    }
+                    _ => (),
+                }
+                EventResult::Consumed(cb)
+            }
             EventResult::Ignored => match evt {
                 Event::Key(Key::Down) if self.bar_placement == Placement::HorizontalTop => {
                     if let Ok(result) = self.tabs.take_focus(Direction::up()) {
