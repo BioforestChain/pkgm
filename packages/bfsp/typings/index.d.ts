@@ -7,6 +7,6 @@
 /// <reference path="./watcher.d.ts" />
 /// <reference path="./logger.d.ts" />
 /// <reference path="./toolkit.d.ts" />
-import type {} from "@bfchain/util-typings";
+import type {} from "@bfchain/pkgm-base/util/typings";
 
 // export * from '../src/index'

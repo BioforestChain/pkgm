@@ -76,7 +76,7 @@
     "test": "ava"
   },
   "dependencies": {
-    "@bfchain/util": "^0.0.1-alpha.4",
+    "@bfchain/util": "^5.0.0",
     "@types/blessed": "^0.1.19",
     "@types/debug": "^4.1.7",
     "@types/fb-watchman": "^2.0.1",
