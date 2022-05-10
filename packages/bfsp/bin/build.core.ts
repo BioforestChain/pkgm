@@ -104,7 +104,7 @@ const buildSingle = async (options: {
   buildLogger: BuildLogger;
   aggregatedPackageJson: $PackageJson;
   perfConfig: {
-    tsConfig: $TsConfig;
+    tsConfig: $TsConfig | undefined;
     packageJson: $PackageJson | undefined;
     taskFinished: boolean;
   };
