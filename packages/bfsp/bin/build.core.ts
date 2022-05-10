@@ -1,6 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { getVite } from "@bfchain/pkgm-base/lib/vite";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -184,23 +184,12 @@ const buildSingle = async (options: {
     const exp = packageJson.exports as any;
     for (const x of Object.keys(exp)) {
       const p = path.resolve(buildOutDir, exp[x].types);
-      let contents;
-      try {
-        contents = await readFile(p);
-      } catch (e) {
-        continue;
-      }
+
+      let contents = readFileSync(p, { encoding: "utf-8" });
       const rp = path.relative(p, path.resolve(buildOutDir, TYPINGS_DIR, "refs.d.ts"));
       const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
-      const buf = Buffer.alloc(contents.length + refSnippet.length);
-      buf.write(refSnippet);
-      if (
-        (contents.length >= refSnippet.length &&
-          contents.compare(buf, 0, refSnippet.length, 0, refSnippet.length) !== 0) ||
-        contents.length < refSnippet.length
-      ) {
-        contents.copy(buf, refSnippet.length);
-        await writeFile(p, buf);
+      if (!contents.startsWith(refSnippet)) {
+        writeFileSync(p, refSnippet + contents, { encoding: "utf-8" });
       }
     }
     success("added type references");
