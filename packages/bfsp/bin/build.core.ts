@@ -1,9 +1,10 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { getVite } from "@bfchain/pkgm-base/lib/vite";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger";
 import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs";
 import { toPosixPath } from "../sdk/toolkit/toolkit.path";
@@ -11,7 +12,7 @@ import { getTui, PanelStatus } from "../sdk/tui/index";
 import { writeBfspProjectConfig } from "../src/bfspConfig";
 import { $BfspUserConfig, $getBfspUserConfig } from "../src/configs/bfspUserConfig";
 import { $PackageJson, generatePackageJson } from "../src/configs/packageJson";
-import { generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
+import { $TsConfig, generateTsConfig, writeTsConfig } from "../src/configs/tsConfig";
 import { generateViteConfig } from "../src/configs/viteConfig";
 import * as consts from "../src/consts";
 import { runTsc } from "./tsc/runner";
@@ -102,6 +103,11 @@ const buildSingle = async (options: {
   bfspUserConfig: $BfspUserConfig;
   buildLogger: BuildLogger;
   aggregatedPackageJson: $PackageJson;
+  perfConfig: {
+    tsConfig: $TsConfig;
+    packageJson: $PackageJson | undefined;
+    taskFinished: boolean;
+  };
 }) => {
   const tscLogger = createTscLogger();
   const { viteLoggerKit } = getTui().getPanel("Build");
@@ -112,6 +118,7 @@ const buildSingle = async (options: {
     thePackageJson,
     buildOutDir,
     bfspUserConfig,
+    perfConfig,
   } = options;
 
   const { debug, flag, success, info, warn, error, logger } = options.buildLogger;
@@ -128,9 +135,12 @@ const buildSingle = async (options: {
     logger,
   });
 
-  flag(`setting tsconfig.json`);
-  await writeTsConfig(root, userConfig1, tsConfig1);
-  success(`set tsconfig.json`);
+  if (!isDeepStrictEqual(perfConfig.tsConfig, tsConfig1)) {
+    perfConfig.tsConfig = tsConfig1;
+    flag(`setting tsconfig.json`);
+    await writeTsConfig(root, userConfig1, tsConfig1);
+    success(`set tsconfig.json`);
+  }
 
   //#region 生成 package.json
   flag(`generating package.json`);
@@ -143,67 +153,54 @@ const buildSingle = async (options: {
     formatExts: bfspUserConfig.formatExts,
   });
 
-  await writeJsonConfig(path.resolve(root, "package.json"), packageJson);
-  //#region 安装依赖
-  flag(`installing dependencies`);
-  await installBuildDeps({ root });
-  success(`installed dependencies`);
-  //#endregion
+  // 判断是否与上次生成的package.json相同，相同则以下步骤可以省略
+  let rootPackageJsonPath = path.resolve(root, "package.json");
+  if (!isDeepStrictEqual(perfConfig.packageJson, packageJson) || !existsSync(rootPackageJsonPath)) {
+    perfConfig.packageJson = packageJson as $PackageJson;
 
-  /// 写入package.json
-  flag(`writing package.json`);
-  Reflect.deleteProperty(packageJson, "scripts");
-  Reflect.deleteProperty(packageJson, "private");
-  await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
-  success(`wrote package.json`);
-  //#endregion
+    await writeJsonConfig(rootPackageJsonPath, packageJson);
+    //#region 安装依赖
+    flag(`installing dependencies`);
+    await installBuildDeps({ root });
+    success(`installed dependencies`);
+    //#endregion
 
-  //#region 编译typescript，生成 typings
-  {
-    flag(`generate typings`);
-    await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate(
-      userConfig1.exportsDetail.indexFile
-    );
-    success(`generated typings`);
+    //#region 编译typescript，生成 typings
+    {
+      flag(`generate typings`);
+      await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate(
+        userConfig1.exportsDetail.indexFile
+      );
+      success(`generated typings`);
 
-    /// 修复 typings 文件的导入
-    const tscSafeRoot = path.resolve(buildOutDir, TYPINGS_DIR);
+      /// 修复 typings 文件的导入
+      const tscSafeRoot = path.resolve(buildOutDir, TYPINGS_DIR);
 
-    flag("fix imports");
-    for await (const filepath of walkFiles(tscSafeRoot, { refreshCache: true })) {
-      if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
-        await rePathProfileImports(tsConfig1.json.compilerOptions.paths, tscSafeRoot, filepath);
+      flag("fix imports");
+      for await (const filepath of walkFiles(tscSafeRoot, { refreshCache: true })) {
+        if (filepath.endsWith(".d.ts") && filepath.endsWith(".test.d.ts") === false) {
+          await rePathProfileImports(tsConfig1.json.compilerOptions.paths, tscSafeRoot, filepath);
+        }
       }
+      success("fixed imports");
     }
-    success("fixed imports");
-  }
-  //#endregion
+    //#endregion
 
-  {
-    flag("add type references");
-    const exp = packageJson.exports as any;
-    for (const x of Object.keys(exp)) {
-      const p = path.resolve(buildOutDir, exp[x].types);
-      let contents;
-      try {
-        contents = await readFile(p);
-      } catch (e) {
-        continue;
+    {
+      flag("add type references");
+      const exp = packageJson.exports as any;
+      for (const x of Object.keys(exp)) {
+        const p = path.resolve(buildOutDir, exp[x].types);
+
+        let contents = readFileSync(p, { encoding: "utf-8" });
+        const rp = path.relative(p, path.resolve(buildOutDir, TYPINGS_DIR, "refs.d.ts"));
+        const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
+        if (!contents.startsWith(refSnippet)) {
+          writeFileSync(p, refSnippet + contents, { encoding: "utf-8" });
+        }
       }
-      const rp = path.relative(p, path.resolve(buildOutDir, TYPINGS_DIR, "refs.d.ts"));
-      const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
-      const buf = Buffer.alloc(contents.length + refSnippet.length);
-      buf.write(refSnippet);
-      if (
-        (contents.length >= refSnippet.length &&
-          contents.compare(buf, 0, refSnippet.length, 0, refSnippet.length) !== 0) ||
-        contents.length < refSnippet.length
-      ) {
-        contents.copy(buf, refSnippet.length);
-        await writeFile(p, buf);
-      }
+      success("added type references");
     }
-    success("added type references");
   }
 
   flag("aggregating package.json");
@@ -264,9 +261,12 @@ const buildSingle = async (options: {
       }, {})
     );
   });
-  packageJson.exports = aggregatedExports;
-  await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
-  success(`package.json aggregated`);
+
+  if (perfConfig.taskFinished) {
+    packageJson.exports = aggregatedExports;
+    await writeJsonConfig(path.resolve(buildOutDir, "package.json"), packageJson);
+    success(`package.json aggregated`);
+  }
 
   //#region 使用 vite(rollup+typescript+esbuild) 编译打包代码
   flag(`generating bundle config`);
@@ -397,6 +397,7 @@ export const doBuild = async (args: {
     // 基本逻辑是，buildSingle每次执行，都会使用Object.assign做exports和deps的字段合并
     // 每个buildOutDir为一个聚合基本单位
     const aggregatedPackageJsonMap = new Map<string /*buildOutDir */, $PackageJson>();
+    const perfConfig = { tsConfig: undefined, packageJson: undefined, taskFinished: false };
 
     const buildResults = new Map<string /*name */, string /*buildOutDir */>();
     for (const [index, userConfig] of buildUserConfigList.entries()) {
@@ -405,6 +406,9 @@ export const doBuild = async (args: {
       const startTime = Date.now();
       const taskTitle = `build task: (${index + 1}/${buildUserConfigList.length})`;
       buildLogger.info(`${chalk.blue(">>>")} start ${taskTitle}`);
+
+      // 判断是否为最后一个任务，用于生成最终的package.json
+      perfConfig.taskFinished = index + 1 === buildUserConfigList.length;
 
       {
         /**要输出的文件夹根路径 */
@@ -429,6 +433,7 @@ export const doBuild = async (args: {
           bfspUserConfig: { ...bfspUserConfig, userConfig },
           /// 服务
           buildLogger,
+          perfConfig,
         });
         buildResults.set(userConfig.name, buildOutDir);
 
