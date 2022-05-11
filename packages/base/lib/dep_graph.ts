@@ -71,6 +71,21 @@ export class DepGraph {
       return result;
     }
   }
+  removeNode(node: string) {
+    if (this.hasNode(node)) {
+      this.nodes.delete(node);
+      delete this.outgoingEdges[node];
+      delete this.incomingEdges[node];
+      [this.incomingEdges, this.outgoingEdges].forEach((edgeList) => {
+        Object.keys(edgeList).forEach(function (key) {
+          var idx = edgeList[key].indexOf(node);
+          if (idx >= 0) {
+            edgeList[key].splice(idx, 1);
+          }
+        }, this);
+      });
+    }
+  }
 }
 
 function createDFS(edges: IDependency, leavesOnly: boolean, result: string[], circular: boolean) {
