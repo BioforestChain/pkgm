@@ -10,7 +10,7 @@ import {
 import path from "node:path";
 import { existsSync, rmdirSync, symlinkSync } from "node:fs";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
-import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out";
+import { ParallelPool } from "@bfchain/pkgm-base/util/extends_promise";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
 import { doInit } from "./init.core";
 import { DepGraph } from "@bfchain/pkgm-base/lib/dep_graph";
@@ -79,72 +79,60 @@ export const sequanceBundleParallel = async (options: {
   const { root, workspaceConfig, workspacePanel } = options;
   const logger = workspacePanel.logger;
   const graph = new DepGraph({ circular: true });
-  const { sortDeps: projects, sortGraph: currentTasks } = dependencyAnalysis(graph, workspaceConfig!.projects, true);
+  const { sortGraph: currentGraph } = dependencyAnalysis(graph, workspaceConfig!.projects, true);
   const buildLogger = getTui().getPanel("Build").logger;
 
-  await projectBundlePromiseTasks(root, projects, currentTasks, workspaceConfig!, graph);
-};
-
-const projectBundlePromiseTasks = async (
-  root: string,
-  projects: Bfsw.WorkspaceUserConfig[],
-  currentTasks: string[],
-  workspaceConfig: WorkspaceConfig,
-  graph: InstanceType<typeof DepGraph>
-) => {
-  if (currentTasks.length > 0) {
-    const tasks: Promise<Map<string, string> | undefined>[] = [];
-    const buildLogger = getTui().getPanel("Build").logger;
-
-    for (const x of projects) {
-      tasks.push(projectBundlePromise(root, x, workspaceConfig, buildLogger));
-    }
-
-    try {
-      await Promise.all(tasks);
-
-      const { sortDeps, sortGraph } = getNoDependencyProjects(graph, currentTasks, workspaceConfig.projects);
-
-      await projectBundlePromiseTasks(root, sortDeps, sortGraph, workspaceConfig!, graph);
-    } catch {
-      return;
-    }
-  } else {
-    const buildLogger = getTui().getPanel("Build").logger;
-    buildLogger.info("all projects finished!!!");
-    return;
-  }
-};
-
-const projectBundlePromise = async (
-  root: string,
-  project: Bfsw.WorkspaceUserConfig,
-  workspaceConfig: WorkspaceConfig,
-  buildLogger: PKGM.Logger
-) => {
-  let po = new PromiseOut<Map<string, string> | undefined>();
-  const projectRoot = path.join(root, project.relativePath);
-
-  const bfspUserConfig = await getBfspUserConfig(projectRoot, { logger: buildLogger });
-
-  // 填充 `extendsService` 內容
-  bfspUserConfig.extendsService.tsRefs = workspaceConfig!.states.calculateRefsByPath(projectRoot);
-  bfspUserConfig.extendsService.dependencies = workspaceConfig!.states.calculateDepsByPath(projectRoot);
-  const subConfigs = await writeBfspProjectConfig(
-    { projectDirpath: projectRoot, bfspUserConfig },
-    { logger: buildLogger }
-  );
-  const buildResults = await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
-  if (!buildResults) {
-    po.resolve(undefined);
-    return po.promise;
-  }
-  buildResults.forEach((buildOutDir, name) => {
-    createBuildSymLink(root, buildOutDir, name);
+  const pp = new ParallelPool<string | void>();
+  await projectsBundleParallel({
+    root,
+    currentGraph,
+    workspaceConfig: workspaceConfig!,
+    graph,
+    logger,
+    buildLogger,
+    pp,
   });
+};
 
-  po.resolve(buildResults);
-  return po.promise;
+const projectsBundleParallel = async (options: {
+  root: string;
+  currentGraph: string[];
+  workspaceConfig: WorkspaceConfig;
+  graph: InstanceType<typeof DepGraph>;
+  logger: PKGM.TuiLogger;
+  buildLogger: PKGM.Logger;
+  pp: ParallelPool;
+}) => {
+  const { root, currentGraph, workspaceConfig, graph, logger, buildLogger, pp } = options;
+
+  if (currentGraph.length > 0) {
+    workspaceConfig.projects.map(async (project) => {
+      if (currentGraph.includes(project.name)) {
+        pp.addTaskExecutor(async () => {
+          logger.log.pin(`${project.name}`, ` building ${project.name}`);
+          return await projectBuild({ root, project, workspaceConfig, buildLogger });
+        });
+      }
+    });
+
+    pp.maxParallelNum = currentGraph.length;
+    for await (const v of pp.yieldResults()) {
+      if (v !== undefined) {
+        logger.log.pin(`${v}`, `${chalk.green(v)} built successfully`);
+        graph.removeNode(v);
+      }
+
+      if (pp.isDone) {
+        pp.maxParallelNum = 0;
+      }
+    }
+
+    const sortGraph: string[] = graph.overallOrder(true);
+
+    await projectsBundleParallel({ root, currentGraph: sortGraph, workspaceConfig, graph, logger, buildLogger, pp });
+  } else {
+    logger.log.pin("progress", `🎉 ${chalk.green("All projects built successfully")}`);
+  }
 };
 
 export const sequanceBundleOneByOne = async (options: {
@@ -162,30 +150,45 @@ export const sequanceBundleOneByOne = async (options: {
   const buildLogger = getTui().getPanel("Build").logger;
   let i = 0;
   for (const x of projects) {
-    workspacePanel.logger.log.pin("progress", ` building ${x.name} [${++i}/${projects.length}]`);
-    const projectRoot = path.join(root, x.relativePath);
+    logger.log.pin("progress", ` building ${x.name} [${++i}/${projects.length}]`);
 
-    const bfspUserConfig = await getBfspUserConfig(projectRoot, { logger: buildLogger });
+    await projectBuild({ root, project: x, workspaceConfig: workspaceConfig!, buildLogger });
 
-    // 填充 `extendsService` 內容
-    bfspUserConfig.extendsService.tsRefs = workspaceConfig!.states.calculateRefsByPath(projectRoot);
-    bfspUserConfig.extendsService.dependencies = workspaceConfig!.states.calculateDepsByPath(projectRoot);
-    const subConfigs = await writeBfspProjectConfig(
-      { projectDirpath: projectRoot, bfspUserConfig },
-      { logger: buildLogger }
-    );
-    const buildResults = await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
-    if (!buildResults) {
-      break;
-    }
-    buildResults.forEach((buildOutDir, name) => {
-      createBuildSymLink(root, buildOutDir, name);
-    });
     logger.info(`${chalk.green(x.name)} built successfully`);
   }
   if (i === projects.length) {
     workspacePanel.logger.log.pin("progress", `🎉 ${chalk.green("All projects built successfully")}`);
   }
+};
+
+export const projectBuild = async (options: {
+  root: string;
+  project: Bfsw.WorkspaceUserConfig;
+  workspaceConfig: WorkspaceConfig;
+  buildLogger: PKGM.Logger;
+}) => {
+  const { root, project, workspaceConfig, buildLogger } = options;
+
+  const projectRoot = path.join(root, project.relativePath);
+
+  const bfspUserConfig = await getBfspUserConfig(projectRoot, { logger: buildLogger });
+
+  // 填充 `extendsService` 內容
+  bfspUserConfig.extendsService.tsRefs = workspaceConfig!.states.calculateRefsByPath(projectRoot);
+  bfspUserConfig.extendsService.dependencies = workspaceConfig!.states.calculateDepsByPath(projectRoot);
+  const subConfigs = await writeBfspProjectConfig(
+    { projectDirpath: projectRoot, bfspUserConfig },
+    { logger: buildLogger }
+  );
+  const buildResults = await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
+  if (!buildResults) {
+    return;
+  }
+  buildResults.forEach((buildOutDir, name) => {
+    createBuildSymLink(root, buildOutDir, name);
+  });
+
+  return project.name;
 };
 
 /**
@@ -245,40 +248,6 @@ const dependencyAnalysis = (
   for (const project of sortGraph) {
     graph.removeNode(project);
   }
-
-  return { sortDeps, sortGraph };
-};
-
-/**
- * 完成一批次的依赖bundle之后，获取下一批次的无依赖项目
- * @param graph
- * @param finishedDependencies
- * @param projects
- * @returns
- */
-const getNoDependencyProjects = (
-  graph: InstanceType<typeof DepGraph>,
-  finishedDependencies: string[],
-  projects: Bfsw.WorkspaceUserConfig[]
-) => {
-  if (finishedDependencies.length === 0) {
-    return { sortDeps: [], sortGraph: [] };
-  }
-
-  for (const depsName of finishedDependencies) {
-    graph.removeNode(depsName);
-  }
-
-  const sortDeps: Bfsw.WorkspaceUserConfig[] = [];
-  const sortGraph = graph.overallOrder(true);
-
-  sortGraph.map((item) => {
-    projects.map((project) => {
-      if (project.name === item) {
-        sortDeps.push(project);
-      }
-    });
-  });
 
   return { sortDeps, sortGraph };
 };

@@ -48,6 +48,9 @@
     "./util/extends_map": {
       "import": "./dist/main/util/extends_map.mjs"
     },
+    "./util/extends_promise": {
+      "import": "./dist/main/util/extends_promise.mjs"
+    },
     "./util/extends_promise_out": {
       "import": "./dist/main/util/extends_promise_out.mjs"
     },
