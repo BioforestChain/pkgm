@@ -1,9 +1,14 @@
-use cursive::view::View;
-use cursive::views::TextView;
-use cursive::{Printer, Vec2};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
+
+use cursive::theme::{BaseColor, Color, ColorStyle, ColorType, Effect, Style};
+use cursive::traits::Finder;
+use cursive::view::View;
+use cursive::views::TextView;
+use cursive::{Printer, Vec2, With};
+
+use super::browser::Browser;
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum TabStatus {
@@ -26,7 +31,7 @@ pub enum TabStatus {
 pub struct PageTab {
     text: TextView,
     icon: Rc<RefCell<TextView>>,
-    id: String,
+    pub id: String,
     status: HashMap<TabStatus, HashSet<String>>,
 }
 
@@ -43,6 +48,23 @@ impl PageTab {
 
     pub fn set_content(&mut self, title: String) {
         self.text.set_content(title);
+    }
+
+    pub fn set_active(&mut self) {
+        self.text.set_style(Style::default().with(|theme| {
+            theme.color.front = ColorType::Color(Color::Light(BaseColor::Red));
+            theme.color.back = ColorType::Color(Color::Dark(BaseColor::Black));
+        }));
+    }
+
+    pub fn set_inactive(&mut self) {
+        self.text.set_style(Style::default());
+    }
+
+    pub fn switch_tab(&mut self, index: usize) {
+        self.call_on_name("browser", |browser: &mut Browser| {
+            browser.select_page_by_index(index);
+        });
     }
 
     pub fn add_status(&mut self, status: TabStatus, reason: String) {

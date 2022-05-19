@@ -14,7 +14,7 @@ log = "0.4"
 [dependencies.cursive]
 version = "*"
 default-features = false
-features = ["crossterm-backend"]
+features = ["crossterm-backend", "toml"]
 
 # [features]
 # default = ["ncurses-backend"]

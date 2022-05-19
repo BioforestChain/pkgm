@@ -1,7 +1,7 @@
-use crate::page::*;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
 
-use crate::browser_content::BrowserContentViewer;
-use crate::tabbar::*;
 use cursive::{
     direction::Direction,
     event::{AnyCb, Event, EventResult},
@@ -11,17 +11,17 @@ use cursive::{
     Printer, Rect, Vec2, With,
 };
 
-use std::cell::RefCell;
-use std::cmp::max;
-use std::collections::HashMap;
-use std::rc::Rc;
+use super::browser_content::BrowserContentViewer;
+use super::page::Page;
+use super::tabbar::BrowserTabBarViewer;
 
 // #[derive(Clone)]
 pub struct Browser {
     id: String,
     // siv: &'static CursiveRunnable,
     // siv_caller: Box<dyn FnOnce(&mut CursiveRunnable) -> dyn Any>,
-    pages: HashMap<String, Rc<RefCell<Page>>>,
+    // pages: HashMap<String, Rc<RefCell<Page>>>,
+    pages: Vec<(String, Rc<RefCell<Page>>)>,
     view_bar: Rc<RefCell<BrowserTabBarViewer>>,
     view_content: BrowserContentViewer,
     view: ResizedView<LinearLayout>,
@@ -54,42 +54,49 @@ impl Browser {
                     Layer::new(content.clone()),
                 ))
                 .full_screen(),
-            pages: HashMap::new(),
+            // pages: HashMap::new(),
+            pages: Vec::new(),
             view_bar: bar,
             view_content: content,
             selected_page_index: 0,
         }
     }
+
     fn with_layout<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&LinearLayout) -> R,
     {
         self.view.with_view(f).unwrap()
     }
+
     fn with_layout_mut<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce(&mut LinearLayout) -> R,
     {
         self.view.with_view_mut(f).unwrap()
     }
+
     fn with_tabbar<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&BrowserTabBarViewer) -> R,
     {
         f(&*self.view_bar.borrow())
     }
+
     fn with_tabbar_mut<F, R>(&mut self, mut f: F) -> R
     where
         F: FnOnce(&mut BrowserTabBarViewer) -> R,
     {
         f(&mut self.view_bar.borrow_mut())
     }
+
     fn with_content<F, R>(&self, f: F) -> R
     where
         F: FnOnce(&LinearLayout) -> R,
     {
         f(&*self.view_content.view.borrow())
     }
+
     fn with_content_mut<F, R>(&mut self, mut f: F) -> R
     where
         F: FnOnce(&mut LinearLayout) -> R,
@@ -103,15 +110,25 @@ impl Browser {
         self.with_tabbar_mut(|bar| {
             bar.add_tab(page_rc.borrow().tab.clone());
         });
-        self.pages.insert(uri, page_rc);
+        // self.pages.insert(uri, page_rc);
+        self.pages.push((uri, page_rc));
 
         // 渲染
         self.selected_page_index = self.pages.len() - 1;
         self.render_select_page();
     }
+
     pub fn del_page(&mut self, uri: String) {
-        if let Some(_del_page) = self.pages.remove(&uri) {
-            self.render_select_page()
+        // if let Some(_del_page) = self.pages.remove(&uri) {
+        //     self.render_select_page()
+        // }
+
+        for (index, (key, _)) in self.pages.iter().enumerate() {
+            if key == &uri {
+                self.pages.remove(index);
+                self.render_select_page();
+                break;
+            }
         }
     }
 
@@ -132,6 +149,8 @@ impl Browser {
             if self.selected_page_index > pages_count - 1 {
                 self.selected_page_index = pages_count - 1;
             }
+
+            log::info!("selected_page_index: {}", self.selected_page_index);
             let selected_index = self.selected_page_index % pages_count;
             // let z = self.pages.iter().enumerate().cloned();
             let mut selected_page: Option<Page> = None;
@@ -139,8 +158,9 @@ impl Browser {
                 for (i, (_, page)) in self.pages.iter().enumerate() {
                     if i == selected_index {
                         selected_page = Some(page.clone().borrow().clone());
-                        break;
+                        // break;
                     }
+                    page.borrow_mut().tab.borrow_mut().set_inactive();
                 }
             }
             if let Some(page) = selected_page {
@@ -148,6 +168,7 @@ impl Browser {
                     while layout.len() > 0 {
                         layout.remove_child(0);
                     }
+                    page.tab.borrow_mut().set_active();
                     layout.add_child(page);
                 });
             }
@@ -155,20 +176,45 @@ impl Browser {
     }
 
     pub fn select_page(&mut self, uri: String) {
-        if let Some(select_page) = self.pages.get(&uri) {
-            for (index, (key, _)) in self.pages.iter().enumerate() {
-                if key == &uri {
-                    self.selected_page_index = index;
-                    self.render_select_page();
-                    break;
-                }
+        // if let Some(select_page) = self.pages.get(&uri) {
+        //     for (index, (key, _)) in self.pages.iter().enumerate() {
+        //         if key == &uri {
+        //             self.selected_page_index = index;
+        //             self.render_select_page();
+        //             break;
+        //         }
+        //     }
+        // }
+
+        for (index, (key, _)) in self.pages.iter().enumerate() {
+            if key == &uri {
+                self.selected_page_index = index;
+                self.render_select_page();
+                break;
             }
         }
     }
+
     pub fn select_page_by_index(&mut self, index: usize) {
         if self.pages.len() > 0 {
             self.selected_page_index = index % self.pages.len();
             self.render_select_page();
+        }
+    }
+
+    pub fn page_switch_increment(&mut self) {
+        if self.selected_page_index < self.pages.len() - 1 {
+            self.select_page_by_index(self.selected_page_index + 1);
+        } else {
+            self.select_page_by_index(0);
+        }
+    }
+
+    pub fn page_switch_decrement(&mut self) {
+        if self.selected_page_index > 0 {
+            self.select_page_by_index(self.selected_page_index - 1);
+        } else {
+            self.select_page_by_index(self.pages.len() - 1);
         }
     }
 }

@@ -1,13 +1,14 @@
-use crate::page_tab::PageTab;
 use core::cell::RefCell;
-
-use cursive::view::{Resizable, SizeConstraint, View};
-
-use cursive::views::{LinearLayout, ResizedView};
-use cursive::{Printer, Vec2};
-
 use std::cmp::max;
 use std::rc::Rc;
+
+use cursive::backends::crossterm::crossterm::event::MouseEvent;
+use cursive::event::Event;
+use cursive::event::MouseButton;
+use cursive::view::View;
+use cursive::{Printer, Vec2};
+
+use super::page_tab::PageTab;
 
 // #[derive(Clone)]
 pub struct BrowserTabBarViewer {
@@ -60,6 +61,17 @@ impl View for BrowserTabBarViewer {
                 .offset(Vec2::new(walk_size + spliter.len(), 0))
                 .cropped(Vec2::new(unit_size - spliter.len(), 1));
             tab.borrow().draw(tab_printer);
+
+            let result = tab.borrow_mut().on_event(Event::Mouse {
+                offset: Vec2::new(walk_size, printer.size.y),
+                position: Vec2::new(0, 0),
+                event: cursive::event::MouseEvent::Press(MouseButton::Left),
+            });
+
+            match result {
+                cursive::event::EventResult::Ignored => (),
+                cursive::event::EventResult::Consumed(_) => tab.borrow_mut().switch_tab(i),
+            }
 
             walk_size += unit_size;
         }

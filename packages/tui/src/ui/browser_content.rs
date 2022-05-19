@@ -1,19 +1,13 @@
-use crate::page::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-use crate::tabbar::*;
 use cursive::{
     direction::Direction,
     event::{AnyCb, Event, EventResult},
-    theme::{BaseColor, Color, PaletteColor, Theme},
-    view::{CannotFocus, Resizable, Selector, View, ViewNotFound, ViewWrapper},
-    views::{Layer, LinearLayout, ResizedView, ThemedView},
-    Printer, Rect, Vec2, With,
+    view::{CannotFocus, Selector, View, ViewNotFound},
+    views::LinearLayout,
+    Printer, Rect, Vec2,
 };
-
-use std::cell::RefCell;
-use std::cmp::max;
-use std::collections::HashMap;
-use std::rc::Rc;
 
 pub struct BrowserContentViewer {
     pub view: Rc<RefCell<LinearLayout>>,

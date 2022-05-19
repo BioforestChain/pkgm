@@ -1,13 +1,13 @@
-use crate::page_tab::PageTab;
 use core::cell::RefCell;
+use std::rc::Rc;
 
-use cursive::view::{SizeConstraint, View, ViewWrapper};
+use cursive::view::{SizeConstraint, View};
 
 use cursive::views::{ResizedView, TextView};
 use cursive::{self};
 use cursive::{Printer, Vec2};
 
-use std::rc::Rc;
+use super::page_tab::PageTab;
 
 #[derive(Clone)]
 pub struct Page {
