@@ -23,10 +23,10 @@ fn main() {
 
     shortcut::keyboard_bind(&mut siv);
 
-    siv.call_on_name(browser_name::BROWSER, |s: &mut Browser| {
-        s.add_page(page_name::BUILD.to_owned());
-        s.add_page(page_name::TUI.to_owned());
-        s.add_page(page_name::DEPS.to_owned());
+    siv.call_on_name(browser_name::BROWSER, |browser: &mut Browser| {
+        browser.add_page(page_name::BUILD.to_string());
+        browser.add_page(page_name::TUI.to_string());
+        browser.add_page(page_name::DEPS.to_string());
     });
 
     // browser.with_name("browser");

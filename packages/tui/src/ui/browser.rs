@@ -103,7 +103,9 @@ impl Browser {
     {
         f(&mut self.view_content.view.borrow_mut())
     }
+}
 
+impl Browser {
     pub fn add_page(&mut self, uri: String) {
         let page = Page::new(uri.clone());
         let page_rc = Rc::new(RefCell::new(page.clone()));
@@ -218,6 +220,31 @@ impl Browser {
         }
     }
 }
+
+impl Browser {
+    pub fn append_content(&mut self, content: String) {
+        let index = self.selected_page_index;
+
+        match self.pages.get_mut(index) {
+            Some((_, page)) => {
+                page.borrow_mut().append_content(content);
+            }
+            None => (),
+        }
+    }
+
+    pub fn set_content(&mut self, content: String) {
+        let index = self.selected_page_index;
+
+        match self.pages.get_mut(index) {
+            Some((_, page)) => {
+                page.borrow_mut().set_content(content);
+            }
+            None => (),
+        }
+    }
+}
+
 impl View for Browser {
     fn draw(&self, printer: &Printer) {
         self.view.draw(printer);

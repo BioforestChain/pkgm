@@ -2,9 +2,7 @@ use core::cell::RefCell;
 use std::cmp::max;
 use std::rc::Rc;
 
-use cursive::backends::crossterm::crossterm::event::MouseEvent;
-use cursive::event::Event;
-use cursive::event::MouseButton;
+use cursive::event::{Event, Key};
 use cursive::view::View;
 use cursive::{Printer, Vec2};
 
@@ -61,17 +59,6 @@ impl View for BrowserTabBarViewer {
                 .offset(Vec2::new(walk_size + spliter.len(), 0))
                 .cropped(Vec2::new(unit_size - spliter.len(), 1));
             tab.borrow().draw(tab_printer);
-
-            let result = tab.borrow_mut().on_event(Event::Mouse {
-                offset: Vec2::new(walk_size, printer.size.y),
-                position: Vec2::new(0, 0),
-                event: cursive::event::MouseEvent::Press(MouseButton::Left),
-            });
-
-            match result {
-                cursive::event::EventResult::Ignored => (),
-                cursive::event::EventResult::Consumed(_) => tab.borrow_mut().switch_tab(i),
-            }
 
             walk_size += unit_size;
         }
