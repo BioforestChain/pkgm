@@ -52,8 +52,8 @@ impl PageTab {
 
     pub fn set_active(&mut self) {
         self.text.set_style(Style::default().with(|theme| {
-            theme.color.front = ColorType::Color(Color::Light(BaseColor::Red));
-            theme.color.back = ColorType::Color(Color::Dark(BaseColor::Black));
+            theme.color.front = ColorType::Color(Color::Light(BaseColor::White));
+            theme.color.back = ColorType::Color(Color::Dark(BaseColor::Green));
         }));
     }
 

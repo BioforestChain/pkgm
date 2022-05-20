@@ -1,10 +1,9 @@
 use core::cell::RefCell;
-use std::borrow::Borrow;
 use std::rc::Rc;
 
 use cursive::event::{Event, EventResult, Key, MouseButton, MouseEvent};
 use cursive::view::{SizeConstraint, View};
-use cursive::views::{ResizedView, TextView};
+use cursive::views::{ResizedView, ScrollView, TextView};
 use cursive::{self};
 use cursive::{Printer, Vec2};
 

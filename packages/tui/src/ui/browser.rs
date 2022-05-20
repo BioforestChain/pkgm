@@ -6,6 +6,7 @@ use cursive::{
     direction::Direction,
     event::{AnyCb, Event, EventResult},
     theme::{BaseColor, Color, PaletteColor, Theme},
+    traits::Nameable,
     view::{CannotFocus, Resizable, Selector, View, ViewNotFound, ViewWrapper},
     views::{Layer, LinearLayout, ResizedView, ThemedView},
     Printer, Rect, Vec2, With,
@@ -49,6 +50,7 @@ impl Browser {
                         theme.palette[PaletteColor::Primary] = Color::Light(BaseColor::White);
                         theme.palette[PaletteColor::TitlePrimary] = Color::Light(BaseColor::White);
                         theme.palette[PaletteColor::Highlight] = Color::Dark(BaseColor::White);
+                        theme.palette[PaletteColor::Tertiary] = Color::Light(BaseColor::Green);
                         theme.shadow = false;
                     }),
                     Layer::new(content.clone()),

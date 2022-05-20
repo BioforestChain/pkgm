@@ -21,12 +21,12 @@ background = ["#cdf6cd", "454", "magenta"]
 # If the terminal doesn't support custom color (like the linux TTY),
 # non-base colors will be skipped.
 shadow = ["#222288", "blue"]
-view = "green"
+view = "#333"
 
 # An array with a single value has the same effect as a simple value.
 primary = ["white"]
 secondary = "#EEEEEE"
-tertiary = "#252521"
+tertiary = "green"
 
 # Hex values can use lower or uppercase.
 # (base color MUST be lowercase)

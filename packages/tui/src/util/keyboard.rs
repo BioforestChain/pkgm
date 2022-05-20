@@ -36,6 +36,14 @@ pub mod shortcut {
         //     });
         // });
 
+        siv.add_global_callback(Event::Shift(Key::Enter), |s| {
+            s.call_on_name(browser_name::BROWSER, |browser: &mut Browser| {
+                for _ in 0..100 {
+                    browser.append_content("title".to_string());
+                }
+            });
+        });
+
         // 自定义ctrl-c
         siv.clear_global_callbacks(Event::CtrlChar('c'));
 

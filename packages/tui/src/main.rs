@@ -18,8 +18,8 @@ fn main() {
 
     let browser = Browser::new(browser_name::BROWSER.to_string()).with_name(browser_name::BROWSER);
 
-    siv.add_layer(browser);
-    // siv.add_fullscreen_layer(browser);
+    // siv.add_layer(browser);
+    siv.add_fullscreen_layer(browser);
 
     shortcut::keyboard_bind(&mut siv);
 
