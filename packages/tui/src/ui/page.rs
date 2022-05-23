@@ -1,9 +1,9 @@
 use core::cell::RefCell;
 use std::rc::Rc;
 
-use cursive::event::{Event, EventResult, Key, MouseButton, MouseEvent};
 use cursive::view::{SizeConstraint, View};
-use cursive::views::{ResizedView, ScrollView, TextView};
+
+use cursive::views::{ResizedView, TextView};
 use cursive::{self};
 use cursive::{Printer, Vec2};
 
@@ -75,12 +75,6 @@ impl View for Page {
     fn required_size(&mut self, constraint: Vec2) -> Vec2 {
         self.content.borrow_mut().required_size(constraint)
     }
-    // fn on_event(&mut self, event: Event) -> EventResult {
-    //     match event {
-    //         Event::Key(Key::Down) => self.content.borrow_mut().,
-    //         _ => EventResult::Ignored
-    //     }
-    // }
 }
 
 // impl ViewWrapper for Page {

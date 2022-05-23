@@ -30,41 +30,13 @@ impl Clone for BrowserContentViewer {
 }
 impl View for BrowserContentViewer {
     fn draw(&self, printer: &Printer) {
-        // self.draw_outer_panel(printer);
-        // printer.print((0, 12), "━");
-        // printer.with_color(ColorStyle::highlight(), |printer| {
-        //     printer.print(self.focus_xy(), &txt);
-        // });
-
-        // self.layout(xy);
-
-        // match self.on_event(Event::WindowResize);
-        // printer.size
         let theme = Theme {
             shadow: false,
             borders: BorderStyle::Simple,
             palette: Palette::default(),
         };
         printer.theme(&theme);
-
-        // match self.view.borrow_mut().get_child_mut(0) {
-        //     Some(view) => {
-        //         let p = printer.inner_size(Vec2::new(printer.size.x - 10, printer.size.y - 10));
-        //         // printer.content_offset(Vec2::new(printer.size.x - 10, printer.size.y - 10));
-        //         // printer.offset(Vec2::new(printer.size.x - 10, printer.size.y - 10));
-        //         // printer.cropped(Vec2::new(printer.size.x - 10, printer.size.y - 10));
-        //         view.draw(&p);
-        //     }
-        //     None => (),
-        // }
-
-        // let p = printer.inner_size(Vec2::new(printer.size.x - 10, printer.size.y - 10));
-        // let p = printer.content_offset(Vec2::new(printer.size.x - 10, printer.size.y - 10));
-        let p = printer.offset(Vec2::new(1, 1));
-        // printer.cropped(Vec2::new(printer.size.x - 10, printer.size.y - 10));
-
-        // printer.with_color(printer.current_color(), |s| {});
-        // printer.content_offset(Vec2::new(20, 20));
+        let p = printer.offset(Vec2::new(2, 1));
         printer.print_box(Vec2::new(0, 0), printer.size, false);
         self.view.borrow().draw(&p);
         // self.view.borrow().draw(&printer);

@@ -8,7 +8,7 @@ use cursive::{
     theme::{BaseColor, Color, PaletteColor, Theme},
     traits::Nameable,
     view::{CannotFocus, Resizable, Selector, View, ViewNotFound, ViewWrapper},
-    views::{Layer, LinearLayout, ResizedView, ThemedView},
+    views::{Layer, LinearLayout, ResizedView, ScrollView, ThemedView},
     Printer, Rect, Vec2, With,
 };
 
@@ -53,7 +53,7 @@ impl Browser {
                         theme.palette[PaletteColor::Tertiary] = Color::Light(BaseColor::Green);
                         theme.shadow = false;
                     }),
-                    Layer::new(content.clone()),
+                    Layer::new(ScrollView::new(content.clone())),
                 ))
                 .full_screen(),
             // pages: HashMap::new(),
