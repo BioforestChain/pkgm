@@ -2,13 +2,10 @@ use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
 
-use cursive::event::{Event, EventResult, Key, MouseButton, MouseEvent};
 use cursive::theme::{BaseColor, Color, ColorType, Style};
 use cursive::view::View;
-use cursive::views::TextView;
-use cursive::{Printer, Vec2, With};
-
-use super::browser::Browser;
+use cursive::views::{OnEventView, TextView};
+use cursive::{Printer, Vec2, With, XY};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum TabStatus {
@@ -29,36 +26,68 @@ pub enum TabStatus {
 // }
 
 pub struct PageTab {
-    text: TextView,
+    text: OnEventView<TextView>,
     icon: Rc<RefCell<TextView>>,
-    id: String,
+    pub id: String,
     status: HashMap<TabStatus, HashSet<String>>,
+    start_pos: XY<usize>,
+    end_pos: XY<usize>,
 }
 
 impl PageTab {
     pub fn new(id: String) -> Self {
         PageTab {
             id: id.clone(),
-            text: TextView::new(id),
+            text: OnEventView::new(TextView::new(id)),
             icon: Rc::new(RefCell::new(TextView::new(""))),
             status: HashMap::new(),
-            // view: FocusTracker::new(&textview),
+            start_pos: Vec2::new(0, 0),
+            end_pos: Vec2::new(0, 0), // view: FocusTracker::new(&textview),
         }
     }
 
     pub fn set_content(&mut self, title: String) {
-        self.text.set_content(title);
+        // self.text.set_content(title);
+        self.text.get_inner_mut().set_content(title);
     }
 
     pub fn set_active(&mut self) {
-        self.text.set_style(Style::default().with(|theme| {
-            theme.color.front = ColorType::Color(Color::Light(BaseColor::White));
-            theme.color.back = ColorType::Color(Color::Dark(BaseColor::Green));
-        }));
+        // self.text.set_style(Style::default().with(|theme| {
+        //     theme.color.front = ColorType::Color(Color::Light(BaseColor::White));
+        //     theme.color.back = ColorType::Color(Color::Dark(BaseColor::Green));
+        // }));
+        self.text
+            .get_inner_mut()
+            .set_style(Style::default().with(|theme| {
+                theme.color.front = ColorType::Color(Color::Light(BaseColor::White));
+                theme.color.back = ColorType::Color(Color::Dark(BaseColor::Green));
+            }));
     }
 
     pub fn set_inactive(&mut self) {
-        self.text.set_style(Style::default());
+        // self.text.set_style(Style::default());
+        self.text.get_inner_mut().set_style(Style::default());
+    }
+
+    pub fn set_pos(&mut self, start_pos: XY<usize>, end_pos: XY<usize>) {
+        self.start_pos = start_pos;
+        self.end_pos = end_pos;
+    }
+
+    pub fn check_position(&mut self, position: XY<usize>) -> bool {
+        if position.y > 1 {
+            return false;
+        }
+
+        if self.start_pos.x <= position.x && position.x <= self.end_pos.x {
+            return true;
+        }
+
+        return false;
+    }
+
+    pub fn get_id(&mut self) -> &str {
+        self.id.as_str()
     }
 
     pub fn add_status(&mut self, status: TabStatus, reason: String) {
@@ -120,29 +149,5 @@ impl View for PageTab {
         let text_require_size = self.text.required_size(constraint);
         let icon_require_size = self.icon.borrow_mut().required_size(constraint);
         icon_require_size + Vec2::new(1, 0) + text_require_size
-    }
-
-    fn on_event(&mut self, event: Event) -> EventResult {
-        match event {
-            Event::Mouse {
-                offset,
-                position,
-                event,
-            } => {
-                match event {
-                    MouseEvent::Press(MouseButton::Left) => {
-                        let uri = self.id.clone();
-
-                        println!("{}", uri);
-                        // self.call_on_name("browser", |browser: &mut Browser| {
-                        //     browser.select_page(uri);
-                        // });
-                    }
-                    _ => return EventResult::Ignored,
-                }
-                return EventResult::Consumed(None);
-            }
-            _ => EventResult::Ignored,
-        }
     }
 }

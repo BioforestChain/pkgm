@@ -3,11 +3,11 @@ use std::rc::Rc;
 
 use cursive::{
     direction::Direction,
-    event::{AnyCb, Event, EventResult, Key},
-    theme::{BorderStyle, ColorStyle, ColorType, Palette, PaletteColor, Style, Theme},
+    event::{AnyCb, Event, EventResult},
+    theme::{BorderStyle, Palette, Theme},
     view::{CannotFocus, Selector, View, ViewNotFound},
     views::LinearLayout,
-    Printer, Rect, Vec2, With,
+    Printer, Rect, Vec2,
 };
 
 pub struct BrowserContentViewer {

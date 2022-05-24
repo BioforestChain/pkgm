@@ -2,7 +2,6 @@ use core::cell::RefCell;
 use std::cmp::max;
 use std::rc::Rc;
 
-use cursive::event::{Event, Key};
 use cursive::view::View;
 use cursive::{Printer, Vec2};
 
@@ -10,9 +9,8 @@ use super::page_tab::PageTab;
 
 // #[derive(Clone)]
 pub struct BrowserTabBarViewer {
-    tabs: Rc<RefCell<Vec<Rc<RefCell<PageTab>>>>>,
-    // view: Rc<RefCell<ResizedView<LinearLayout>>>,
-    // width: usize,
+    tabs: Rc<RefCell<Vec<Rc<RefCell<PageTab>>>>>, // view: Rc<RefCell<ResizedView<LinearLayout>>>,
+                                                  // width: usize,
 }
 
 impl Clone for BrowserTabBarViewer {
@@ -27,11 +25,10 @@ impl BrowserTabBarViewer {
     pub fn new() -> Self {
         // let width: usize = 10;
         BrowserTabBarViewer {
-            tabs: Rc::new(RefCell::new(Vec::new())),
-            // view: Rc::new(RefCell::new(
-            //     LinearLayout::horizontal().fixed_size(cursive::XY::new(width, 1)),
-            // )),
-            // width,
+            tabs: Rc::new(RefCell::new(Vec::new())), // view: Rc::new(RefCell::new(
+                                                     //     LinearLayout::horizontal().fixed_size(cursive::XY::new(width, 1)),
+                                                     // )),
+                                                     // width,
         }
     }
     pub fn add_tab(self: &mut BrowserTabBarViewer, tab: Rc<RefCell<PageTab>>) {
@@ -42,6 +39,10 @@ impl BrowserTabBarViewer {
     //         .borrow_mut()
     //         .set_width(SizeConstraint::Fixed(width));
     // }
+
+    pub fn get_tabs(&self) -> Rc<RefCell<Vec<Rc<RefCell<PageTab>>>>> {
+        self.tabs.clone()
+    }
 }
 impl View for BrowserTabBarViewer {
     fn draw(&self, printer: &Printer) {
@@ -58,7 +59,9 @@ impl View for BrowserTabBarViewer {
             let tab_printer = &printer
                 .offset(Vec2::new(walk_size + spliter.len(), 0))
                 .cropped(Vec2::new(unit_size - spliter.len(), 1));
-            tab.borrow().draw(tab_printer);
+            tab.borrow_mut().draw(tab_printer);
+            tab.borrow_mut()
+                .set_pos(Vec2::new(walk_size, 0), Vec2::new(walk_size + unit_size, 1));
 
             walk_size += unit_size;
         }

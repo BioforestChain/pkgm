@@ -1,12 +1,10 @@
 use std::cell::RefCell;
-use std::collections::HashMap;
 use std::rc::Rc;
 
 use cursive::{
     direction::Direction,
-    event::{AnyCb, Event, EventResult},
+    event::{AnyCb, Event, EventResult, MouseButton, MouseEvent},
     theme::{BaseColor, Color, PaletteColor, Theme},
-    traits::Nameable,
     view::{CannotFocus, Resizable, Selector, View, ViewNotFound, ViewWrapper},
     views::{Layer, LinearLayout, ResizedView, ScrollView, ThemedView},
     Printer, Rect, Vec2, With,
@@ -256,7 +254,40 @@ impl View for Browser {
     }
 
     fn on_event(&mut self, ch: Event) -> EventResult {
-        self.view.on_event(ch)
+        // self.view.on_event(ch)
+
+        match ch {
+            Event::Mouse {
+                offset,
+                position,
+                event,
+            } => match event {
+                MouseEvent::Press(MouseButton::Left) => {
+                    if position.y > 1 {
+                        self.view.on_event(ch)
+                    } else {
+                        let mut uri: String = String::from("");
+
+                        let uri = self.with_tabbar_mut(move |tabbar| {
+                            for tab in tabbar.get_tabs().borrow().iter() {
+                                if tab.borrow_mut().check_position(position) {
+                                    uri.push_str(tab.borrow_mut().get_id());
+                                    break;
+                                }
+                            }
+
+                            uri
+                        });
+
+                        self.select_page(uri);
+
+                        EventResult::Consumed(None)
+                    }
+                }
+                _ => self.view.on_event(ch),
+            },
+            _ => self.view.on_event(ch),
+        }
     }
 
     fn layout(&mut self, size: Vec2) {
