@@ -83,7 +83,7 @@ impl Browser {
         f(&*self.view_bar.borrow())
     }
 
-    fn with_tabbar_mut<F, R>(&mut self, mut f: F) -> R
+    pub fn with_tabbar_mut<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce(&mut BrowserTabBarViewer) -> R,
     {
@@ -97,7 +97,7 @@ impl Browser {
         f(&*self.view_content.view.borrow())
     }
 
-    fn with_content_mut<F, R>(&mut self, mut f: F) -> R
+    fn with_content_mut<F, R>(&mut self, f: F) -> R
     where
         F: FnOnce(&mut LinearLayout) -> R,
     {
@@ -218,6 +218,10 @@ impl Browser {
         } else {
             self.select_page_by_index(self.pages.len() - 1);
         }
+    }
+
+    pub fn get_selected_index(&mut self) -> usize {
+        self.selected_page_index
     }
 }
 

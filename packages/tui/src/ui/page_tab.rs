@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use cursive::theme::{BaseColor, Color, ColorType, Style};
 use cursive::view::View;
-use cursive::views::{OnEventView, TextView};
+use cursive::views::TextView;
 use cursive::{Printer, Vec2, With, XY};
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -26,9 +26,9 @@ pub enum TabStatus {
 // }
 
 pub struct PageTab {
-    text: OnEventView<TextView>,
+    text: TextView,
     icon: Rc<RefCell<TextView>>,
-    pub id: String,
+    id: String,
     status: HashMap<TabStatus, HashSet<String>>,
     start_pos: XY<usize>,
     end_pos: XY<usize>,
@@ -38,7 +38,7 @@ impl PageTab {
     pub fn new(id: String) -> Self {
         PageTab {
             id: id.clone(),
-            text: OnEventView::new(TextView::new(id)),
+            text: TextView::new(id),
             icon: Rc::new(RefCell::new(TextView::new(""))),
             status: HashMap::new(),
             start_pos: Vec2::new(0, 0),
@@ -48,7 +48,7 @@ impl PageTab {
 
     pub fn set_content(&mut self, title: String) {
         // self.text.set_content(title);
-        self.text.get_inner_mut().set_content(title);
+        self.text.set_content(title);
     }
 
     pub fn set_active(&mut self) {
@@ -56,17 +56,15 @@ impl PageTab {
         //     theme.color.front = ColorType::Color(Color::Light(BaseColor::White));
         //     theme.color.back = ColorType::Color(Color::Dark(BaseColor::Green));
         // }));
-        self.text
-            .get_inner_mut()
-            .set_style(Style::default().with(|theme| {
-                theme.color.front = ColorType::Color(Color::Light(BaseColor::White));
-                theme.color.back = ColorType::Color(Color::Dark(BaseColor::Green));
-            }));
+        self.text.set_style(Style::default().with(|theme| {
+            theme.color.front = ColorType::Color(Color::Light(BaseColor::White));
+            theme.color.back = ColorType::Color(Color::Dark(BaseColor::Green));
+        }));
     }
 
     pub fn set_inactive(&mut self) {
         // self.text.set_style(Style::default());
-        self.text.get_inner_mut().set_style(Style::default());
+        self.text.set_style(Style::default());
     }
 
     pub fn set_pos(&mut self, start_pos: XY<usize>, end_pos: XY<usize>) {
