@@ -6,17 +6,19 @@ use cursive::{
     event::{AnyCb, Event, EventResult},
     theme::{BorderStyle, Palette, Theme},
     view::{CannotFocus, Selector, View, ViewNotFound},
-    views::LinearLayout,
+    views::StackView,
     Printer, Rect, Vec2,
 };
 
 pub struct BrowserContentViewer {
-    pub view: Rc<RefCell<LinearLayout>>,
+    // pub view: Rc<RefCell<LinearLayout>>,
+    pub view: Rc<RefCell<StackView>>,
 }
 impl BrowserContentViewer {
     pub fn new() -> Self {
         BrowserContentViewer {
-            view: Rc::new(RefCell::new(LinearLayout::horizontal())),
+            // view: Rc::new(RefCell::new(LinearLayout::horizontal())),
+            view: Rc::new(RefCell::new(StackView::new())),
         }
     }
 }
@@ -36,10 +38,10 @@ impl View for BrowserContentViewer {
             palette: Palette::default(),
         };
         printer.theme(&theme);
-        let p = printer.offset(Vec2::new(2, 1));
+        // let p = printer.offset(Vec2::new(2, 1));
         printer.print_box(Vec2::new(0, 0), printer.size, false);
-        self.view.borrow().draw(&p);
-        // self.view.borrow().draw(&printer);
+        // self.view.borrow().draw(&p);
+        self.view.borrow().draw(&printer);
     }
     fn required_size(&mut self, constraint: Vec2) -> Vec2 {
         self.view.borrow_mut().required_size(constraint)

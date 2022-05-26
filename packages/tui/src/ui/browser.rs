@@ -6,7 +6,7 @@ use cursive::{
     event::{AnyCb, Event, EventResult, MouseButton, MouseEvent},
     theme::{BaseColor, Color, PaletteColor, Theme},
     view::{CannotFocus, Resizable, Selector, View, ViewNotFound, ViewWrapper},
-    views::{Layer, LinearLayout, ResizedView, ScrollView, ThemedView},
+    views::{Layer, LinearLayout, ResizedView, ScrollView, StackView, ThemedView},
     Printer, Rect, Vec2, With,
 };
 
@@ -51,7 +51,7 @@ impl Browser {
                         theme.palette[PaletteColor::Tertiary] = Color::Light(BaseColor::Green);
                         theme.shadow = false;
                     }),
-                    Layer::new(ScrollView::new(content.clone())),
+                    Layer::new(content.clone()),
                 ))
                 .full_screen(),
             // pages: HashMap::new(),
@@ -92,14 +92,14 @@ impl Browser {
 
     fn with_content<F, R>(&self, f: F) -> R
     where
-        F: FnOnce(&LinearLayout) -> R,
+        F: FnOnce(&StackView) -> R,
     {
         f(&*self.view_content.view.borrow())
     }
 
-    fn with_content_mut<F, R>(&mut self, f: F) -> R
+    pub fn with_content_mut<F, R>(&mut self, f: F) -> R
     where
-        F: FnOnce(&mut LinearLayout) -> R,
+        F: FnOnce(&mut StackView) -> R,
     {
         f(&mut self.view_content.view.borrow_mut())
     }
@@ -137,9 +137,12 @@ impl Browser {
     fn render_select_page(&mut self) {
         let pages_count = self.pages.len();
         if pages_count == 0 {
-            self.with_content_mut(|layout| {
-                while layout.len() > 0 {
-                    layout.remove_child(0);
+            self.with_content_mut(|stack| {
+                // while layout.len() > 0 {
+                //     layout.remove_child(0);
+                // }
+                while !stack.is_empty() {
+                    stack.pop_layer();
                 }
             });
             // self.with_layout_mut(|layout| {
@@ -166,12 +169,21 @@ impl Browser {
                 }
             }
             if let Some(page) = selected_page {
-                self.with_content_mut(|layout| {
-                    while layout.len() > 0 {
-                        layout.remove_child(0);
-                    }
+                self.with_content_mut(|stack| {
+                    // while layout.len() > 0 {
+                    //     layout.remove_child(0);
+                    // }
+                    // page.tab.borrow_mut().set_active();
+                    // layout.add_child(page);
+                    // while !stack.is_empty() {
+                    //     stack.pop_layer();
+                    // }
                     page.tab.borrow_mut().set_active();
-                    layout.add_child(page);
+                    if let Some(pos) = stack.find_layer_from_name(page.tab.borrow_mut().get_id()) {
+                        stack.move_to_front(pos);
+                    } else {
+                        stack.add_layer(ScrollView::new(page.clone()));
+                    }
                 });
             }
         }
@@ -290,6 +302,7 @@ impl View for Browser {
                 }
                 _ => self.view.on_event(ch),
             },
+            // Event::Key(Key::F12) => self.view_content.on_event(ch),
             _ => self.view.on_event(ch),
         }
     }

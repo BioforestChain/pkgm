@@ -101,15 +101,22 @@ pub mod shortcut {
             });
 
             let debug_panel_name = current_uri + "::debug";
-            if let Some(pos) = s.screen_mut().find_layer_from_name(&debug_panel_name) {
-                s.screen_mut().remove_layer(pos);
-            } else {
-                s.screen_mut().add_layer(
-                    DebugPanel::new(debug_panel_name.clone())
-                        .with_name(&debug_panel_name)
-                        .full_screen(),
-                )
-            }
+            let theme = get_common_theme(s);
+
+            browser.with_content_mut(move |stack| {
+                if let Some(pos) = stack.find_layer_from_name(&debug_panel_name) {
+                    stack.remove_layer(pos);
+                } else {
+                    stack.add_layer(ThemedView::new(
+                        theme,
+                        Layer::new(
+                            DebugPanel::new(debug_panel_name.clone())
+                                .with_name(&debug_panel_name)
+                                .full_screen(),
+                        ),
+                    ));
+                }
+            });
         });
 
         // siv.add_global_callback(Key::Down, |s| {
