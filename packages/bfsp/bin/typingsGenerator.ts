@@ -1,12 +1,15 @@
 import path from "node:path";
 import { $TsConfig, jsonClone, writeJsonConfig, runTsc, createTscLogger } from "../sdk";
 
+export type ModeType = "bfsp" | "bfsw";
+
 export class TypingsGenerator {
   private _root!: string;
   private _tsConfig!: $TsConfig;
   private _logger!: ReturnType<typeof this._createAggregatedLogger>;
   private _generateStoppable?: Awaited<ReturnType<typeof runTsc>>;
   private _checkIsolatedStoppable?: Awaited<ReturnType<typeof runTsc>>;
+  private _mode: ModeType;
 
   private _errors = {
     isolated: false,
@@ -16,10 +19,16 @@ export class TypingsGenerator {
     isolated: false,
     typings: false,
   };
-  constructor(opts: { logger: ReturnType<typeof createTscLogger>; root: string; tsConfig: $TsConfig }) {
+  constructor(opts: {
+    logger: ReturnType<typeof createTscLogger>;
+    root: string;
+    tsConfig: $TsConfig;
+    mode?: ModeType;
+  }) {
     this._root = opts.root;
     this._tsConfig = opts.tsConfig;
     this._logger = this._createAggregatedLogger(opts.logger);
+    this._mode = opts.mode ?? "bfsw";
   }
 
   // 为了让Tsc面板的状态能够正确显示。
@@ -74,7 +83,9 @@ export class TypingsGenerator {
     }
   }
   stop() {
-    this._generateStoppable?.stop();
+    if (this._mode !== "bfsp") {
+      this._generateStoppable?.stop();
+    }
     this._checkIsolatedStoppable?.stop();
   }
 
@@ -123,7 +134,7 @@ export class TypingsGenerator {
 
     return runTsc({
       tsconfigPath: p,
-      watch: true,
+      // watch: true,
       onMessage: (s) => this._logger.write(s, "isolated"),
       onClear: () => this._logger.clear("isolated"),
     });

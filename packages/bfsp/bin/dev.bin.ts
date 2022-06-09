@@ -4,11 +4,10 @@ import { defineCommand } from "../bin";
 import { watchBfspProjectConfig, writeBfspProjectConfig } from "../src/bfspConfig";
 import { getBfspUserConfig } from "../src/configs/bfspUserConfig";
 import { getTui } from "../sdk/tui";
-import { DevLogger, createTscLogger } from "../sdk/logger/logger";
+import { DevLogger } from "../sdk/logger/logger";
 import { ALLOW_FORMATS } from "../sdk/toolkit/toolkit.fs";
 import { doDevBfsp } from "./dev.core";
 import { helpOptions } from "./help.core";
-import { runTsc } from "../sdk";
 
 export const devCommand = defineCommand(
   "dev",
@@ -56,20 +55,22 @@ export const devCommand = defineCommand(
       const subConfigs = await writeBfspProjectConfig(projectConfig, options);
       const configStreams = watchBfspProjectConfig(projectConfig, subConfigs, options);
 
-      const tscLogger = createTscLogger();
       /* const tscStoppable = */
-      runTsc({
-        watch: true,
-        tsconfigPath: path.join(root, "tsconfig.json"),
-        onMessage: (s) => tscLogger.write(s),
-        onClear: () => tscLogger.clear(),
-      });
+      // runTsc({
+      //   watch: true,
+      //   tsconfigPath: path.join(root, "tsconfig.json"),
+      //   onMessage: (s) => tscLogger.write(s),
+      //   onClear: () => tscLogger.clear(),
+      // });
 
-      doDevBfsp({
-        root,
-        format: format as Bfsp.Format,
-        subStreams: configStreams,
-      });
+      doDevBfsp(
+        {
+          root,
+          format: format as Bfsp.Format,
+          subStreams: configStreams,
+        },
+        { mode: "bfsp" }
+      );
     } catch (err) {
       logger.error(err);
     }

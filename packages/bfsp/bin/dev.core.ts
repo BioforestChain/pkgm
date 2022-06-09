@@ -8,7 +8,7 @@ import type { RollupWatcher } from "@bfchain/pkgm-base/lib/rollup";
 import { getVite } from "@bfchain/pkgm-base/lib/vite";
 import { ViteConfigFactory } from "./vite/configFactory";
 import { $LoggerKit, getTui } from "../sdk/tui";
-import { TypingsGenerator } from "./typingsGenerator";
+import { TypingsGenerator, type ModeType } from "./typingsGenerator";
 
 type DevEventCallback = (name: string) => BFChainUtil.PromiseMaybe<void>;
 
@@ -20,6 +20,7 @@ export const doDevBfsp = (
   },
   options: {
     loggerKit?: $LoggerKit;
+    mode?: ModeType;
   } = {}
 ) => {
   const debug = DevLogger("bfsp:bin/dev");
@@ -50,7 +51,7 @@ export const doDevBfsp = (
         const viteConfig = await subStreams.viteConfigStream.waitCurrent();
         const tsConfig = await subStreams.tsConfigStream.waitCurrent();
 
-        typingsGenerator = new TypingsGenerator({ root, logger: tscLogger, tsConfig });
+        typingsGenerator = new TypingsGenerator({ root, logger: tscLogger, tsConfig, mode: options?.mode });
         await typingsGenerator.generate(userConfig.exportsDetail.indexFile);
 
         const viteConfigBuildOptions = {
