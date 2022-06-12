@@ -31,7 +31,7 @@ const SCROLLABLE_STYLE: Widgets.BoxOptions = {
   keyable: true,
   mouse: true,
   scrollable: true,
-  draggable: true,
+  draggable: false,
   alwaysScroll: true,
   scrollbar: {
     ch: " ",
