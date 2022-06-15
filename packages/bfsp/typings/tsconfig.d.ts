@@ -83,6 +83,7 @@ declare namespace Bfsp {
       traceResolution?: boolean;
       useUnknownInCatchVariables?: boolean;
       resolveJsonModule?: boolean;
+      moduleSuffixes?: string[];
       /** Paths used to compute primary types search locations */
       typeRoots?: string[];
       esModuleInterop?: boolean;

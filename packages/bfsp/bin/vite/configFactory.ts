@@ -128,6 +128,34 @@ export const ViteConfigFactory = (options: {
       })(),
       (() => {
         const profileImports = options.tsConfig.json.compilerOptions.paths;
+        let keys: string[] = [];
+        let moduleSuffixes: { [key: string]: string[] } = {};
+        Object.keys(profileImports).map((key) => {
+          let keyPath = path.resolve(projectDirpath, key.replace("#", "./"));
+          keys.push(keyPath);
+          moduleSuffixes[keyPath] = profileImports[key as Bfsp.Profile];
+        });
+
+        return {
+          name: "moduleSuffixes replace",
+          async resolveId(source: string, importer: string, options: any) {
+            if (source.startsWith("./")) {
+              const id = path.resolve(importer, "." + source);
+
+              if (keys.includes(id) && moduleSuffixes && moduleSuffixes?.[id]?.[0]) {
+                let suffixesid = path.resolve(projectDirpath, moduleSuffixes[id][0]);
+                return suffixesid;
+              }
+
+              return id;
+            }
+
+            return null;
+          },
+        };
+      })(),
+      (() => {
+        const profileImports = options.tsConfig.json.compilerOptions.paths;
         debug("profileImports", profileImports);
         return {
           name: "Profile imports",
@@ -144,7 +172,7 @@ export const ViteConfigFactory = (options: {
                    *
                    * 当有嵌套profile出现的时候，比如 从 #lib 引用了 #module， 那么当解析到#module的时候，importer就会
                    * 因为路径前面带了#PROFILE#而变得不正常了
-                   * 
+                   *
                    * 因此选择在这边直接load
                    */
                   await this.load(resolution); // preload

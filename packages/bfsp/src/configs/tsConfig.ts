@@ -12,7 +12,6 @@ import { getWatcher } from "../../sdk/toolkit/toolkit.watcher";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream";
 import { fileIO, folderIO, walkFiles, writeJsonConfig } from "../../sdk/toolkit/toolkit.fs";
 import { isTsFile, notGitIgnored, isBinFile, isTestFile, isTypeFile } from "../../sdk/toolkit/toolkit.lang";
-import { getTui } from "../../sdk";
 const debug = DevLogger("bfsp:config/tsconfig");
 
 // export const getFilename = (somepath: string) => {
@@ -286,6 +285,17 @@ export const getTsconfigFiles = (list: TsFilesLists, field: keyof Omit<TsFilesLi
 };
 
 const _generateUser_CompilerOptionsBase = (bfspUserConfig: $BfspUserConfig) => {
+  let moduleSuffixes: string[] = [];
+
+  if (bfspUserConfig.userConfig.profiles) {
+    bfspUserConfig.userConfig.profiles.forEach((it) => {
+      moduleSuffixes.push("#" + it);
+    });
+    moduleSuffixes.push("");
+  } else {
+    moduleSuffixes.push("");
+  }
+
   return {
     json: {
       /**
@@ -324,6 +334,7 @@ const _generateUser_CompilerOptionsBase = (bfspUserConfig: $BfspUserConfig) => {
        * 开发者自己定义的参数
        */
       ...(bfspUserConfig.userConfig.tsConfig?.compilerOptions ?? {}),
+      moduleSuffixes: moduleSuffixes,
     },
     isolatedJson: {
       isolatedModules: true,
