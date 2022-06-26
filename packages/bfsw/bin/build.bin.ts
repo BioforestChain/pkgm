@@ -8,7 +8,7 @@ import {
   linkBFChainPkgmModules,
 } from "@bfchain/pkgm-bfsp/sdk";
 import path from "node:path";
-import { existsSync, rmdirSync, symlinkSync } from "node:fs";
+import { existsSync, symlinkSync, unlinkSync } from "node:fs";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk";
 import { ParallelPool } from "@bfchain/pkgm-base/util/extends_promise";
 import { WorkspaceConfig } from "../src/configs/workspaceConfig";
@@ -199,7 +199,7 @@ export const createBuildSymLink = (root: string, buildOutDir: string, name: stri
   const nodeModulesDir = path.resolve(root, "node_modules", name);
   // 如果存在的话先删除创建新的
   if (existsSync(nodeModulesDir)) {
-    rmdirSync(nodeModulesDir);
+    unlinkSync(nodeModulesDir);
   }
   symlinkSync(buildOutDir, nodeModulesDir, "junction");
 };
