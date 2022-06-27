@@ -408,7 +408,14 @@ export const doBuild = async (args: {
       buildLogger.info(`${chalk.blue(">>>")} start ${taskTitle}`);
 
       // 判断是否为最后一个任务，用于生成最终的package.json
-      perfConfig.taskFinished = index + 1 === buildUserConfigList.length;
+      // perfConfig.taskFinished = index + 1 === buildUserConfigList.length;
+      const rindex = buildUserConfigList.slice(index + 1).findIndex((u) => u.name === userConfig.name);
+
+      if (rindex === -1) {
+        perfConfig.taskFinished = true;
+      } else {
+        perfConfig.taskFinished = false;
+      }
 
       {
         /**要输出的文件夹根路径 */
