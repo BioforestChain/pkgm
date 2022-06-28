@@ -4,7 +4,7 @@ mod page_tab;
 mod tabbar;
 mod browser_content;
 
-use browser::*;
+use crate::browser::*;
 use core::cell::RefCell;
 use cursive::event::Event;
 

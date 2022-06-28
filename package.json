@@ -2,7 +2,11 @@
   "name": "@bfchain/pkgm",
   "private": true,
   "packageManager": "yarn@1.22.0",
+  "workspaces": [
+    "packages/*"
+  ],
   "devDependencies": {
+    "@types/node": "^16",
     "concurrently": "^7.0.0",
     "lerna": "^4.0.0"
   },
@@ -16,7 +20,11 @@
     "dev:bin": "lerna run dev:bin --stream --parallel",
     "dev:main": "lerna run dev:main --stream --parallel",
     "dev:old": "concurrently \"npm:dev:*\"",
+    "dev:tsc": "tsc --build -w",
     "dev": "node dev.mjs",
     "tsc": "lerna run tsc --stream --parallel"
+  },
+  "dependencies": {
+    "typescript": "^4.7.4"
   }
 }

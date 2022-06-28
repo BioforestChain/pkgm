@@ -1,35 +1,8 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "experimentalDecorators": true,
-    "composite": true,
-    "noEmit": true,
-    "declaration": true,
-    "sourceMap": false,
-    "target": "es2020",
-    "module": "es2020",
-    "lib": [
-      "ES2020"
-    ],
     "outDir": "./node_modules/.bfsp/",
-    "importHelpers": true,
-    "isolatedModules": false,
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
-    // "baseUrl": "./",
-    "types": [
-      "node"
-    ],
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "rootDir": "./",
   },
   "files": [
     "package.json",
@@ -45,6 +18,8 @@
     "bin/dev.core.ts",
     "bin/build.bin.ts",
     "bin/build.core.ts",
+    "bin/clear.bin.ts",
+    "bin/clear.core.ts",
     // "bin/npm.bin.ts",
     // "bin/npm.core.ts",
     "bin/fmt.core.ts",
@@ -101,8 +76,8 @@
     "bin.ts"
   ],
   "references": [
-    // {
-    //   "path": "./tsconfig.prod.json"
-    // }
+    {
+      "path": "../base/tsconfig.json"
+    }
   ]
 }

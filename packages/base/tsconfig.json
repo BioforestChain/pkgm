@@ -1,39 +1,35 @@
 {
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "experimentalDecorators": true,
-    "composite": true,
-    "noEmit": true,
-    "declaration": true,
-    "sourceMap": false,
-    "target": "es2020",
-    "module": "es2020",
-    "lib": [
-      "ES2020"
-    ],
-    "outDir": "./node_modules/.bfsp/",
-    "importHelpers": true,
-    "isolatedModules": false,
-    "strict": true,
-    "noImplicitAny": true,
-    "strictNullChecks": true,
-    "strictFunctionTypes": true,
-    "strictBindCallApply": true,
-    "strictPropertyInitialization": true,
-    "noImplicitThis": true,
-    "alwaysStrict": true,
-    "moduleResolution": "node",
-    "resolveJsonModule": true,
+    "outDir": "./dist/",
     "baseUrl": "./",
-    "types": [
-      "node"
-    ],
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
   },
-  "references": [
-    // {
-    //   "path": "./tsconfig.prod.json"
-    // }
-  ]
+  "files": [
+    "lib/blessed.ts",
+    "lib/chalk.ts",
+    "lib/debug.ts",
+    "lib/dep_graph.ts",
+    "lib/esbuild.ts",
+    "lib/fb-watchman.ts",
+    "lib/ignore.ts",
+    "lib/prettier.ts",
+    "lib/rollup.ts",
+    "lib/typescript.ts",
+    "lib/vite.ts",
+    "lib/yarn.ts",
+    "script/installWatchman.ts",
+    "src/toolkit.require.ts",
+    "util/aborter.ts",
+    "util/extends_map.ts",
+    "util/extends_promise_out.ts",
+    "util/extends_promise_safe.ts",
+    "util/extends_promise.ts",
+    "util/typings.ts",
+    "vite-config-helper/extension.ts",
+    "vite-config-helper/external.ts",
+    "vite-config-helper/index.ts",
+    "vite-config-helper/inputOutput.ts",
+    "vite-config-helper/shebang.ts",
+  ],
+  "references": []
 }
