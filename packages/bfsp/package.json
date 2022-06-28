@@ -3,40 +3,49 @@
   "version": "2.8.0",
   "description": "",
   "type": "module",
-  "types": "./src/index.ts",
-  "main": "./dist/main/src/index.mjs",
   "publishConfig": {
     "access": "public"
   },
   "exports": {
     ".": {
-      "import": "./dist/main/src/index.mjs"
+      "import": {
+        "types": "./dist/src/main/index.d.mts",
+        "default": "./dist/src/main/index.mjs"
+      }
     },
-    "./bin": {
-      "import": "./dist/bin/bin.mjs"
+    "./bin.mjs": {
+      "import": {
+        "types": "./dist/src/bin.d.mts",
+        "default": "./dist/src/bin.mjs"
+      }
     },
-    "./test": {
-      "import": "./dist/main/test.mjs"
+    "./test.mjs": {
+      "import": {
+        "types": "./dist/src/test.d.mts",
+        "default": "./dist/src/test.mjs"
+      }
     },
-    "./bfsp": {
-      "import": "./dist/main/bin/bfsp.bin.mjs"
+    "./sdk/index.mjs": {
+      "import": {
+        "types": "./dist/src/sdk/index.d.mts",
+        "default": "./dist/src/sdk/index.mjs"
+      }
     },
-    "./sdk": {
-      "import": "./dist/main/sdk/sdk.mjs"
+    "./sdk/tui/internalPanels.mjs": {
+      "import": {
+        "types": "./dist/src/sdk/tui/internalPanels.d.mts",
+        "default": "./dist/src/sdk/tui/internalPanels.mjs"
+      }
     },
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsp": "./dist/main/bin/bfsp.bin.mjs"
+    "bfsp": "./build/dist/bin.mjs"
   },
   "files": [
     "dist",
-    "typings",
-    "src",
-    "bin",
-    "assets",
-    "*.ts",
-    "*.mjs"
+    "build",
+    "src"
   ],
   "scripts": {
     "lsdeps": "yarn list --json --prod > .d.json",
@@ -63,7 +72,7 @@
   "devDependencies": {
     "@bfchain/pkgm-base": "file:../base",
     "@types/node": "^17.0.0",
-    "vite": "^2.8.6",
+    "vite": "^2.9.13",
     "yarn": "^1.22.17"
   },
   "engines": {

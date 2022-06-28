@@ -13,16 +13,7 @@ defineInputConfig({
   name: "bin",
   outDir: "build",
   input: {
-    index: "src/index.ts",
-    "bfsp.bin": "bin/bfsp.cmd.ts",
-    // "config.test": "tests/config.test.ts",
-    // "build.test": "tests/build.test.ts",
-    // "util.test": "tests/util.test.ts",
-    tsc_worker: "bin/tsc/worker.ts",
-    // terser_worker: "bin/terser/worker.ts",
-    test: "test.ts",
-    sdk: "sdk/index.ts",
-    // "w": "src/toolkit.watcher.ts",
+    "bfsp.bin": "./dist/bin/bfsp.cmd.mjs",
   },
   default: true,
 });

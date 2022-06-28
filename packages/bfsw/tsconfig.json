@@ -6,32 +6,36 @@
   },
   "files": [
     "package.json",
-    "bin/bfsw.cmd.mts",
-    "bin/bfsw.env.mts",
-    "bin/build.bin.mts",
-    "bin/clear.bin.mts",
-    "bin/clear.core.mts",
-    "bin/npm.bin.mts",
-    "bin/dev.bin.mts",
-    "bin/dev.core.mts",
-    "bin/init.bin.mts",
-    "bin/init.core.mts",
-    "bin/create.bin.mts",
-    "bin/create.core.mts",
-    "bin/version.bin.mts",
-    "bin/help.bin.mts",
-    "src/index.mts",
-    "src/consts.mts",
-    "src/configs/WorkspaceConfig.base.mts",
-    "src/configs/WorkspaceConfig.loader.mts",
-    "src/configs/workspaceConfig.mts",
-    "src/configs/workspaceTsConfig.mts",
-    "src/configs/workspacePackageJson.mts",
-    "src/configs/states.mts"
+    "assets/tsconfig.bfsw.json",
+    "src/bin/bfsw.cmd.mts",
+    "src/bin/bfsw.env.mts",
+    "src/bin/build.bin.mts",
+    "src/bin/clear.bin.mts",
+    "src/bin/clear.core.mts",
+    "src/bin/npm.bin.mts",
+    "src/bin/dev.bin.mts",
+    "src/bin/dev.core.mts",
+    "src/bin/init.bin.mts",
+    "src/bin/init.core.mts",
+    "src/bin/create.bin.mts",
+    "src/bin/create.core.mts",
+    "src/bin/version.bin.mts",
+    "src/bin/help.bin.mts",
+    "src/main/index.mts",
+    "src/main/consts.mts",
+    "src/main/configs/WorkspaceConfig.base.mts",
+    "src/main/configs/WorkspaceConfig.loader.mts",
+    "src/main/configs/workspaceConfig.mts",
+    "src/main/configs/workspaceTsConfig.mts",
+    "src/main/configs/workspacePackageJson.mts",
+    "src/main/configs/states.mts"
   ],
   "references": [
     {
       "path": "../base/tsconfig.json"
+    },
+    {
+      "path": "../bfsp/tsconfig.json"
     }
   ]
 }

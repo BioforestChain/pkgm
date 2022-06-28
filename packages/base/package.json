@@ -4,68 +4,131 @@
   "publishConfig": {
     "access": "public"
   },
+  "type": "module",
   "exports": {
     "./package.json": "./package.json",
     "./lib/blessed": {
-      "import": "./dist/main/lib/blessed.mjs"
+      "import": {
+        "types": "./dist/src/lib/blessed.d.mts",
+        "default": "./dist/src/lib/blessed.mjs"
+      }
     },
-    "./lib/chalk": {
-      "import": "./dist/main/lib/chalk.mjs"
+    "./lib/blessed.mjs": {
+      "import": {
+        "types": "./dist/src/lib/blessed.d.mts",
+        "default": "./dist/src/lib/blessed.mjs"
+      }
     },
-    "./lib/debug": {
-      "import": "./dist/main/lib/debug.mjs"
+    "./lib/chalk.mjs": {
+      "import": {
+        "types": "./dist/src/lib/chalk.d.mts",
+        "default": "./dist/src/lib/chalk.mjs"
+      }
     },
-    "./lib/dep_graph": {
-      "import": "./dist/main/lib/dep_graph.mjs"
+    "./lib/debug.mjs": {
+      "import": {
+        "types": "./dist/src/lib/debug.d.mts",
+        "default": "./dist/src/lib/debug.mjs"
+      }
     },
-    "./lib/esbuild": {
-      "import": "./dist/main/lib/esbuild.mjs"
+    "./lib/dep_graph.mjs": {
+      "import": {
+        "types": "./dist/src/lib/dep_graph.d.mts",
+        "default": "./dist/src/lib/dep_graph.mjs"
+      }
     },
-    "./lib/fb-watchman": {
-      "import": "./dist/main/lib/fb-watchman.mjs"
+    "./lib/esbuild.mjs": {
+      "import": {
+        "types": "./dist/src/lib/esbuild.d.mts",
+        "default": "./dist/src/lib/esbuild.mjs"
+      }
     },
-    "./lib/ignore": {
-      "import": "./dist/main/lib/ignore.mjs"
+    "./lib/fb-watchman.mjs": {
+      "import": {
+        "types": "./dist/src/lib/fb-watchman.d.mts",
+        "default": "./dist/src/lib/fb-watchman.mjs"
+      }
     },
-    "./lib/prettier": {
-      "import": "./dist/main/lib/prettier.mjs"
+    "./lib/ignore.mjs": {
+      "import": {
+        "types": "./dist/src/lib/ignore.d.mts",
+        "default": "./dist/src/lib/ignore.mjs"
+      }
     },
-    "./lib/rollup": {
-      "import": "./dist/main/lib/rollup.mjs"
+    "./lib/prettier.mjs": {
+      "import": {
+        "types": "./dist/src/lib/prettier.d.mts",
+        "default": "./dist/src/lib/prettier.mjs"
+      }
     },
-    "./lib/typescript": {
-      "import": "./dist/main/lib/typescript.mjs"
+    "./lib/rollup.mjs": {
+      "import": {
+        "types": "./dist/src/lib/rollup.d.mts",
+        "default": "./dist/src/lib/rollup.mjs"
+      }
     },
-    "./lib/vite": {
-      "import": "./dist/main/lib/vite.mjs"
+    "./lib/typescript.mjs": {
+      "import": {
+        "types": "./dist/src/lib/typescript.d.mts",
+        "default": "./dist/src/lib/typescript.mjs"
+      }
     },
-    "./lib/yarn": {
-      "import": "./dist/main/lib/yarn.mjs"
+    "./lib/vite.mjs": {
+      "import": {
+        "types": "./dist/src/lib/vite.d.mts",
+        "default": "./dist/src/lib/vite.mjs"
+      }
     },
-    "./util/aborter": {
-      "import": "./dist/main/util/aborter.mjs"
+    "./lib/yarn.mjs": {
+      "import": {
+        "types": "./dist/src/lib/yarn.d.mts",
+        "default": "./dist/src/lib/yarn.mjs"
+      }
     },
-    "./util/extends_map": {
-      "import": "./dist/main/util/extends_map.mjs"
+    "./util/aborter.mjs": {
+      "import": {
+        "types": "./dist/src/util/aborter.d.mts",
+        "default": "./dist/src/util/aborter.mjs"
+      }
     },
-    "./util/extends_promise": {
-      "import": "./dist/main/util/extends_promise.mjs"
+    "./util/extends_map.mjs": {
+      "import": {
+        "types": "./dist/src/util/extends_map.d.mts",
+        "default": "./dist/src/util/extends_map.mjs"
+      }
     },
-    "./util/extends_promise_out": {
-      "import": "./dist/main/util/extends_promise_out.mjs"
+    "./util/extends_promise.mjs": {
+      "import": {
+        "types": "./dist/src/util/extends_promise.d.mts",
+        "default": "./dist/src/util/extends_promise.mjs"
+      }
     },
-    "./util/extends_promise_safe": {
-      "import": "./dist/main/util/extends_promise_safe.mjs"
+    "./util/extends_promise_out.mjs": {
+      "import": {
+        "types": "./dist/src/util/extends_promise_out.d.mts",
+        "default": "./dist/src/util/extends_promise_out.mjs"
+      }
     },
-    "./util/typings": {
-      "import": "./dist/main/util/typings.mjs"
+    "./util/extends_promise_safe.mjs": {
+      "import": {
+        "types": "./dist/src/util/extends_promise_safe.d.mts",
+        "default": "./dist/src/util/extends_promise_safe.mjs"
+      }
     },
-    "./vite-config-helper": {
-      "import": "./dist/main/vite-config-helper.mjs"
+    "./util/typings.mjs": {
+      "import": {
+        "types": "./dist/src/util/typings.d.mts",
+        "default": "./dist/src/util/typings.mjs"
+      }
+    },
+    "./vite-config-helper/index.mjs": {
+      "import": {
+        "types": "./dist/src/vite-config-helper/index.d.mts",
+        "default": "./dist/src/vite-config-helper/index.mjs"
+      }
     }
   },
   "scripts": {
-    "postinstall": "node ./postinstall.mjs",
     "up": "yarn upgrade-interactive",
     "tsc": "tsc --build tsconfig.json -w",
     "dev:main": "vite build --watch --minify=false --sourcemap=true",
@@ -93,7 +156,7 @@
     "prettier": "^2.5.1",
     "tslib": "^2.3.1",
     "typescript": "^4.7.2",
-    "vite": "^2.8.6",
+    "vite": "^2.9.13",
     "yarn": "^1.22.17"
   },
   "optionalDependencies": {
@@ -103,7 +166,7 @@
   },
   "devDependencies": {
     "source-map-support": "^0.5.20",
-    "vite": "^2.8.6",
+    "vite": "^2.9.13",
     "zx": "^5.2.0"
   }
 }

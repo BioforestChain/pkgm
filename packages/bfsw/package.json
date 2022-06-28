@@ -18,7 +18,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsw": "./dist/main/bin/bfsw.bin.mjs"
+    "bfsw": "./build/bin/bfsw.bin.mjs"
   },
   "files": [
     "dist",
@@ -50,7 +50,7 @@
     "@bfchain/pkgm-base": "file:../base",
     "@bfchain/pkgm-bfsp": "file:../bfsp",
     "@types/node": "^17.0.0",
-    "vite": "^2.8.6",
+    "vite": "^2.9.13",
     "yarn": "^1.22.17"
   },
   "engines": {

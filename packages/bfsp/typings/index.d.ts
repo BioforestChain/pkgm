@@ -6,6 +6,7 @@
 /// <reference path="./watcher.d.ts" />
 /// <reference path="./logger.d.ts" />
 /// <reference path="./toolkit.d.ts" />
+/// <reference path="./tui.d.ts" />
 import type {} from "@bfchain/pkgm-base/util/typings.mjs";
 
 // export * from '../src/index'

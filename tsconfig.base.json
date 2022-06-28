@@ -5,7 +5,7 @@
         "declaration": true,
         "sourceMap": false,
         "target": "es2020",
-        "module": "es2020",
+        "module": "ES2020",
         "lib": [
             "ES2020"
         ],
@@ -19,9 +19,9 @@
         "strictPropertyInitialization": true,
         "noImplicitThis": true,
         "alwaysStrict": true,
-        "moduleResolution": "node",
+        "allowSyntheticDefaultImports": true,
+        "moduleResolution": "node16",
         "resolveJsonModule": true,
-        // "baseUrl": "./",
         "types": [
             "node"
         ],
