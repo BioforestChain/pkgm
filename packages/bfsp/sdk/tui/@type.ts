@@ -5,11 +5,11 @@ declare namespace BFSP.TUI {
   }
   namespace Panel {
     interface AllMap {
-      Tsc: import("./internalPanels").TscPanel;
-      Workspaces: import("./internalPanels").WorkspacesPanel;
-      Dev: import("./internalPanels").DevPanel;
-      Build: import("./internalPanels").BuildPanel;
-      Deps: import("./internalPanels").DepsPanel;
+      Tsc: import("./internalPanels.mjs").TscPanel;
+      Workspaces: import("./internalPanels.mjs").WorkspacesPanel;
+      Dev: import("./internalPanels.mjs").DevPanel;
+      Build: import("./internalPanels.mjs").BuildPanel;
+      Deps: import("./internalPanels.mjs").DepsPanel;
     }
     type Any = AllMap[keyof AllMap];
     type Name<P extends Panel = Any> = P["name"];

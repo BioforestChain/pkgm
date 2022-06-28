@@ -1,5 +1,5 @@
 {
-  "name": "@bfchain/pkgm",
+  "name": "@bfchain-workspaces/pkgm",
   "private": true,
   "packageManager": "yarn@1.22.0",
   "workspaces": [
@@ -11,7 +11,6 @@
     "lerna": "^4.0.0"
   },
   "scripts": {
-    "i": "lerna bootstrap",
     "build:main": "lerna run build:main --stream --parallel",
     "build:bin": "lerna run build:main --stream --parallel",
     "build:script": "lerna run build:script --stream --parallel",
@@ -20,11 +19,12 @@
     "dev:bin": "lerna run dev:bin --stream --parallel",
     "dev:main": "lerna run dev:main --stream --parallel",
     "dev:old": "concurrently \"npm:dev:*\"",
-    "dev:tsc": "tsc --build -w",
+    "tsc": "tsc --build -w",
     "dev": "node dev.mjs",
-    "tsc": "lerna run tsc --stream --parallel"
+    "i": "lerna bootstrap"
   },
   "dependencies": {
+    "prettier": "^2.7.1",
     "typescript": "^4.7.4"
   }
 }

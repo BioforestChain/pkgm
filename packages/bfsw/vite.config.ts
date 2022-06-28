@@ -5,26 +5,29 @@ import {
   getExternalOption,
   getShebangPlugin,
   libFormat,
-} from "@bfchain/pkgm-base/vite-config-helper";
-import { getVite } from "@bfchain/pkgm-base/lib/vite";
+} from "@bfchain/pkgm-base/vite-config-helper/index.mjs";
+import { getVite } from "@bfchain/pkgm-base/lib/vite.mjs";
 const defineConfig = getVite().defineConfig;
 
 defineInputConfig({
-  outDir: "main",
+  name: "bin",
+  outDir: "build",
   input: {
-    index: "src/index.ts",
-    "bfsw.bin": "bin/bfsw.cmd.ts",
+    "bfsw.bin": "./dist/bin/bfsw.cmd.mjs",
   },
   default: true,
 });
 export default defineConfig((info) => {
   const inputConfig = findInputConfig(info.mode);
+  if (!inputConfig) {
+    throw new Error(`no found input config with mode:'${info.mode}'`);
+  }
 
   return {
     build: {
       target: "node16",
       polyfillModulePreload: false,
-      outDir: "dist/" + inputConfig.outDir,
+      outDir: inputConfig.outDir,
       rollupOptions: {
         preserveEntrySignatures: "strict",
         external: getExternalOption(__dirname),
