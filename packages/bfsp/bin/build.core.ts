@@ -387,7 +387,9 @@ export const doBuild = async (args: {
   buildLogger.debug("running bfsp build!");
   try {
     /**拆分出一个个独立的 build 作业 */
-    const buildUserConfigList = collectBuildConfigs(bfspUserConfig.userConfig);
+    let buildUserConfigList = collectBuildConfigs(bfspUserConfig.userConfig);
+    // 避免开发者在build中有多个name，且未排序，会导致生成的package.json有问题
+    buildUserConfigList = buildUserConfigList.sort((a, b) => a.name.localeCompare(b.name));
     buildLogger.updateStatus("loading");
 
     /**已经清理过的文件夹目录，避免重复清理 */
