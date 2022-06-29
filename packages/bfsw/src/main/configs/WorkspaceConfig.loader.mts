@@ -198,7 +198,7 @@ const getBuildPlugins = (workspaceRoot: string) => {
           const { type, resolveDir, loader } = args.pluginData;
           if (type === "#bfsp#") {
             return {
-              contents: await fileIO.get(path.resolve(workspaceRoot, path.dirname(args.path), "#bfsp.ts")),
+              contents: await fileIO.get(path.join(resolveDir, "#bfsp.ts")),
               loader,
               resolveDir,
             };
@@ -209,15 +209,19 @@ const getBuildPlugins = (workspaceRoot: string) => {
             const bfspTrue = JSON.stringify(toPosixPath(path.posix.join(bfspDirname, "#bfsp#")));
             return {
               contents: `
-              export * from ${bfspTrue};
-              import defaultValue from ${bfspTrue};
+              // export * from ${bfspTrue};
+              // import defaultValue from ${bfspTrue};
+              export * from "./#bfsp#";
+              import defaultValue from "./#bfsp#";
+              
               const newDefault = Object.assign(defaultValue ?? {}, { relativePath:${JSON.stringify(bfspDirname)} });
               export default newDefault;
               `,
               loader,
-              resolveDir,
+              resolveDir: path.join(resolveDir, bfspDirname),
             };
           }
+          debugger;
         }
       );
     },

@@ -39,8 +39,8 @@
     "up": "yarn upgrade-interactive",
     "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",
-    "bin:dev": "vite build --watch --minify=false --sourcemap=true --mode=bin",
-    "bin:build": "vite build --minify=false --sourcemap=true --mode=bin",
+    "bin:dev": "vite build --watch --minify=false --mode=bin",
+    "bin:build": "vite build --minify=false --mode=bin",
     "test": "ava"
   },
   "keywords": [],
