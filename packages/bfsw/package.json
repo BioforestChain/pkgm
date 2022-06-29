@@ -10,10 +10,16 @@
   },
   "exports": {
     ".": {
-      "import": "./dist/main/src/index.mjs"
+      "import": {
+        "types": "./dist/src/main/index.d.mts",
+        "default": "./dist/src/main/index.mjs"
+      }
     },
     "./bfsw": {
-      "import": "./dist/main/bin/bfsw.bin.mjs"
+      "import": {
+        "types": "./dist/src/bin/bfsw.bin.d.mts",
+        "default": "./dist/src/bin/bfsw.bin.mjs"
+      }
     },
     "./package.json": "./package.json"
   },

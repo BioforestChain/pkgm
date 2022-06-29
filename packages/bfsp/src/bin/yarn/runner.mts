@@ -15,7 +15,11 @@ export interface RunYarnOption {
 export const linkBFChainPkgmModules = (root: string) => {
   const isBFChainPkgmModuleDir = (moduleDir: string) => {
     const packageJsonPath = path.join(moduleDir, "package.json");
-    if (fs.existsSync(packageJsonPath)) {
+    if (
+      fs.existsSync(packageJsonPath) &&
+      /* 有package.json的可能是dist，所以这里需要额外判断一下是不是有README.md，确保在根目录 */
+      fs.existsSync(path.join(moduleDir, "README.md"))
+    ) {
       try {
         const moduleName = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8")).name as string;
         if (moduleName.startsWith("@bfchain/pkgm-") || moduleName === "@bfchain/pkgm") {
@@ -50,10 +54,14 @@ export const linkBFChainPkgmModules = (root: string) => {
          * @warn 这里耦合了 传统 node_modules 文件夹寻址的规则
          */
         const destDir = path.join(root, "node_modules", moduleName);
-        if (fs.existsSync(destDir) === false) {
-          fs.mkdirSync(path.dirname(destDir), { recursive: true });
-          fs.symlinkSync(moduleDirPath, destDir, "junction");
+        if (fs.existsSync(destDir)) {
+          if (fs.realpathSync(destDir) === fs.realpathSync(moduleDirPath)) {
+            continue;
+          }
+          fs.unlinkSync(destDir);
         }
+        fs.mkdirSync(path.dirname(destDir), { recursive: true });
+        fs.symlinkSync(moduleDirPath, destDir, "junction");
       }
     }
   }

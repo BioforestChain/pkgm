@@ -69,8 +69,7 @@ export const generatePackageJson = async (
     if (posixKey !== "." && !filterProfiles(bfspUserConfig, posixKey, packageJson.name)) continue;
 
     packageJson.exports[posixKey[0] === "." ? posixKey : `./${posixKey}`] = Object.assign(
-      hasCjs ? { require: getDistFilepath("cjs", output) } : {},
-      hasEsm ? { import: getDistFilepath("esm", output) } : {},
+      /// types 一定要放在最前面，详见 https://devblogs.microsoft.com/typescript/announcing-typescript-4-7/#package-json-exports-imports-and-self-referencing
       {
         types: toPosixPath(
           path.join(
@@ -79,7 +78,9 @@ export const generatePackageJson = async (
           )
         ),
         // types: `./${toPosixPath(path.join("./", input.replace(/\.ts$/, ".d.ts")))}`,
-      }
+      },
+      hasCjs ? { require: getDistFilepath("cjs", output) } : {},
+      hasEsm ? { import: getDistFilepath("esm", output) } : {}
     );
   }
   const defaultExportConfig = packageJson.exports["."];

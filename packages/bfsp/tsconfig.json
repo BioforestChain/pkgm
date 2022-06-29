@@ -5,7 +5,6 @@
     "rootDir": "./",
   },
   "files": [
-    "package.json",
     "assets/package.template.json",
     "assets/tsconfig.bfsp.json",
     "src/bin/tsc/worker.mts",

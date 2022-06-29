@@ -4,7 +4,7 @@ export const toPosixPath = (windowsPath: string) => {
   windowsPath = path.normalize(windowsPath); // 至少会返回 "."、 "a" 、 "a\\b"
   let somepath = slash(windowsPath);
   if (somepath.length > 1) {
-    if (somepath.includes(":/") === false && somepath.startsWith(".") === false) {
+    if (somepath.includes(":/") === false && /^\.+\//.test(somepath) === false) {
       somepath = "./" + somepath;
     }
   }

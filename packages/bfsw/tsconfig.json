@@ -5,7 +5,6 @@
     "rootDir": "./",
   },
   "files": [
-    "package.json",
     "assets/tsconfig.bfsw.json",
     "src/bin/bfsw.cmd.mts",
     "src/bin/bfsw.env.mts",

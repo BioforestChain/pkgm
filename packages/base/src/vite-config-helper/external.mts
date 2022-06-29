@@ -95,9 +95,6 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
     ) {
       return true;
     }
-    // if (!source.startsWith(".") && !source.startsWith("E:/")) {
-    //   console.log("source", source, importer);
-    // }
 
     /// node_modules文件夹里头的模块
     const fromModuleName = source.startsWith("@")
