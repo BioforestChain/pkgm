@@ -22,6 +22,7 @@ export default defineConfig((info) => {
     build: {
       target: "es2020",
       outDir: inputConfig.outDir,
+      polyfillModulePreload: true,
       rollupOptions: genRollupOptions(inputConfig.input, __dirname),
     },
     plugins: [getShebangPlugin(__dirname)],

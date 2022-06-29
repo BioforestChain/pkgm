@@ -5,8 +5,7 @@
   "workspaces": [
     "packages/*"
   ],
-  "devDependencies": {
-    "@types/node": "^16",
+  "//devDependencies": {
     "concurrently": "^7.0.0",
     "lerna": "^4.0.0"
   },
@@ -14,8 +13,8 @@
     "postinstall": "node ./scripts/fix-package.cjs",
     "bin:build": "lerna run bin:build --stream --parallel",
     "bin:dev": "lerna run bin:dev --stream --parallel",
-    "tsc": "tsc --build -w",
-    "dev": "node dev.mjs",
+    "dev": "tsc --build -w",
+    "dev+bin": "node dev.mjs",
     "i": "lerna bootstrap"
   },
   "dependencies": {

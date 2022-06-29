@@ -1,3 +1,2 @@
-export * from "chalk";
-import chalk from "chalk";
-export { chalk };
+import chalk, { supportsColor, ChalkInstance } from "chalk";
+export { chalk, supportsColor, ChalkInstance };

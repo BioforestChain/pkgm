@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ExternalOption } from "rollup";
 
-export const getExternalOption = (dirname: string, currentPkgName?: string) => {
+export const getExternalOption = (dirname: string, currentPkgName?: string): ExternalOption | undefined => {
   const nodejsModules = new Set([
     "assert",
     "async_hooks",
@@ -70,11 +70,13 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
   if (currentPkgName === undefined) {
     currentPkgName = JSON.parse(readFileSync(path.resolve(dirname, "package.json"), "utf-8")).name as string;
   }
+
   const allowExternals = new Set<string>([currentPkgName]);
   for (const item of depsInfo.data.trees) {
     const pkgName = item.name.match(/(.+?)@/)[1];
     allowExternals.add(pkgName);
   }
+  const disallowExternals = new Set(["@bfchain/pkgm-base", "@bfchain/pkgm-bfsp", "@bfchain/pkgm-bfsw"]);
 
   const node_module_dirname = path.join(dirname, "node_modules").replace(/\\/g, "/") + "/";
 
@@ -100,6 +102,11 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
     const fromModuleName = source.startsWith("@")
       ? source.split("/", 2).slice(0, 2).join("/")
       : source.split("/", 1)[0];
+
+    if (disallowExternals.has(fromModuleName)) {
+      return;
+    }
+
     if (allowExternals.has(fromModuleName)) {
       // console.log("[true]", fromModuleName);
       return true;
@@ -132,5 +139,12 @@ export const getExternalOption = (dirname: string, currentPkgName?: string) => {
     // }
     // console.log("include", source);
   };
+  // return (...args) => {
+  //   const res = ext(...args);
+  //   if (!res) {
+  //     console.log("inline source:", args[0]);
+  //   }
+  //   return res;
+  // };
   return ext;
 };

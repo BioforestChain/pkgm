@@ -10,7 +10,7 @@ import {
   DevPanel,
   RightSidePanelGroup,
   TscPanel,
-  WorkspacesPanel
+  WorkspacesPanel,
 } from "./internalPanels.mjs";
 import { StatusBar } from "./StatusBar.mjs";
 

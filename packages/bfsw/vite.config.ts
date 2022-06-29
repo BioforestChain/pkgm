@@ -19,7 +19,7 @@ export default defineConfig((info) => {
   return {
     build: {
       target: "node16",
-      polyfillModulePreload: false,
+      polyfillModulePreload: true,
       outDir: inputConfig.outDir,
       rollupOptions: genRollupOptions(inputConfig.input, __dirname),
     },
