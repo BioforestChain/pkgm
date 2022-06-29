@@ -1,19 +1,12 @@
-import {
-  defineInputConfig,
-  extension,
-  findInputConfig,
-  getExternalOption,
-  getShebangPlugin,
-  libFormat,
-} from "@bfchain/pkgm-base/vite-config-helper/index.mjs";
-import { getVite } from "@bfchain/pkgm-base/lib/vite.mjs";
+import { genRollupOptions, getVite } from "@bfchain/pkgm-base/lib/vite.mjs";
+import { defineInputConfig, findInputConfig, getShebangPlugin } from "@bfchain/pkgm-base/vite-config-helper/index.mjs";
 const defineConfig = getVite().defineConfig;
 
 defineInputConfig({
   name: "bin",
   outDir: "build",
   input: {
-    "bfsw.bin": "./dist/bin/bfsw.cmd.mjs",
+    "bfsw.bin": "./dist/src/bin/bfsw.cmd.mjs",
   },
   default: true,
 });
@@ -28,18 +21,7 @@ export default defineConfig((info) => {
       target: "node16",
       polyfillModulePreload: false,
       outDir: inputConfig.outDir,
-      rollupOptions: {
-        preserveEntrySignatures: "strict",
-        external: getExternalOption(__dirname),
-        input: inputConfig.input,
-        output: {
-          preserveModules: true,
-          manualChunks: undefined,
-          entryFileNames: `[name]${extension}`,
-          chunkFileNames: `chunk/[name]${extension}`,
-          format: libFormat,
-        },
-      },
+      rollupOptions: genRollupOptions(inputConfig.input, __dirname),
     },
     plugins: [getShebangPlugin(__dirname)],
   };

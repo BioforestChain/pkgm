@@ -1,5 +1,4 @@
 /// <reference path="../../typings/index.d.ts"/>
-import "./@type";
 
 export * from "../bin.mjs";
 export * from "../bin/build.core.mjs";

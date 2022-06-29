@@ -8,7 +8,7 @@ export const versionCommand = defineCommand(
   { description: helpOptions.version },
   async (params, args, ctx) => {
     const console = ctx.logger;
-    process.noDeprecation = true;
+    process.traceDeprecation = false;
 
     const pkgm = getBfspPackageJson();
 

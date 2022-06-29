@@ -18,7 +18,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsw": "./build/bin/bfsw.bin.mjs"
+    "bfsw": "./build/bfsw.bin.mjs"
   },
   "files": [
     "dist",
@@ -33,10 +33,8 @@
     "up": "yarn upgrade-interactive",
     "ndb": "ndb --experimental-modules ",
     "tsc": "tsc --build tsconfig.json -w",
-    "dev:main": "vite build --watch --minify=false --sourcemap=true",
-    "dev": "yarn dev:main",
-    "build:main": "vite build --minify=false --sourcemap=true",
-    "build": "yarn build:main",
+    "bin:dev": "vite build --watch --minify=false --sourcemap=true --mode=bin",
+    "bin:build": "vite build --minify=false --sourcemap=true --mode=bin",
     "test": "ava"
   },
   "keywords": [],

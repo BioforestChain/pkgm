@@ -5,7 +5,7 @@
         "declaration": true,
         "sourceMap": false,
         "target": "es2020",
-        "module": "ES2020",
+        "module": "esnext",
         "lib": [
             "ES2020"
         ],
@@ -20,7 +20,7 @@
         "noImplicitThis": true,
         "alwaysStrict": true,
         "allowSyntheticDefaultImports": true,
-        "moduleResolution": "node16",
+        "moduleResolution": "nodenext",
         "resolveJsonModule": true,
         "types": [
             "node"

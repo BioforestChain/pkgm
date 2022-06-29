@@ -1,7 +1,6 @@
 /// <reference path="../typings/index.d.ts"/>
 const ARGV = process.argv.slice(2);
 
-import "./main/bin/@bin.types.mjs";
 import { ArgvParser, formatTypedValue } from "./main/bin/ArgvParser.mjs";
 import { CommandContext } from "./main/bin/CommandContext.mjs";
 export { CommandContext };

@@ -404,7 +404,7 @@ export const getBfswDir = () => {
   return path.dirname(pkg);
 };
 export const getBfspWorkerDir = () => {
-  return path.join(getBfspDir(), "dist/main");
+  return path.join(getBfspDir(), "build/worker");
 };
 export const getBfspPackageJson = () => {
   return require("@bfchain/pkgm-bfsp/package.json");

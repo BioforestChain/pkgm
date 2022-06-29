@@ -12,7 +12,7 @@ import {
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import path, { resolve } from "node:path";
-import tsconfigBfswJson from "../../../assets/tsconfig.bfsw.json";
+import tsconfigBfswJson from "../../../assets/tsconfig.bfsw.json" assert { type: "json" };
 import { consts } from "../consts.mjs";
 const bfswTsconfigFilepath = createTsconfigForEsbuild(JSON.stringify(tsconfigBfswJson));
 

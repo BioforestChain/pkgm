@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import packageTemplateJson from "../../../assets/package.template.json";
+import packageTemplateJson from "../../../assets/package.template.json" assert { type: "json" };
 import { DevLogger } from "../../sdk/logger/logger.mjs";
 import { parseFormats, writeJsonConfig } from "../../sdk/toolkit/toolkit.fs.mjs";
 import { toPosixPath, truncateWords } from "../../sdk/toolkit/toolkit.path.mjs";

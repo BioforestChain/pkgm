@@ -1,4 +1,4 @@
-import "./@bin.types.mjs";
+/// <reference path="../../../typings/bin.d.ts"/>
 import { EasyMap } from "@bfchain/pkgm-base/util/extends_map.mjs";
 
 /**

@@ -6,7 +6,7 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import bfspTsconfigJson from "../../../assets/tsconfig.bfsp.json";
+import bfspTsconfigJson from "../../../assets/tsconfig.bfsp.json" assert { type: "json" };
 import * as consts from "../consts.mjs";
 import { DevLogger } from "../../sdk/logger/logger.mjs";
 import { parseExports } from "../../sdk/toolkit/toolkit.mjs";

@@ -1,19 +1,13 @@
-import {
-  defineInputConfig,
-  extension,
-  findInputConfig,
-  getExternalOption,
-  getShebangPlugin,
-  libFormat,
-} from "@bfchain/pkgm-base/vite-config-helper/index.mjs";
-import { getVite } from "@bfchain/pkgm-base/lib/vite.mjs";
+import { defineInputConfig, findInputConfig, getShebangPlugin } from "@bfchain/pkgm-base/vite-config-helper/index.mjs";
+import { getVite, genRollupOptions } from "@bfchain/pkgm-base/lib/vite.mjs";
 const defineConfig = getVite().defineConfig;
 
 defineInputConfig({
   name: "bin",
   outDir: "build",
   input: {
-    "bfsp.bin": "./dist/bin/bfsp.cmd.mjs",
+    "bfsp.bin": "./dist/src/bin/bfsp.cmd.mjs",
+    "worker/tsc": "./dist/src/bin/tsc/worker.mjs",
   },
   default: true,
 });
@@ -28,18 +22,7 @@ export default defineConfig((info) => {
     build: {
       target: "es2020",
       outDir: inputConfig.outDir,
-      rollupOptions: {
-        preserveEntrySignatures: "strict",
-        external: getExternalOption(__dirname),
-        input: inputConfig.input,
-        output: {
-          preserveModules: true,
-          manualChunks: undefined,
-          entryFileNames: `[name]${extension}`,
-          chunkFileNames: `chunk/[name]${extension}`,
-          format: libFormat,
-        },
-      },
+      rollupOptions: genRollupOptions(inputConfig.input, __dirname),
     },
     plugins: [getShebangPlugin(__dirname)],
   };

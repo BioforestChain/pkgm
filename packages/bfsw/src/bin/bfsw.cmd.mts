@@ -1,4 +1,4 @@
-import "./bfsw.env";
+import "./bfsw.env.mjs";
 import { buildCommand } from "./build.bin.mjs";
 import { devCommand } from "./dev.bin.mjs";
 import { initCommand } from "./init.bin.mjs";

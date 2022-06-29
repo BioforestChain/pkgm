@@ -1,4 +1,4 @@
-import "./bfsp.env";
+import "./bfsp.env.mjs";
 import { buildCommand } from "./build.bin.mjs";
 import { createCommand } from "./create.bin.mjs";
 import { devCommand } from "./dev.bin.mjs";

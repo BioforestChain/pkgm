@@ -11,14 +11,9 @@
     "lerna": "^4.0.0"
   },
   "scripts": {
-    "build:main": "lerna run build:main --stream --parallel",
-    "build:bin": "lerna run build:main --stream --parallel",
-    "build:script": "lerna run build:script --stream --parallel",
-    "build": "concurrently \"npm:build:*\"",
-    "dev:script": "lerna run dev:script --stream --parallel",
-    "dev:bin": "lerna run dev:bin --stream --parallel",
-    "dev:main": "lerna run dev:main --stream --parallel",
-    "dev:old": "concurrently \"npm:dev:*\"",
+    "postinstall": "node ./scripts/fix-package.cjs",
+    "bin:build": "lerna run bin:build --stream --parallel",
+    "bin:dev": "lerna run bin:dev --stream --parallel",
     "tsc": "tsc --build -w",
     "dev": "node dev.mjs",
     "i": "lerna bootstrap"
