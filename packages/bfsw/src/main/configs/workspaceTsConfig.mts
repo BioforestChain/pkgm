@@ -1,4 +1,4 @@
-import { writeJsonConfig } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import { toPosixPath, writeJsonConfig } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
 import path from "node:path";
 
 export class WorkspaceTsConfig {
@@ -34,7 +34,7 @@ export class WorkspaceTsConfig {
       references: [...this._wc.states.paths()].flatMap((x) => {
         return [
           {
-            path: path.join(x, `tsconfig.isolated.json`),
+            path: toPosixPath(path.relative(this._wc.root, path.join(x, `tsconfig.isolated.json`))),
           },
         ];
       }),

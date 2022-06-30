@@ -30,7 +30,9 @@ export const LoadConfig = async (
 
   for (const filename of await folderIO.get(workspaceRoot)) {
     if (filename === "#bfsw.ts" || filename === "#bfsw.mts" || filename === "#bfsw.mtsx") {
-      const cache_filename = `#bfsw-${createHash("md5").update(`${Date.now()}`).digest("hex")}.mjs`;
+      const cache_filename = `#bfsw-${createHash("md5")
+        .update(await fileIO.get(filename, true))
+        .digest("hex")}.mjs`;
       const bfswDir = resolve(workspaceRoot, consts.ShadowRootPath);
       if (!existsSync(bfswDir)) {
         mkdirSync(bfswDir);
@@ -157,7 +159,7 @@ const getBuildPlugins = (workspaceRoot: string) => {
               /// 私有的#bfsp#路径，指代真实的#bfsp#
               pluginData.type = "#bfsp#";
               return {
-                path: args.path,
+                path: path.join(args.resolveDir, args.path),
                 namespace: "bfsp-wrapper",
                 pluginData,
               };
