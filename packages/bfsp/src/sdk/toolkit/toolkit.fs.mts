@@ -273,6 +273,12 @@ export async function cpr(src: string, dest: string) {
 }
 
 export const ALLOW_FORMATS = new Set<Bfsp.JsFormat>(["iife", "cjs", "esm"]);
+export const isAllowedJsFormat = (format: any): format is Bfsp.JsFormat => {
+  return ALLOW_FORMATS.has(format as any);
+};
+export const toAllowedJsFormat = (format: any) => {
+  return isAllowedJsFormat(format) ? format : undefined;
+};
 export const parseFormats = (formats: Bfsp.Format[] = []) => {
   const feList = formats.map((f) => parseExtensionAndFormat(f)).filter((fe) => ALLOW_FORMATS.has(fe.format as any));
   const feMap = new Map(feList.map((fe) => [fe.format + "/" + fe.extension, fe]));

@@ -9,7 +9,7 @@ import { ALLOW_FORMATS, parseExtensionAndFormat } from "../../sdk/toolkit/toolki
 import { DevLogger } from "../../sdk/logger/logger.mjs";
 const debug = DevLogger("bfsp:config/vite");
 
-export const ViteConfigFactory = (options: {
+export const ViteConfigFactory = async (options: {
   userConfig: Bfsp.UserConfig;
   projectDirpath: string;
   viteConfig: $ViteConfig;
@@ -59,7 +59,7 @@ export const ViteConfigFactory = (options: {
                   return true;
                 }
               }
-            : getExternalOption(projectDirpath, userConfig.name),
+            : await getExternalOption(projectDirpath, userConfig.name),
         input: viteConfig.viteInput,
         output: {
           preserveModules: true,

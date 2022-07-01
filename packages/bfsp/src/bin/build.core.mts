@@ -5,18 +5,17 @@ import { readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
-import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger.mjs";
-import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs.mjs";
-import { toPosixPath } from "../sdk/toolkit/toolkit.path.mjs";
-import { getTui, PanelStatus } from "../sdk/tui/index.mjs";
 import { $BfspEnvConfig, $BfspProjectConfig, BFSP_MODE, writeBfspProjectConfig } from "../main/bfspConfig.mjs";
 import { $BfspUserConfig, $getBfspUserConfig } from "../main/configs/bfspUserConfig.mjs";
 import { $PackageJson, generatePackageJson } from "../main/configs/packageJson.mjs";
 import { $TsConfig, generateTsConfig, writeTsConfig } from "../main/configs/tsConfig.mjs";
 import { generateViteConfig } from "../main/configs/viteConfig.mjs";
 import * as consts from "../main/consts.mjs";
+import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger.mjs";
+import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs.mjs";
+import { toPosixPath } from "../sdk/toolkit/toolkit.path.mjs";
+import { getTui, PanelStatus } from "../sdk/tui/index.mjs";
 import { runTsc } from "./tsc/runner.mjs";
-import { TypingsGenerator } from "./typingsGenerator.mjs";
 import { ViteConfigFactory } from "./vite/configFactory.mjs";
 import { runYarn } from "./yarn/runner.mjs";
 const debug = DevLogger("bfsp:bin/build");
@@ -171,12 +170,6 @@ const buildSingle = async (options: {
 
     //#region 编译typescript，生成 typings
     {
-      flag(`generate typings`);
-      await new TypingsGenerator({ root, logger: tscLogger, tsConfig: tsConfig1 }).generate(
-        userConfig1.exportsDetail.indexFile
-      );
-      success(`generated typings`);
-
       /// 修复 typings 文件的导入
       const tscSafeRoot = path.resolve(buildOutDir, TYPINGS_DIR);
 
@@ -276,7 +269,7 @@ const buildSingle = async (options: {
   flag(`generating bundle config`);
   const viteConfig1 = await generateViteConfig(bfspEnvConfig, userConfig1, tsConfig1);
 
-  const jsBundleConfig = ViteConfigFactory({
+  const jsBundleConfig = await ViteConfigFactory({
     userConfig: buildConfig,
     projectDirpath: root,
     viteConfig: viteConfig1,

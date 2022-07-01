@@ -2,15 +2,12 @@ import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
 import path from "node:path";
 import { defineCommand } from "../bin.mjs";
 import {
-  watchBfspProjectConfig,
-  writeBfspProjectConfig,
-  getBfspProjectConfig,
-  BFSP_MODE,
+  BFSP_MODE, getBfspProjectConfig, watchBfspProjectConfig,
+  writeBfspProjectConfig
 } from "../main/bfspConfig.mjs";
-import { getBfspUserConfig } from "../main/configs/bfspUserConfig.mjs";
-import { getTui } from "../sdk/tui/index.mjs";
 import { DevLogger } from "../sdk/logger/logger.mjs";
-import { ALLOW_FORMATS } from "../sdk/toolkit/toolkit.fs.mjs";
+import { toAllowedJsFormat } from "../sdk/toolkit/toolkit.fs.mjs";
+import { getTui } from "../sdk/tui/index.mjs";
 import { doDevBfsp } from "./dev.core.mjs";
 import { helpOptions } from "./help.core.mjs";
 
@@ -26,10 +23,9 @@ export const devCommand = defineCommand(
   } as const,
   async (params, args) => {
     const debug = DevLogger("bfsp:bin/dev");
-    let { format } = params;
-    if (format !== undefined && ALLOW_FORMATS.has(format as any) === false) {
-      debug.warn(`invalid format: '${format}'`);
-      format = undefined;
+    const format = toAllowedJsFormat(params.format);
+    if (format === undefined && params.format) {
+      debug.warn(`invalid format: '${params.format}'`);
     }
 
     const bundlePanel = getTui().getPanel("Dev");
@@ -67,14 +63,11 @@ export const devCommand = defineCommand(
       //   onClear: () => tscLogger.clear(),
       // });
 
-      doDevBfsp(
-        {
-          root,
-          format: format as Bfsp.Format,
-          subStreams: configStreams,
-        },
-        { mode: "bfsp" }
-      );
+      doDevBfsp({
+        root,
+        format,
+        subStreams: configStreams,
+      });
     } catch (err) {
       logger.error(err);
     }

@@ -20,6 +20,8 @@ export const clearCommand = defineCommand(
     const logger = ctx.logger;
 
     /// 开始编译工作
-    doClearBfsp({ root }, logger);
+    await doClearBfsp({ root }, logger);
+
+    process.exit(0);
   }
 );

@@ -1,14 +1,17 @@
-import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
-import { isDeepStrictEqual } from "node:util";
-import { watchBfspProjectConfig } from "../main/bfspConfig.mjs";
-import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger.mjs";
-import { Closeable } from "../sdk/toolkit/toolkit.stream.mjs";
 import type { RollupWatcher } from "@bfchain/pkgm-base/lib/rollup.mjs";
 import { getVite } from "@bfchain/pkgm-base/lib/vite.mjs";
-import { ViteConfigFactory } from "./vite/configFactory.mjs";
+import { ConcurrentTaskLimitter } from "@bfchain/pkgm-base/util/concurrent_limitter.mjs";
+import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
+import { isDeepStrictEqual } from "node:util";
+import { $WatchBfspProjectConfig } from "../main/bfspConfig.mjs";
+import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger.mjs";
+import { Closeable } from "../sdk/toolkit/toolkit.stream.mjs";
 import { $LoggerKit, getTui } from "../sdk/tui/index.mjs";
-import { TypingsGenerator, type ModeType } from "./typingsGenerator.mjs";
+import { ViteConfigFactory } from "./vite/configFactory.mjs";
+
+/**最大并行数，这里因为是单线程的挤在一起，所以这里不根据CPU的线程数来做 */
+const devBfspStarterLimitter = new ConcurrentTaskLimitter(1 /*cpus().length*/);
 
 type DevEventCallback = (name: string) => BFChainUtil.PromiseMaybe<void>;
 
@@ -16,27 +19,23 @@ export const doDevBfsp = (
   args: {
     root: string;
     format?: Bfsp.Format;
-    subStreams: ReturnType<typeof watchBfspProjectConfig>;
+    subStreams: $WatchBfspProjectConfig;
   },
   options: {
     loggerKit?: $LoggerKit;
-    mode?: ModeType;
-    disableVite?: boolean;
   } = {}
 ) => {
   const debug = DevLogger("bfsp:bin/dev");
-  const { loggerKit = getTui().getPanel("Dev").viteLoggerKit, disableVite } = options;
+  const { loggerKit = getTui().getPanel("Dev").viteLoggerKit } = options;
   const logger = loggerKit.logger;
   const devPanel = getTui().getPanel("Dev");
   const { root = process.cwd(), format, subStreams } = args;
-  const tscLogger = createTscLogger();
 
   debug("root", root);
 
   /// 监听项目变动
   let preViteConfigBuildOptions: BFChainUtil.FirstArgument<typeof ViteConfigFactory> | undefined;
 
-  let typingsGenerator: TypingsGenerator | undefined;
   let startCb: DevEventCallback;
   let successCb: DevEventCallback;
   let errorCb: DevEventCallback;
@@ -52,9 +51,6 @@ export const doDevBfsp = (
         const viteConfig = await subStreams.viteConfigStream.waitCurrent();
         const tsConfig = await subStreams.tsConfigStream.waitCurrent();
 
-        typingsGenerator = new TypingsGenerator({ root, logger: tscLogger, tsConfig, mode: options?.mode });
-        await typingsGenerator.generate(userConfig.exportsDetail.indexFile);
-
         const viteConfigBuildOptions = {
           userConfig: userConfig.userConfig,
           projectDirpath: root,
@@ -67,43 +63,47 @@ export const doDevBfsp = (
           return;
         }
         preViteConfigBuildOptions = viteConfigBuildOptions;
-        const viteBuildConfig = ViteConfigFactory(viteConfigBuildOptions);
+        const viteBuildConfig = await ViteConfigFactory(viteConfigBuildOptions);
 
         debug("running bfsp build!");
         //#region vite
         const viteLogger = createViteLogger(loggerKit);
         getTui().debug("start vite");
-        const dev = disableVite
-          ? undefined
-          : ((await getVite().build({
-              ...viteBuildConfig,
-              build: {
-                ...viteBuildConfig.build,
-                minify: false,
-                sourcemap: true,
-                rollupOptions: {
-                  ...viteBuildConfig.build?.rollupOptions,
-                  onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
-                },
-              },
-              mode: "development",
-              customLogger: viteLogger,
-            })) as RollupWatcher);
+
+        /**监听初始编译进度 */
+        const devBfspStarter = await devBfspStarterLimitter.genTask();
+
+        const dev = (await getVite().build({
+          ...viteBuildConfig,
+          build: {
+            ...viteBuildConfig.build,
+            minify: false,
+            sourcemap: true,
+            rollupOptions: {
+              ...viteBuildConfig.build?.rollupOptions,
+              onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
+            },
+          },
+          mode: "development",
+          customLogger: viteLogger,
+        })) as RollupWatcher;
         //#endregion
 
         closeSign.onSuccess((reason) => {
           debug("close bfsp build, reason: ", reason);
           preViteConfigBuildOptions = undefined;
-          dev?.close();
-          typingsGenerator?.stop();
-          typingsGenerator = undefined;
+          dev.close();
         });
 
-        dev?.on("change", (id, change) => {
+        dev.on("close", () => {
+          devBfspStarter.resolve();
+        });
+
+        dev.on("change", (id, change) => {
           debug(`${change.event} file: ${id} `);
         });
 
-        dev?.on("event", async (event) => {
+        dev.on("event", async (event) => {
           const name = userConfig.userConfig.name;
           debug(`package ${name}: ${event.code}`);
           if (event.code === "START") {
@@ -123,6 +123,10 @@ export const doDevBfsp = (
           if (event.code === "ERROR") {
             devPanel.updateStatus("error");
             errorCb && (await errorCb(name));
+            return;
+          }
+          if (event.code === "END") {
+            devBfspStarter.resolve();
             return;
           }
         });
@@ -156,8 +160,6 @@ export const doDevBfsp = (
   });
 
   /// 如果配置齐全，那么直接开始
-  logger.info("subStreams.viteConfigStream.hasCurrent()", subStreams.viteConfigStream.hasCurrent());
-  logger.info("subStreams.getDepsInstallStream().current", subStreams.getDepsInstallStream().current);
   if (subStreams.viteConfigStream.hasCurrent() && subStreams.getDepsInstallStream().current === "success") {
     abortable.start();
   }

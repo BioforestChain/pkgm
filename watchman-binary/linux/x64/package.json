@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/watchman-binary-linux-x64",
-  "version": "2022.02.28-1",
+  "version": "2022.06.20",
   "publishConfig": {
     "access": "public"
   },
@@ -9,11 +9,11 @@
   },
   "homepage": "https://github.com/BioforestChain/pkgm#readme",
   "scripts": {
-    "postinstall": "chmod +x ./watchman-v2022.02.28.00-linux/bin/watchman && chmod +x ./watchman-v2022.02.28.00-linux/bin/watchmanctl"
+    "postinstall": "chmod +x ./watchman-v2022.06.20.00-linux/bin/watchman && chmod +x ./watchman-v2022.06.20.00-linux/bin/watchmanctl"
   },
   "exports": {
     "./binary": {
-      "node": "./watchman-v2022.02.28.00-linux/bin/watchman"
+      "node": "./watchman-v2022.06.20.00-linux/bin/watchman"
     }
   },
   "os": [

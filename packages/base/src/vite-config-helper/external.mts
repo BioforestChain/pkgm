@@ -1,10 +1,41 @@
-import { getYarnPath } from "../lib/yarn.mjs";
-import { spawnSync } from "node:child_process";
+import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ExternalOption } from "rollup";
+import { getYarnPath } from "../lib/yarn.mjs";
 
-export const getExternalOption = (dirname: string, currentPkgName?: string): ExternalOption | undefined => {
+import { cpus } from "node:os";
+import { ConcurrentTaskLimitter } from "../util/concurrent_limitter.mjs";
+
+const spawnYarnLimitter = new ConcurrentTaskLimitter(cpus().length);
+
+/**
+ * @TODO 这里最好是做到缓存里头去，第一次启动慢一点，以后启动不要太慢。
+ * @TODO 有没有可能一次性在 bfsw 环境里头执行完所有的 bfsp 的 getDepsInfo 的需求？
+ */
+const getDepsInfo = async () => {
+  const task = await spawnYarnLimitter.genTask();
+  try {
+    const listSpawn = spawn("node", [getYarnPath(), "list", "--json", "--prod"]);
+    let outputs = "";
+    for await (const chunk of listSpawn.stdout) {
+      outputs += chunk;
+    }
+    const data = JSON.parse(outputs);
+    if (data.type === "tree" && data.data.type === "list") {
+      return data;
+    }
+  } catch (e) {
+    console.error(e);
+  } finally {
+    task.resolve();
+  }
+};
+
+export const getExternalOption = async (
+  dirname: string,
+  currentPkgName?: string
+): Promise<ExternalOption | undefined> => {
   const nodejsModules = new Set([
     "assert",
     "async_hooks",
@@ -50,22 +81,7 @@ export const getExternalOption = (dirname: string, currentPkgName?: string): Ext
     "zlib",
   ]);
 
-  const yarnPath = getYarnPath();
-
-  const getYarn = () => {
-    try {
-      const listSpawn = spawnSync("node", [yarnPath, "list", "--json", "--prod"]);
-      const data = JSON.parse(String(listSpawn.stdout));
-      if (data.type === "tree" && data.data.type === "list") {
-        return data;
-      }
-    } catch (e) {
-      console.log(e);
-      return;
-    }
-  };
-
-  const depsInfo = getYarn();
+  const depsInfo = await getDepsInfo();
   if (!depsInfo?.data) return;
   if (currentPkgName === undefined) {
     currentPkgName = JSON.parse(readFileSync(path.resolve(dirname, "package.json"), "utf-8")).name as string;

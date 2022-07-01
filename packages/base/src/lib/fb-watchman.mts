@@ -1,10 +1,9 @@
 import { Client } from "fb-watchman";
-import type { doneCallback } from "fb-watchman";
 
-import { platform, arch } from "node:os";
+import { spawnSync } from "node:child_process";
+import { arch, platform } from "node:os";
 import path from "node:path";
 import { require } from "../toolkit/commonjs_require.mjs";
-import { spawnSync } from "node:child_process";
 let watchmanBinaryPath: string | undefined;
 /**
  * 检测是否有全局安装watchman
@@ -62,13 +61,16 @@ export class FbWatchmanClient extends Client {
     });
   }
   private _watchManChecker: Promise<void> | undefined;
+  private _ready = false;
   afterReady() {
     return (this._watchManChecker ??= new Promise<void>((resolve, reject) => {
-      this.capabilityCheck({ optional: [], required: ["relative_root"] }, (error: unknown, resp: unknown) => {
+      this.capabilityCheck({ optional: [], required: ["relative_root"] }, async (error: unknown, resp: unknown) => {
         if (error) {
           reject(error);
           this.end();
         } else {
+          this._ready = true;
+          const res = await this.commandAsync(["watch-project", process.cwd()]);
           resolve();
         }
       });
@@ -91,6 +93,9 @@ export class FbWatchmanClient extends Client {
   commandAsync(args: [cmd: "unsubscribe", watch: string, name: string]): Promise<void>;
   commandAsync(args: [cmd: "watch-del", root: string]): Promise<void>;
   commandAsync(args: any) {
+    if (!this._ready) {
+      debugger;
+    }
     return new Promise<any>((resolve, reject) => {
       super.command(args, (error, result) => {
         if (error) {

@@ -1,10 +1,11 @@
+import { SharedAsyncIterable } from "../sdk/toolkit/toolkit.stream.mjs";
 import { $BfspUserConfig, getBfspUserConfig, watchBfspUserConfig } from "./configs/bfspUserConfig.mjs";
 import { $GitIgnore, generateGitIgnore, watchGitIgnore, writeGitIgnore } from "./configs/gitIgnore.mjs";
 import { $NpmIgnore, generateNpmIgnore, watchNpmIgnore, writeNpmIgnore } from "./configs/npmIgnore.mjs";
 import { $PackageJson, generatePackageJson, watchPackageJson, writePackageJson } from "./configs/packageJson.mjs";
 import { $TsConfig, generateTsConfig, watchTsConfig, writeTsConfig } from "./configs/tsConfig.mjs";
 import { generateViteConfig, watchViteConfig } from "./configs/viteConfig.mjs";
-import { doWatchDeps } from "./deps.mjs";
+import { $WatchDepsStream, doWatchDeps } from "./deps.mjs";
 
 export const enum BFSP_MODE {
   DEV = "dev",
@@ -56,7 +57,7 @@ export const writeBfspProjectConfig = async (projectConfig: $BfspProjectConfig, 
 
   return { viteConfig, tsConfig, gitIgnore, npmIgnore, packageJson };
 };
-
+export type $WatchBfspProjectConfig = ReturnType<typeof watchBfspProjectConfig>;
 export const watchBfspProjectConfig = (
   projectConfig: $BfspProjectConfig,
   initConfigs: {
@@ -69,6 +70,7 @@ export const watchBfspProjectConfig = (
     logger: PKGM.Logger;
   }
 ) => {
+  debugger;
   const { projectDirpath } = projectConfig.env;
   const { user: bfspUserConfig, env: bfspEnvConfig } = projectConfig;
 
@@ -98,7 +100,7 @@ export const watchBfspProjectConfig = (
     write: true,
   });
 
-  let _watchDepsStream: ReturnType<typeof doWatchDeps> | undefined;
+  let _watchDepsStream: $WatchDepsStream | undefined;
 
   return {
     userConfigStream,

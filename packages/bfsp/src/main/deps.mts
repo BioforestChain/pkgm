@@ -4,32 +4,32 @@ import { $PackageJson } from "./configs/packageJson.mjs";
 import { DevLogger } from "../sdk/logger/logger.mjs";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../sdk/toolkit/toolkit.stream.mjs";
 import { getTui } from "../sdk/tui/index.mjs";
+import { sleep } from "@bfchain/pkgm-base/util/extends_promise.mjs";
 
 const debug = DevLogger("bfsp:deps");
 type DepsEventCallback = () => unknown;
 
-const comparablePackageJsonDependencies = (packageJson: $PackageJson) => {
-  const Deps: Bfsp.Dependencies = {};
-  const combine = (deps: any, prefix: string) => {
-    for (const key in deps) {
-      Deps[prefix + key] = deps[key];
-    }
-  };
-  combine(packageJson.dependencies, "prd:");
-  combine(packageJson.devDependencies, "dev:");
-  combine(packageJson.peerDependencies, "peer:");
-  combine(packageJson.optionalDependencies, "opt:");
-  return Deps;
+const comparablePackageJsonDependencies = (packageJson: unknown) => {
+  if (typeof packageJson === "object" && packageJson !== null) {
+    return {
+      dependencies: Reflect.get(packageJson, "dependencies"),
+      devDependencies: Reflect.get(packageJson, "devDependencies"),
+      peerDependencies: Reflect.get(packageJson, "peerDependencies"),
+      optionalDependencies: Reflect.get(packageJson, "optionalDependencies"),
+    };
+  }
 };
+
+export type $WatchDepsStream = ReturnType<typeof doWatchDeps>;
 
 export const doWatchDeps = (
   projectDirpath: string,
-  packageJsonStream: SharedAsyncIterable<$PackageJson>,
+  packageJsonStream: SharedAsyncIterable</*$PackageJson:*/ any>,
   options: { runInstall: boolean; runListGetter?: () => string[] }
 ) => {
   const { runInstall = false } = options;
   let startInstallCb: DepsEventCallback | undefined;
-  let preDeps: ReturnType<typeof comparablePackageJsonDependencies> = {};
+  let preDeps: ReturnType<typeof comparablePackageJsonDependencies>;
   type InstallDepsStates = "start" | "success" | "fail";
   const follower = new SharedFollower<InstallDepsStates>();
   let stopper: (() => void) | undefined;
@@ -58,7 +58,7 @@ export const doWatchDeps = (
           offStopper();
           yarnTask.stop();
           stopper = undefined;
-          preDeps = {};
+          preDeps = undefined;
         };
         const offStopper = stream.onStop(stopper);
 

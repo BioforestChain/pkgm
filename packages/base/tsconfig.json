@@ -18,6 +18,7 @@
     "src/lib/vite.mts",
     "src/lib/yarn.mts",
     "src/toolkit/commonjs_require.mts",
+    "src/util/concurrent_limitter.mts",
     "src/util/aborter.mts",
     "src/util/extends_map.mts",
     "src/util/extends_promise_out.mts",

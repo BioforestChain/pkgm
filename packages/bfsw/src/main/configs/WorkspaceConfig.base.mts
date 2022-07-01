@@ -226,22 +226,22 @@ export class WorkspaceConfigBase {
    * 这里内存存储的 $PackageJson 是一个假的 package.json
    * 它的主要作用是收集所有子项目的 package.json，将之统筹后，方便 doWatchDeps 用它自己的方式 判定是否触发更改
    */
-  protected _unitunifyPackageJson = {
+  protected _unitunifyPackageJson: $UnitunifyPackageJson = {
     dependencies: {},
     devDependencies: {},
     peerDependencies: {},
     optionalDependencies: {},
-  } as unknown as $PackageJson;
+  };
 
-  private __watchDepsFollower?: SharedFollower<$PackageJson>;
+  private __watchDepsFollower?: SharedFollower<$UnitunifyPackageJson>;
   protected get _watchDepsFollower() {
-    return (this.__watchDepsFollower ??= new SharedFollower<$PackageJson>());
+    return (this.__watchDepsFollower ??= new SharedFollower<$UnitunifyPackageJson>());
   }
   private __watchDepsStream?: ReturnType<typeof doWatchDeps>;
   protected get _watchDepsStream() {
     return (this.__watchDepsStream ??= doWatchDeps(
       this.root,
-      new SharedAsyncIterable<$PackageJson>(this._watchDepsFollower),
+      new SharedAsyncIterable<$UnitunifyPackageJson>(this._watchDepsFollower),
       {
         runInstall: true,
         runListGetter: () => {
@@ -255,12 +255,12 @@ export class WorkspaceConfigBase {
     const { _unitunifyPackageJson } = this;
     const { projectDirpath } = bfspEnvConfig;
 
-    const prefix = projectDirpath + ":";
+    const prefix = `wmix:${projectDirpath}`;
     const joinPackageJson = (packageJson: $PackageJson) => {
-      _joinPrefix(prefix, packageJson.dependencies, _unitunifyPackageJson.dependencies);
-      _joinPrefix(prefix, packageJson.devDependencies, _unitunifyPackageJson.devDependencies);
-      _joinPrefix(prefix, packageJson.peerDependencies, _unitunifyPackageJson.peerDependencies);
-      _joinPrefix(prefix, packageJson.optionalDependencies, _unitunifyPackageJson.optionalDependencies);
+      _unitunifyPackageJson.dependencies[prefix] = packageJson.dependencies;
+      _unitunifyPackageJson.devDependencies[prefix] = packageJson.devDependencies;
+      _unitunifyPackageJson.peerDependencies[prefix] = packageJson.peerDependencies;
+      _unitunifyPackageJson.optionalDependencies[prefix] = packageJson.optionalDependencies;
       this._watchDepsFollower.push(_unitunifyPackageJson);
     };
 
@@ -277,15 +277,13 @@ export class WorkspaceConfigBase {
   }
   //#endregion
 }
-const _joinPrefix = (prefix: string, fromDeps: Bfsp.Dependencies, toDeps: Bfsp.Dependencies) => {
-  /// 先删除原先的依赖
-  for (const key in toDeps) {
-    if (key.startsWith(prefix)) {
-      delete toDeps[key];
-    }
-  }
-  // 再参入现有的依赖项
-  for (const key in fromDeps) {
-    toDeps[prefix + key] = fromDeps[key];
-  }
+
+type $UnitunifyPackageJson = {
+  dependencies: $UnitunifyPackageJson.MixDependencies;
+  devDependencies: $UnitunifyPackageJson.MixDependencies;
+  peerDependencies: $UnitunifyPackageJson.MixDependencies;
+  optionalDependencies: $UnitunifyPackageJson.MixDependencies;
 };
+namespace $UnitunifyPackageJson {
+  export type MixDependencies = { [key: string]: Bfsp.Dependencies };
+}

@@ -56,7 +56,7 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
           prefix: loggerPrefix,
           order: 0,
         });
-        continue; // @FIXME 这里是临时禁用了 bundle 编译
+
         /// 开始执行编译
         const devBfsp = doDevBfsp(
           {
@@ -70,9 +70,9 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
               prefix: loggerPrefix,
               order: 0,
             }),
-            disableVite: true,
           }
         );
+        continue;
         const bfspLogger = bfspLoggerKit.logger;
         devBfsp.onStart(async () => {
           if (bfspLogger.hasLoading("doDev") === false) {

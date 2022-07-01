@@ -30,7 +30,6 @@
     "src/bin/version.bin.mts",
     "src/bin/help.bin.mts",
     "src/bin/help.core.mts",
-    "src/bin/typingsGenerator.mts",
     "src/main/bin/CommandContext.mts",
     "src/main/bin/ArgvParser.mts",
     "src/main/bfspConfig.mts",

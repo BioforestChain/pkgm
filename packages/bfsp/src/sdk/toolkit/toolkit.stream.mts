@@ -236,71 +236,77 @@ export const Closeable = <T1 = unknown, T2 = unknown>(
     }
   }
   const cmdQueue = new CmdQueue();
+  const enum LOOP_CTRL_CMD {
+    START = 1,
+    STOP = 2,
+    RESTART = 3,
+  }
 
-  const looper = Loopable<[1, T1 | undefined] | [2, T2 | undefined] | [3, (T1 & T2) | undefined]>(
-    title,
-    async (reasons) => {
-      do {
-        const cmd = cmdQueue.getNext();
-        if (cmd === undefined) {
-          break;
-        }
-        debug("cmd", cmd, state);
-        if (cmd === "open") {
-          if (state === "closed") {
-            state = "opening";
-            try {
-              const openReason = new Set<T1 | undefined>();
-              for (const reason of reasons) {
-                if (reason && (reason[0] & 1) !== 0) {
-                  openReason.add(reason[1] as T1);
-                }
+  const looper = Loopable<
+    | [LOOP_CTRL_CMD.START, T1 | undefined]
+    | [LOOP_CTRL_CMD.STOP, T2 | undefined]
+    | [LOOP_CTRL_CMD.RESTART, (T1 & T2) | undefined]
+  >(title, async (reasons) => {
+    do {
+      const cmd = cmdQueue.getNext();
+      if (cmd === undefined) {
+        break;
+      }
+      debug("cmd", cmd, state);
+      if (cmd === "open") {
+        if (state === "closed") {
+          state = "opening";
+          try {
+            const openReason = new Set<T1 | undefined>();
+            for (const reason of reasons) {
+              if (reason && (reason[0] & 1) !== 0) {
+                openReason.add(reason[1] as T1);
               }
-              aborter = await fun(openReason);
-              state = "opened";
-            } catch (err) {
-              console.error(`open '${title}' failed`, err);
-              state = "closed";
             }
-          }
-        } else if (cmd === "close") {
-          if (state === "opened") {
-            state = "closing";
-            try {
-              const closeReason = new Set<T2 | undefined>();
-              for (const reason of reasons) {
-                if (reason && (reason[0] & 2) !== 0) {
-                  closeReason.add(reason[1] as T2);
-                }
-              }
-
-              await aborter!(closeReason);
-            } catch (err) {
-              console.error(`close '${title}' failed`, err);
-            }
-            aborter = undefined;
+            aborter = await fun(openReason);
+            state = "opened";
+          } catch (err) {
+            console.error(`open '${title}' failed`, err);
             state = "closed";
           }
-        } else {
-          throw new Error(`unknonw cmd: ${cmd}`);
         }
-      } while (true);
-    }
-  );
+      } else if (cmd === "close") {
+        if (state === "opened") {
+          state = "closing";
+          try {
+            const closeReason = new Set<T2 | undefined>();
+            for (const reason of reasons) {
+              if (reason && (reason[0] & 2) !== 0) {
+                closeReason.add(reason[1] as T2);
+              }
+            }
+
+            await aborter!(closeReason);
+          } catch (err) {
+            console.error(`close '${title}' failed`, err);
+          }
+          aborter = undefined;
+          state = "closed";
+        }
+      } else {
+        throw new Error(`unknonw cmd: ${cmd}`);
+      }
+    } while (true);
+  });
 
   const abortable = {
     start(reason?: T1, debounce = defaultDebounce) {
       cmdQueue.add("open");
-      looper.loop([1, reason], debounce);
+      looper.loop([LOOP_CTRL_CMD.START, reason], debounce);
     },
     close(reason?: T2, debounce = defaultDebounce) {
       cmdQueue.add("close");
-      looper.loop([2, reason], debounce);
+      looper.loop([LOOP_CTRL_CMD.STOP, reason], debounce);
     },
     restart(reason?: T1 & T2, debounce = defaultDebounce) {
       cmdQueue.add("close");
       cmdQueue.add("open");
-      looper.loop([3, reason], debounce);
+      looper.loop([LOOP_CTRL_CMD.RESTART, reason], debounce);
     },
     /* @todo 
     pause
@@ -318,11 +324,11 @@ export const Loopable = <T extends unknown = unknown>(
   let lock: Set<T | undefined> | undefined; //= -1;
   const doLoop = async (reason?: T, debounce?: number) => {
     lock = new Set([reason]);
-    if (typeof debounce === "number" && debounce > 0) {
-      await sleep(debounce);
-    }
     // lock.add(reason);
     do {
+      if (typeof debounce === "number" && debounce > 0) {
+        await sleep(debounce);
+      }
       const reasons = lock;
       lock = new Set();
       try {

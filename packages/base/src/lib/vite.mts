@@ -54,10 +54,10 @@ export type { InlineConfig, LogErrorOptions, Logger, LoggerOptions, LogLevel, Lo
 import { importAssertionsPlugin } from "rollup-plugin-import-assert";
 import { importAssertions } from "acorn-import-assertions";
 
-export const genRollupOptions = (input: { [name: string]: string }, dirname: string) => {
+export const genRollupOptions = async (input: { [name: string]: string }, dirname: string) => {
   return {
     preserveEntrySignatures: "strict",
-    external: getExternalOption(dirname),
+    external: await getExternalOption(dirname),
     input: input,
     output: {
       /// 单个文件模块就算了

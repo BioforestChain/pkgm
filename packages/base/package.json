@@ -85,6 +85,12 @@
         "default": "./dist/src/lib/yarn.mjs"
       }
     },
+    "./util/concurrent_limitter.mjs": {
+      "import": {
+        "types": "./dist/src/util/concurrent_limitter.d.mts",
+        "default": "./dist/src/util/concurrent_limitter.mjs"
+      }
+    },
     "./util/aborter.mjs": {
       "import": {
         "types": "./dist/src/util/aborter.d.mts",
@@ -148,9 +154,9 @@
     "yarn": "^1.22.17"
   },
   "optionalDependencies": {
-    "@bfchain/watchman-binary-darwin-x64": "2021.08.23",
-    "@bfchain/watchman-binary-linux-x64": "2022.02.28-1",
-    "@bfchain/watchman-binary-win32-x64": "2021.01.10"
+    "@bfchain/watchman-binary-darwin-x64": "2022.06.27",
+    "@bfchain/watchman-binary-linux-x64": "2022.06.20",
+    "@bfchain/watchman-binary-win32-x64": "2022.06.27"
   },
   "devDependencies": {
     "@types/blessed": "^0.1.19",
