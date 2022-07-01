@@ -1,3 +1,4 @@
+import { sleep } from "@bfchain/util";
 import { Client } from "fb-watchman";
 
 import { spawnSync } from "node:child_process";
@@ -71,6 +72,7 @@ export class FbWatchmanClient extends Client {
         } else {
           this._ready = true;
           const res = await this.commandAsync(["watch-project", process.cwd()]);
+          await sleep(500);
           resolve();
         }
       });

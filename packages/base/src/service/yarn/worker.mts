@@ -1,8 +1,8 @@
-import { getYarnCli } from "../../lib/yarn.mjs";
 import { parentPort } from "node:worker_threads";
+import { getYarnCli } from "../../lib/yarn.mjs";
 
 export type $YarnListWorkerMessage = {
-  cmd: "list";
+  cmd: "list-prod";
   data: $YarnListWorkerMessage.List["input"];
 };
 export namespace $YarnListWorkerMessage {
@@ -11,10 +11,22 @@ export namespace $YarnListWorkerMessage {
 }
 
 const port = parentPort;
-port?.on("message", async (msg: $YarnListWorkerMessage) => {
-  if (msg.cmd === "list") {
-    process.argv = ["node", "yarn.js", "list", "--json", "--cwd", msg.data.cwd];
-    await getYarnCli().start();
-    port.postMessage(msg);
-  }
-});
+if (port) {
+  (async () => {
+    port.on("message", async (msg: $YarnListWorkerMessage) => {
+      if (msg.cmd === "list-prod") {
+        await cli.run(["list", "--json", "--prod", "--cwd", msg.data.cwd]);
+        port.postMessage({ type: "done" });
+      }
+    });
+    const cli = await getYarnCli(
+      (chunk) => {
+        port.postMessage({ type: "data", data: chunk });
+      },
+      (e) => {
+        port.postMessage({ type: "error", data: e });
+      }
+    );
+    port.postMessage({ type: "ready" });
+  })();
+}

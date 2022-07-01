@@ -1,35 +1,46 @@
-import { spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import type { ExternalOption } from "rollup";
-import { getYarnPath } from "../lib/yarn.mjs";
 
-import { cpus } from "node:os";
-import { ConcurrentTaskLimitter } from "../util/concurrent_limitter.mjs";
+// import { spawn } from "node:child_process";
+// import { isDeepStrictEqual } from "node:util";
+// import { getYarnPath } from "../lib/yarn.mjs";
+// import { ConcurrentTaskLimitter } from "../util/concurrent_limitter.mjs";
+// import { cpus } from "node:os";
+// const spawnYarnLimitter = new ConcurrentTaskLimitter(cpus().length);
+// const getDepsInfoOld = async (cwd: string) => {
+//   const task = await spawnYarnLimitter.genTask();
+//   try {
+//     const listSpawn = spawn("node", [getYarnPath(), "list", "--json", "--prod", "--cwd", cwd]);
+//     let outputs = "";
+//     for await (const chunk of listSpawn.stdout) {
+//       outputs += chunk;
+//     }
+//     const data = JSON.parse(outputs);
+//     if (data.type === "tree" && data.data.type === "list") {
+//       return data;
+//     }
+//   } finally {
+//     task.resolve();
+//   }
+// };
+// const formatTrees = (data: any) => {
+//   return data.data.trees
+//     .sort((a: any, b: any) => a.name.localeCompare(b.name))
+//     .map((a: any) => [a.name, ...(a.children?.map((c: any) => c.name) ?? [])]);
+// };
 
-const spawnYarnLimitter = new ConcurrentTaskLimitter(cpus().length);
-
-/**
- * @TODO 这里最好是做到缓存里头去，第一次启动慢一点，以后启动不要太慢。
- * @TODO 有没有可能一次性在 bfsw 环境里头执行完所有的 bfsp 的 getDepsInfo 的需求？
- */
-const getDepsInfo = async () => {
-  const task = await spawnYarnLimitter.genTask();
-  try {
-    const listSpawn = spawn("node", [getYarnPath(), "list", "--json", "--prod"]);
-    let outputs = "";
-    for await (const chunk of listSpawn.stdout) {
-      outputs += chunk;
-    }
-    const data = JSON.parse(outputs);
-    if (data.type === "tree" && data.data.type === "list") {
-      return data;
-    }
-  } catch (e) {
-    console.error(e);
-  } finally {
-    task.resolve();
+import { runYarnListProd } from "../service/yarn/runner.mjs";
+const getDepsInfo = async (cwd: string) => {
+  const data = await runYarnListProd(cwd, { serviceId: "vite" });
+  if (!data) {
+    debugger;
   }
+  return data;
+  // const oldData = await getDepsInfoOld(cwd);
+  // if (!isDeepStrictEqual(formatTrees(oldData), formatTrees(data))) {
+  //   debugger;
+  // }
 };
 
 export const getExternalOption = async (
@@ -81,7 +92,7 @@ export const getExternalOption = async (
     "zlib",
   ]);
 
-  const depsInfo = await getDepsInfo();
+  const depsInfo = await getDepsInfo(dirname);
   if (!depsInfo?.data) return;
   if (currentPkgName === undefined) {
     currentPkgName = JSON.parse(readFileSync(path.resolve(dirname, "package.json"), "utf-8")).name as string;

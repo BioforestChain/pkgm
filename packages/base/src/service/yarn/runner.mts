@@ -1,9 +1,8 @@
-import { EasyMap } from "@bfchain/util";
+import { EasyMap, PromiseOut } from "@bfchain/util";
 import { cpus } from "node:os";
 import { fileURLToPath } from "node:url";
-import { isDeepStrictEqual } from "node:util";
 import { Worker } from "node:worker_threads";
-import { ConcurrentTaskLimitter } from "src/util/concurrent_limitter.mjs";
+import { ConcurrentTaskLimitter } from "../../util/concurrent_limitter.mjs";
 import { $YarnListWorkerMessage } from "./worker.mjs";
 const CPU_SIZE = cpus().length;
 
@@ -13,7 +12,7 @@ export const getYarnWorkerMjsPath = () => {
 
 const yarnListServices = EasyMap.from({
   creater(serviceId: string) {
-    let yarnMjsPath = getYarnWorkerMjsPath();
+    const yarnMjsPath = getYarnWorkerMjsPath();
     const yarnWorker = new Worker(yarnMjsPath, {
       argv: [],
       stdin: false,
@@ -21,9 +20,17 @@ const yarnListServices = EasyMap.from({
       stderr: false,
       env: {},
     });
+    const po = new PromiseOut<Worker>();
+    const waitReady = (msg: unknown) => {
+      if ((msg as any)?.type === "ready") {
+        po.resolve(yarnWorker);
+        yarnWorker.off("message", waitReady);
+      }
+    };
+    yarnWorker.on("message", waitReady);
     const taskLimiter = new ConcurrentTaskLimitter(1);
 
-    return { serviceId, yarnWorker, taskLimiter };
+    return { serviceId, yarnWorkerPromise: po.promise, taskLimiter };
   },
 });
 
@@ -50,27 +57,33 @@ const getYarnService = (serviceId?: string) => {
   }
 };
 
-export const runYarnList = async (cwd: string, options: { serviceId?: string } = {}) => {
+export const runYarnListProd = async (cwd: string, options: { serviceId?: string } = {}) => {
   const service = getYarnService(options.serviceId);
   const task = await service.taskLimiter.genTask();
   try {
     const msg: $YarnListWorkerMessage = {
-      cmd: "list",
+      cmd: "list-prod",
       data: { cwd },
     };
-    service.yarnWorker.postMessage(msg);
-    service.yarnWorker.once("message", (backMsg) => {
-      if (isDeepStrictEqual(msg, backMsg)) {
-        service.yarnWorker.stdout.off("data", onData);
+    const yarnWorker = await service.yarnWorkerPromise;
+    yarnWorker.postMessage(msg);
+    let res: any;
+    const onMessage = (backMsg: any) => {
+      if (backMsg.type === "data") {
+        try {
+          const data = JSON.parse(backMsg.data);
+          if (data.type === "tree" && data.data.type === "list") {
+            res = data;
+          }
+        } catch {}
+      } else if (backMsg.type === "done") {
+        yarnWorker.off("message", onMessage);
         task.resolve();
       }
-    });
-    let res = "";
-    const onData = (chunk: Buffer | string) => {
-      res += chunk;
     };
-    service.yarnWorker.stdout.on("data", onData);
-    await task;
+    yarnWorker.on("message", onMessage);
+    await task.promise;
+    return res;
   } finally {
     task.resolve();
   }
