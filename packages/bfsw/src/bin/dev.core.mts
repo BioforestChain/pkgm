@@ -1,7 +1,15 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
 import { Aborter } from "@bfchain/pkgm-base/util/aborter.mjs";
 import { safePromiseOffThen, safePromiseThen } from "@bfchain/pkgm-base/util/extends_promise_safe.mjs";
-import { Closeable, createTscLogger, DevLogger, getTui, slash, doDevBfsp, runTsc } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import {
+  Closeable,
+  createTscLogger,
+  DevLogger,
+  getTui,
+  slash,
+  doDevBfsp,
+  runTsc,
+} from "@bfchain/pkgm-bfsp/sdk/index.mjs";
 import path from "node:path";
 import { WorkspaceConfig } from "../main/configs/workspaceConfig.mjs";
 
@@ -48,6 +56,7 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
           prefix: loggerPrefix,
           order: 0,
         });
+        continue
         /// 开始执行编译
         const devBfsp = doDevBfsp(
           {
@@ -61,6 +70,7 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
               prefix: loggerPrefix,
               order: 0,
             }),
+            disableVite: true,
           }
         );
         const bfspLogger = bfspLoggerKit.logger;

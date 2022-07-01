@@ -1,20 +1,21 @@
-import {
-  defineCommand,
-  doBuild,
-  DevLogger,
-  getTui,
-  getBfspUserConfig,
-  writeBfspProjectConfig,
-  linkBFChainPkgmModules,
-} from "@bfchain/pkgm-bfsp/sdk/index.mjs";
-import path from "node:path";
-import { existsSync, symlinkSync, unlinkSync } from "node:fs";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
+import { DepGraph } from "@bfchain/pkgm-base/lib/dep_graph.mjs";
 import { ParallelPool } from "@bfchain/pkgm-base/util/extends_promise.mjs";
+import {
+  BFSP_MODE,
+  defineCommand,
+  DevLogger,
+  doBuild,
+  getBfspProjectConfig,
+  getTui,
+  linkBFChainPkgmModules,
+  writeBfspProjectConfig,
+} from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import { WorkspacesPanel } from "@bfchain/pkgm-bfsp/sdk/tui/internalPanels.mjs";
+import { existsSync, symlinkSync, unlinkSync } from "node:fs";
+import path from "node:path";
 import { WorkspaceConfig } from "../main/configs/workspaceConfig.mjs";
 import { doInit } from "./init.core.mjs";
-import { DepGraph } from "@bfchain/pkgm-base/lib/dep_graph.mjs";
-import { WorkspacesPanel } from "@bfchain/pkgm-bfsp/sdk/tui/internalPanels.mjs";
 
 export const buildCommand = defineCommand(
   "build",
@@ -171,16 +172,14 @@ export const projectBuild = async (options: {
 
   const projectRoot = path.join(root, project.relativePath);
 
-  const bfspUserConfig = await getBfspUserConfig(projectRoot, { logger: buildLogger });
+  const bfspProjectConfig = await getBfspProjectConfig(projectRoot, BFSP_MODE.BUILD, { logger: buildLogger });
 
   // 填充 `extendsService` 內容
-  bfspUserConfig.extendsService.tsRefs = workspaceConfig!.states.calculateRefsByPath(projectRoot);
-  bfspUserConfig.extendsService.dependencies = workspaceConfig!.states.calculateDepsByPath(projectRoot);
-  const subConfigs = await writeBfspProjectConfig(
-    { projectDirpath: projectRoot, bfspUserConfig },
-    { logger: buildLogger }
-  );
-  const buildResults = await doBuild({ root: projectRoot, bfspUserConfig, subConfigs });
+  bfspProjectConfig.bfspUserConfig.extendsService.tsRefs = workspaceConfig!.states.calculateRefsByPath(projectRoot);
+  bfspProjectConfig.bfspUserConfig.extendsService.dependencies =
+    workspaceConfig!.states.calculateDepsByPath(projectRoot);
+  const subConfigs = await writeBfspProjectConfig(bfspProjectConfig, { logger: buildLogger });
+  const buildResults = await doBuild({ bfspProjectConfig, subConfigs });
   if (!buildResults) {
     return;
   }

@@ -1,7 +1,12 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
 import path from "node:path";
 import { defineCommand } from "../bin.mjs";
-import { watchBfspProjectConfig, writeBfspProjectConfig } from "../main/bfspConfig.mjs";
+import {
+  watchBfspProjectConfig,
+  writeBfspProjectConfig,
+  getBfspProjectConfig,
+  BFSP_MODE,
+} from "../main/bfspConfig.mjs";
 import { getBfspUserConfig } from "../main/configs/bfspUserConfig.mjs";
 import { getTui } from "../sdk/tui/index.mjs";
 import { DevLogger } from "../sdk/logger/logger.mjs";
@@ -48,12 +53,11 @@ export const devCommand = defineCommand(
     try {
       const options = { logger: logger };
 
-      const bfspUserConfig = await getBfspUserConfig(root, options);
-      const projectConfig = { projectDirpath: root, bfspUserConfig };
+      const bfspProjectConfig = await getBfspProjectConfig(root, BFSP_MODE.DEV, options);
       /**使用特殊定制的logger */
 
-      const subConfigs = await writeBfspProjectConfig(projectConfig, options);
-      const configStreams = watchBfspProjectConfig(projectConfig, subConfigs, options);
+      const subConfigs = await writeBfspProjectConfig(bfspProjectConfig, options);
+      const configStreams = watchBfspProjectConfig(bfspProjectConfig, subConfigs, options);
 
       /* const tscStoppable = */
       // runTsc({

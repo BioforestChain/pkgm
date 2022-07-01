@@ -5,40 +5,15 @@ export class WorkspaceTsConfig {
   constructor(private _wc: import("./WorkspaceConfig.base.mjs").WorkspaceConfigBase) {}
   async write() {
     const tsConfig = {
-      compilerOptions: {
-        composite: true,
-        noEmit: true,
-        declaration: true,
-        sourceMap: false,
-        target: "es2020",
-        module: "es2020",
-        lib: ["ES2020"],
-        importHelpers: true,
-        isolatedModules: false,
-        strict: true,
-        noImplicitAny: true,
-        strictNullChecks: true,
-        strictFunctionTypes: true,
-        strictBindCallApply: true,
-        strictPropertyInitialization: true,
-        noImplicitThis: true,
-        alwaysStrict: true,
-        moduleResolution: "node",
-        resolveJsonModule: true,
-        // baseUrl: "./",
-        // types: ["node"],
-        esModuleInterop: true,
-        skipLibCheck: true,
-        forceConsistentCasingInFileNames: true,
-      },
       references: [...this._wc.states.paths()].flatMap((x) => {
         return [
           {
-            path: toPosixPath(path.relative(this._wc.root, path.join(x, `tsconfig.isolated.json`))),
+            path: toPosixPath(path.relative(this._wc.root, path.join(x, `tsconfig.json`))),
           },
         ];
       }),
       // files: tsFilesLists.notestFiles.toArray(),
+      include: [],
       files: [],
     };
     await writeJsonConfig(path.join(this._wc.root, "tsconfig.json"), tsConfig);

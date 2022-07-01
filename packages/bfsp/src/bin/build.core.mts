@@ -9,7 +9,7 @@ import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logg
 import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs.mjs";
 import { toPosixPath } from "../sdk/toolkit/toolkit.path.mjs";
 import { getTui, PanelStatus } from "../sdk/tui/index.mjs";
-import { writeBfspProjectConfig } from "../main/bfspConfig.mjs";
+import { $BfspProjectConfig, writeBfspProjectConfig } from "../main/bfspConfig.mjs";
 import { $BfspUserConfig, $getBfspUserConfig } from "../main/configs/bfspUserConfig.mjs";
 import { $PackageJson, generatePackageJson } from "../main/configs/packageJson.mjs";
 import { $TsConfig, generateTsConfig, writeTsConfig } from "../main/configs/tsConfig.mjs";
@@ -369,11 +369,11 @@ class BuildLogger {
 }
 
 export const doBuild = async (args: {
-  root?: string;
+  bfspProjectConfig: $BfspProjectConfig;
   subConfigs: Awaited<ReturnType<typeof writeBfspProjectConfig>>;
-  bfspUserConfig: $BfspUserConfig;
 }) => {
-  const { root = process.cwd(), subConfigs, bfspUserConfig } = args; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
+  const { subConfigs, bfspProjectConfig } = args; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
+  const { projectDirpath: root, bfspUserConfig } = bfspProjectConfig;
   const buildLogger = new BuildLogger([bfspUserConfig.userConfig.name]);
 
   buildLogger.debug(`root: ${root}`);

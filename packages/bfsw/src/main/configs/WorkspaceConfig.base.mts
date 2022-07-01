@@ -49,6 +49,13 @@ export class WorkspaceConfigBase {
     /// 添加索引
     for (const proj of config.projects) {
       const projectRoot = path.join(this.root, proj.relativePath);
+      if (projectRoot === this.root) {
+        /**
+         * #bfsp 和 #bfsw 文件目前不该放在同一个目录下，因为它们都要去写 tsconfig.json
+         * 目前还不支持将两个模式的文件写在一起
+         */
+        throw new Error("#bfsp.ts and #bfsw.ts no support in same dir yet.");
+      }
       this.states.add(projectRoot, { userConfig: proj, projectRoot: projectRoot });
       projectConfigMap.set(projectRoot, proj);
     }

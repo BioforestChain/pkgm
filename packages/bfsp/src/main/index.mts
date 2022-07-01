@@ -1,6 +1,4 @@
-/// <reference path="../../typings/gitIgnore.d.ts" />
-/// <reference path="../../typings/npmIgnore.d.ts" />
-/// <reference path="../../typings/userConfig.d.ts" />
+/// <reference path="../../typings/index.d.ts" />
 
 export const enum BUILD_MODE {
   DEVELOPMENT = "development",

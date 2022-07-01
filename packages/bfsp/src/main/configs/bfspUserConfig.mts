@@ -178,7 +178,7 @@ export type $BfspUserConfig = {
   extendsService: ExtendsService;
 };
 class ExtendsService {
-  tsRefs: BFChainUtil.PromiseMaybe<{ path: string }[]> = [];
+  tsRefs: BFChainUtil.PromiseMaybe<Bfsp.TsReference[]> = [];
   dependencies: BFChainUtil.PromiseMaybe<{ [name: string]: string }> = {};
 }
 

@@ -1,10 +1,7 @@
-import { setTimeout as sleep } from "node:timers/promises";
-import { defineTest } from "../test.mjs";
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { gitignoreListCache } from "../sdk/toolkit/toolkit.fs.mjs";
-import { getBfspProjectConfig, watchBfspProjectConfig, writeBfspProjectConfig } from "../main/bfspConfig.mjs";
+import { defineTest } from "../test.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

@@ -5,8 +5,7 @@ import { DevLogger } from "../sdk/logger/logger.mjs";
 import { doBuild } from "./build.core.mjs";
 import { helpOptions } from "./help.core.mjs";
 import { linkBFChainPkgmModules } from "./yarn/runner.mjs";
-import { getBfspUserConfig } from "../main/configs/bfspUserConfig.mjs";
-import { writeBfspProjectConfig } from "../main/bfspConfig.mjs";
+import { BFSP_MODE, writeBfspProjectConfig, getBfspProjectConfig } from "../main/bfspConfig.mjs";
 
 export const buildCommand = defineCommand(
   "build",
@@ -39,10 +38,10 @@ export const buildCommand = defineCommand(
     linkBFChainPkgmModules(root);
 
     /// 生成初始配置文件
-    const bfspUserConfig = await getBfspUserConfig(root, { logger });
-    const subConfigs = await writeBfspProjectConfig({ projectDirpath: root, bfspUserConfig }, { logger });
+    const bfspProjectConfig = await getBfspProjectConfig(root, BFSP_MODE.BUILD, { logger });
+    const subConfigs = await writeBfspProjectConfig(bfspProjectConfig, { logger });
 
     /// 开始编译工作
-    doBuild({ root, bfspUserConfig, subConfigs });
+    doBuild({ bfspProjectConfig, subConfigs });
   }
 );

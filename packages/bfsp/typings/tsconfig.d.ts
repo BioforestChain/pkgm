@@ -196,7 +196,7 @@ declare namespace Bfsp {
         | "ESNext.WeakRef"
         | "es2021.intl";
 
-      type ModuleResolutionKind = "Classic" | "Node" | "Node12" | "NodeNext";
+      type ModuleResolutionKind = "classic" | "node" | "node12" | "nodenext";
 
       type ImportsNotUsedAsValues = "remove" | "preserve" | "error";
 

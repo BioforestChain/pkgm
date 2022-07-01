@@ -296,57 +296,53 @@ const _generateUser_CompilerOptionsBase = (bfspUserConfig: $BfspUserConfig) => {
     moduleSuffixes.push("");
   }
 
+  /**
+   * 默认的参数配置
+   */
+  const sharedCompilerOptions: Bfsp.TsConfig["compilerOptions"] = {
+    target: "ES2020",
+    module: "ES2020",
+    noEmit: false,
+    composite: true,
+    emitDeclarationOnly: false,
+    declaration: true,
+    sourceMap: false,
+    lib: ["ES2020"],
+    importHelpers: true,
+    isolatedModules: false,
+    strict: true,
+    noImplicitAny: true,
+    strictNullChecks: true,
+    strictFunctionTypes: true,
+    strictBindCallApply: true,
+    strictPropertyInitialization: true,
+    noImplicitThis: true,
+    alwaysStrict: true,
+    moduleResolution: "node",
+    resolveJsonModule: true,
+    esModuleInterop: true,
+    skipLibCheck: true,
+    forceConsistentCasingInFileNames: true,
+    emitDecoratorMetadata: true,
+    experimentalDecorators: true,
+    /**
+     * 开发者自己定义的参数
+     */
+    ...(bfspUserConfig.userConfig.tsConfig?.compilerOptions ?? {}),
+    moduleSuffixes,
+  };
+
   return {
-    json: {
-      /**
-       * 默认的参数配置
-       */
-      composite: true,
-      noEmit: true,
-      declaration: true,
-      sourceMap: false,
-      target: "es2020",
-      module: "es2020",
-      lib: ["ES2020"],
-      importHelpers: true,
-      isolatedModules: false,
-      strict: true,
-      noImplicitAny: true,
-      strictNullChecks: true,
-      strictFunctionTypes: true,
-      strictBindCallApply: true,
-      strictPropertyInitialization: true,
-      noImplicitThis: true,
-      alwaysStrict: true,
-      moduleResolution: "node",
-      resolveJsonModule: true,
-      emitDeclarationOnly: false,
-      esModuleInterop: true,
-      skipLibCheck: true,
-      forceConsistentCasingInFileNames: true,
-      emitDecoratorMetadata: true,
-      experimentalDecorators: true,
-
-      // baseUrl: "./",
-      // types: ["node"],
-
-      /**
-       * 开发者自己定义的参数
-       */
-      ...(bfspUserConfig.userConfig.tsConfig?.compilerOptions ?? {}),
-      moduleSuffixes: moduleSuffixes,
-    },
+    json: sharedCompilerOptions,
     isolatedJson: {
       isolatedModules: true,
-      noEmit: false,
+      noEmit: true,
       emitDeclarationOnly: false,
-      typeRoots: [] as string[],
-      types: [] as string[],
     },
     typingsJson: {
       isolatedModules: false,
       noEmit: false,
-      emitDeclarationOnly: true,
+      emitDeclarationOnly: false,
     },
   };
 };
@@ -360,15 +356,31 @@ const _generateUser_References = async (bfspUserConfig: $BfspUserConfig) => {
       {
         path: "./tsconfig.typings.json",
       },
-      ...depRefs,
     ],
     isolatedJson: [
       {
         path: "./tsconfig.typings.json",
       },
-      ...depRefs.map((x) => ({ path: x.path.replace("tsconfig.json", "tsconfig.isolated.json") })),
     ],
-    typingsJson: [],
+    /// 只有 tsconfig.typings.json 是会输出代码的（noEmit:false），所以这里依赖的是 tsconfig.typings.json
+    typingsJson: depRefs, // [...depRefs.map((x) => ({ path: x.path.replace(/tsconfig\.json$/, "tsconfig.typings.json") }))],
+  };
+};
+
+const _generateProject_Files = (tsFilesLists: TsFilesLists) => {
+  const isolatedFiles = getTsconfigFiles(tsFilesLists, "isolatedFiles");
+  const typingsFiles = getTsconfigFiles(tsFilesLists, "typeFiles");
+  /**
+   * 这里混合了 tsIsolatedConfig 的文件，说明 .type.ts 文件可以引用所有的 isolatedFiles 文件
+   * 但反过来不能，因为 tsIsolatedConfig 编译会不通过，即便 tsTypingsConfig 编译能通过，但这里的成本就是编译成本变高
+   * 同时 tsIsolatedConfig 与 tsTypingsConfig 的输出目录是一样的，所以最终不会有多余的结果产出
+   * TIP: 因为这是很关键的开发体验…… 所以这里不得不牺牲编译性能，把 isolated 编译两次
+   */
+  typingsFiles.push(...isolatedFiles);
+  return {
+    json: [] as string[],
+    isolatedJson: isolatedFiles,
+    typingsJson: typingsFiles,
   };
 };
 
@@ -402,6 +414,7 @@ export const generateTsConfig = async (
   /// 生成配置
   const userCompilerOptionsBase = _generateUser_CompilerOptionsBase(bfspUserConfig);
   const userReferences = await _generateUser_References(bfspUserConfig);
+  const projectFiles = await _generateProject_Files(tsFilesLists);
 
   /// 组合配置
   const tsConfig = {
@@ -414,7 +427,7 @@ export const generateTsConfig = async (
       paths: tsFilesLists.profileMap.toTsPaths(bfspUserConfig.userConfig.profiles),
     },
     references: userReferences.json,
-    files: [] as string[],
+    files: projectFiles.json,
   };
 
   const tsIsolatedConfig = {
@@ -423,7 +436,7 @@ export const generateTsConfig = async (
       ...userCompilerOptionsBase.isolatedJson,
       outDir: TscOutRootPath(options.outDirRoot, options.outDirName), //因为 #40 isolated没有任何输出，所以outDir就在输出根目录
     },
-    files: getTsconfigFiles(tsFilesLists, "isolatedFiles"),
+    files: projectFiles.isolatedJson,
     references: userReferences.isolatedJson,
   };
 
@@ -433,7 +446,7 @@ export const generateTsConfig = async (
       ...userCompilerOptionsBase.typingsJson,
       outDir: TscOutRootPath(options.outDirRoot, options.outDirName), //因为 #40 typings无需另外建立文件夹，isolated和typings只不过是生成类型的两个阶段而已
     },
-    files: getTsconfigFiles(tsFilesLists, "typeFiles"),
+    files: projectFiles.typingsJson,
     references: userReferences.typingsJson,
   };
 
@@ -447,49 +460,64 @@ export const generateTsConfig = async (
 };
 
 export type $TsConfig = Awaited<ReturnType<typeof generateTsConfig>>;
-export const writeTsConfig = (projectDirpath: string, bfspUserConfig: $BfspUserConfig, tsConfig: $TsConfig) => {
+export const writeTsConfig = async (projectDirpath: string, bfspUserConfig: $BfspUserConfig, tsConfig: $TsConfig) => {
+  const { outDir } = tsConfig.typingsJson.compilerOptions;
+  const outDirInfo = path.parse(outDir);
+
+  const tsconfigIsolatedJson = jsonClone(tsConfig.isolatedJson);
+  const tsconfigTypingsJson = jsonClone(tsConfig.typingsJson);
+
+  /// 这里在写入文件之前，会把 typings.d.ts 相关的概念整理一遍，一同写入到 tsconfig.json 中
+  const typingsFileName = "typings.d.ts";
+  const typingsFilePath = resolve(projectDirpath, outDirInfo.dir, typingsFileName);
+  const depRefs = await bfspUserConfig.extendsService.tsRefs;
+
+  bfspUserConfig.exportsDetail
+  /// STEP 1: 将 typings.tsconfig.json 中的文件导出来
+  {
+    const parseTypingFileToEsmPath = (filepath: string) =>
+      toPosixPath(path.join(outDirInfo.base, filepath.slice(0, -path.extname(filepath).length) + ".d.ts"));
+    const typingsFileContent =
+      `/// ▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\n` +
+      /// 加入本项目的 *.type.d.ts
+      tsConfig.tsFilesLists.typeFiles
+        .toArray()
+        .map((filepath) => `/// <reference path="${parseTypingFileToEsmPath(filepath)}" />`)
+        .join("\n") +
+      "\n" +
+      /// 加入所依赖项目的 typings.d.ts（这个是给 ioslated.ts 的开发做服务的 ）
+      depRefs
+        .map((ref) => {
+          // 这里假设所有的项目的 outDir 都是一致的，用户也不应该去修改它
+          const depTypingsFilepath = path.join(path.dirname(ref.path), outDirInfo.dir, typingsFileName);
+          return `/// <reference path="${toPosixPath(path.relative(outDirInfo.dir, depTypingsFilepath))}" />`;
+        })
+        .join("\n") +
+      "\n";
+    /// 自动创建的相关文件与代码
+    await folderIO.tryInit(resolve(projectDirpath, outDir));
+    await fileIO.set(typingsFilePath, Buffer.from(typingsFileContent));
+  }
+  /// STEP 2: 根据依赖，往 typings.tsconfig.json 中注入其它项目的类型（这个是给 .type.ts 的开发做服务的）
+  {
+    tsconfigTypingsJson.files.push(
+      ...depRefs.map((ref) =>
+        toPosixPath(
+          // 这里假设所有的项目的 outDir 都是一致的，用户也不应该去修改它
+          path.join(path.dirname(ref.path), outDirInfo.dir, typingsFileName)
+        )
+      )
+    );
+  }
+  /// STEP 3: 往 typings.ioslated.json 中注入 typings.d.ts
+  {
+    tsconfigIsolatedJson.files.push(toPosixPath(path.relative(projectDirpath, typingsFilePath)));
+  }
+
   return Promise.all([
     writeJsonConfig(resolve(projectDirpath, "tsconfig.json"), tsConfig.json),
-    writeJsonConfig(resolve(projectDirpath, tsConfig.json.references[0].path), tsConfig.isolatedJson),
-    ,
-    (async () => {
-      await writeJsonConfig(resolve(projectDirpath, tsConfig.json.references[1].path), tsConfig.typingsJson);
-
-      const { outDir } = tsConfig.typingsJson.compilerOptions;
-      const outDirInfo = path.parse(outDir);
-      /**index文件可以提交 */
-      // const indexFilepath = resolve(projectDirpath, outDirInfo.dir, "index.d.ts");
-      /**dist文件不可以提交，所以自动生成的代码都在dist中，index中只保留对dist的引用 */
-      const refsFilePath = resolve(projectDirpath, outDirInfo.dir, "refs.d.ts");
-      // const parseToEsmPath = (filepath: string) =>
-      //   toPosixPath(path.relative("typings", filepath.slice(0, -path.extname(filepath).length)));
-      const parseTypingFileToEsmPath = (filepath: string) =>
-        toPosixPath(path.join(outDirInfo.base, filepath.slice(0, -path.extname(filepath).length) + ".d.ts"));
-      // const indexFileCodeReg =
-      //   /\/\/▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼[\w\W]+?\/\/▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲/g;
-      // const indexFileSnippet = `//▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\n/// <reference path="./dist.d.ts"/>\n//▲▲▲AUTO GENERATE BY BFSP, DO NOT EDIT▲▲▲`;
-      const distFileContent =
-        `/// ▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\n` +
-        // `export * from ".{parseToEsmPath(bfspUserConfig.exportsDetail.indexFile)}.mjs";\n` +
-        tsConfig.tsFilesLists.typeFiles
-          .toArray()
-          .map((filepath) => `/// <reference path="${parseTypingFileToEsmPath(filepath)}" />`)
-          .join("\n");
-
-      /// 自动创建的相关文件与代码
-      await folderIO.tryInit(resolve(projectDirpath, outDir));
-      await fileIO.set(refsFilePath, Buffer.from(distFileContent));
-      // const indexFileContent = (await fileIO.has(indexFilepath)) ? (await fileIO.get(indexFilepath)).toString() : "";
-
-      // if (indexFileContent.match(indexFileCodeReg)?.[0] !== indexFileSnippet) {
-      //   // @todo 可能使用语法分析来剔除这个import会更好一些
-      //   // @todo 需要进行fmt
-      //   await fileIO.set(
-      //     indexFilepath,
-      //     Buffer.from(indexFileSnippet + "\n\n" + indexFileContent.replace(indexFileCodeReg, "").trimStart())
-      //   );
-      // }
-    })(),
+    writeJsonConfig(resolve(projectDirpath, tsConfig.json.references[0].path), tsconfigIsolatedJson),
+    writeJsonConfig(resolve(projectDirpath, tsConfig.json.references[1].path), tsconfigTypingsJson),
   ]);
 };
 
@@ -520,6 +548,7 @@ export const watchTsConfig = (
     }
 
     const { tsFilesLists } = tsConfig;
+    let fileChanged = false;
     while (cachedEventList.size !== 0) {
       // 归类, 然后清空缓存
       const addFileList: string[] = [];
@@ -539,14 +568,19 @@ export const watchTsConfig = (
       /// 将变更的文件写入tsconfig中
       if (addFileList.length > 0) {
         groupTsFilesByAdd(projectDirpath, addFileList, tsFilesLists);
+        fileChanged = true;
       }
       if (removeFileList.length > 0) {
         groupTsFilesByRemove(projectDirpath, removeFileList, tsFilesLists);
+        fileChanged = true;
       }
+    }
+    if (fileChanged) {
+      const projectFiles = await _generateProject_Files(tsFilesLists);
 
-      // tsConfig.json.files = tsFilesLists.notestFiles.toArray();
-      tsConfig.isolatedJson.files = getTsconfigFiles(tsFilesLists, "isolatedFiles");
-      tsConfig.typingsJson.files = getTsconfigFiles(tsFilesLists, "typeFiles");
+      tsConfig.json.files = projectFiles.json;
+      tsConfig.isolatedJson.files = projectFiles.isolatedJson;
+      tsConfig.typingsJson.files = projectFiles.typingsJson;
     }
 
     /// 生成用户配置

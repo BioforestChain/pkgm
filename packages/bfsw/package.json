@@ -4,6 +4,7 @@
   "description": "",
   "type": "module",
   "types": "./dist/src/main/index.d.mts",
+  "main": "./dist/src/main/index.mjs",
   "publishConfig": {
     "access": "public"
   },

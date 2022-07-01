@@ -21,10 +21,11 @@ export const doDevBfsp = (
   options: {
     loggerKit?: $LoggerKit;
     mode?: ModeType;
+    disableVite?: boolean;
   } = {}
 ) => {
   const debug = DevLogger("bfsp:bin/dev");
-  const { loggerKit = getTui().getPanel("Dev").viteLoggerKit } = options;
+  const { loggerKit = getTui().getPanel("Dev").viteLoggerKit, disableVite } = options;
   const logger = loggerKit.logger;
   const devPanel = getTui().getPanel("Dev");
   const { root = process.cwd(), format, subStreams } = args;
@@ -72,35 +73,37 @@ export const doDevBfsp = (
         //#region vite
         const viteLogger = createViteLogger(loggerKit);
         getTui().debug("start vite");
-        const dev = (await getVite().build({
-          ...viteBuildConfig,
-          build: {
-            ...viteBuildConfig.build,
-            minify: false,
-            sourcemap: true,
-            rollupOptions: {
-              ...viteBuildConfig.build?.rollupOptions,
-              onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
-            },
-          },
-          mode: "development",
-          customLogger: viteLogger,
-        })) as RollupWatcher;
+        const dev = disableVite
+          ? undefined
+          : ((await getVite().build({
+              ...viteBuildConfig,
+              build: {
+                ...viteBuildConfig.build,
+                minify: false,
+                sourcemap: true,
+                rollupOptions: {
+                  ...viteBuildConfig.build?.rollupOptions,
+                  onwarn: (err) => viteLogger.warn(chalk.yellow(String(err))),
+                },
+              },
+              mode: "development",
+              customLogger: viteLogger,
+            })) as RollupWatcher);
         //#endregion
 
         closeSign.onSuccess((reason) => {
           debug("close bfsp build, reason: ", reason);
           preViteConfigBuildOptions = undefined;
-          dev.close();
+          dev?.close();
           typingsGenerator?.stop();
           typingsGenerator = undefined;
         });
 
-        dev.on("change", (id, change) => {
+        dev?.on("change", (id, change) => {
           debug(`${change.event} file: ${id} `);
         });
 
-        dev.on("event", async (event) => {
+        dev?.on("event", async (event) => {
           const name = userConfig.userConfig.name;
           debug(`package ${name}: ${event.code}`);
           if (event.code === "START") {

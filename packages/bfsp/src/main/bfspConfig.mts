@@ -6,11 +6,21 @@ import { $TsConfig, generateTsConfig, watchTsConfig, writeTsConfig } from "./con
 import { generateViteConfig, watchViteConfig } from "./configs/viteConfig.mjs";
 import { doWatchDeps } from "./deps.mjs";
 
-export const getBfspProjectConfig = async (dirname = process.cwd(), options: { logger: PKGM.Logger }) => {
+export const enum BFSP_MODE {
+  DEV = "dev",
+  BUILD = "build",
+  INIT = "init",
+}
+export const getBfspProjectConfig = async (
+  dirname = process.cwd(),
+  mode: BFSP_MODE,
+  options: { logger: PKGM.Logger }
+) => {
   const bfspUserConfig = await getBfspUserConfig(dirname, options);
 
   const projectConfig = {
     projectDirpath: dirname,
+    mode,
     bfspUserConfig,
   };
   return projectConfig;
