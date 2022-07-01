@@ -9,7 +9,7 @@ import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logg
 import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs.mjs";
 import { toPosixPath } from "../sdk/toolkit/toolkit.path.mjs";
 import { getTui, PanelStatus } from "../sdk/tui/index.mjs";
-import { $BfspProjectConfig, writeBfspProjectConfig } from "../main/bfspConfig.mjs";
+import { $BfspEnvConfig, $BfspProjectConfig, BFSP_MODE, writeBfspProjectConfig } from "../main/bfspConfig.mjs";
 import { $BfspUserConfig, $getBfspUserConfig } from "../main/configs/bfspUserConfig.mjs";
 import { $PackageJson, generatePackageJson } from "../main/configs/packageJson.mjs";
 import { $TsConfig, generateTsConfig, writeTsConfig } from "../main/configs/tsConfig.mjs";
@@ -120,6 +120,10 @@ const buildSingle = async (options: {
     bfspUserConfig,
     perfConfig,
   } = options;
+  const bfspEnvConfig: $BfspEnvConfig = {
+    projectDirpath: root,
+    mode: BFSP_MODE.BUILD,
+  };
 
   const { debug, flag, success, info, warn, error, logger } = options.buildLogger;
 
@@ -129,7 +133,7 @@ const buildSingle = async (options: {
   const TYPINGS_DIR = `typings/${buildConfig.outSubPath}`; // #40，tsc只是用来生成类型
 
   flag(`generating tsconfig.json`);
-  const tsConfig1 = await generateTsConfig(root, userConfig1, {
+  const tsConfig1 = await generateTsConfig(bfspEnvConfig, userConfig1, {
     outDirRoot: path.relative(root, buildOutDir),
     outDirName: TYPINGS_DIR,
     logger,
@@ -138,14 +142,14 @@ const buildSingle = async (options: {
   if (!isDeepStrictEqual(perfConfig.tsConfig, tsConfig1)) {
     perfConfig.tsConfig = tsConfig1;
     flag(`setting tsconfig.json`);
-    await writeTsConfig(root, userConfig1, tsConfig1);
+    await writeTsConfig(bfspEnvConfig, userConfig1, tsConfig1);
     success(`set tsconfig.json`);
   }
 
   //#region 生成 package.json
   flag(`generating package.json`);
   /// 将 package.json 的 types 路径进行修改
-  const packageJson = await generatePackageJson(root, userConfig1, tsConfig1, {
+  const packageJson = await generatePackageJson(bfspEnvConfig, userConfig1, tsConfig1, {
     logger,
     packageTemplateJson: thePackageJson,
     customTypesRoot: `./typings/${buildConfig.outSubPath}`,
@@ -270,7 +274,7 @@ const buildSingle = async (options: {
 
   //#region 使用 vite(rollup+typescript+esbuild) 编译打包代码
   flag(`generating bundle config`);
-  const viteConfig1 = await generateViteConfig(root, userConfig1, tsConfig1);
+  const viteConfig1 = await generateViteConfig(bfspEnvConfig, userConfig1, tsConfig1);
 
   const jsBundleConfig = ViteConfigFactory({
     userConfig: buildConfig,
@@ -373,7 +377,10 @@ export const doBuild = async (args: {
   subConfigs: Awaited<ReturnType<typeof writeBfspProjectConfig>>;
 }) => {
   const { subConfigs, bfspProjectConfig } = args; //fs.existsSync(maybeRoot) && fs.statSync(maybeRoot).isDirectory() ? maybeRoot : cwd;
-  const { projectDirpath: root, bfspUserConfig } = bfspProjectConfig;
+  const {
+    env: { projectDirpath: root },
+    user: bfspUserConfig,
+  } = bfspProjectConfig;
   const buildLogger = new BuildLogger([bfspUserConfig.userConfig.name]);
 
   buildLogger.debug(`root: ${root}`);

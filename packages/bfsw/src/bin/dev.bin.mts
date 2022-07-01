@@ -4,6 +4,7 @@ import {
   ALLOW_FORMATS,
   DevLogger,
   getTui,
+  BFSP_MODE,
 } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
 import path from "node:path";
 
@@ -69,7 +70,8 @@ export const devCommand = defineCommand(
 
     const workspacePanel = TUI.getPanel("Workspaces");
     const logger = workspacePanel.logger;
-    const workspaceConfig = await WorkspaceConfig.WatchFrom(root, logger).workspaceConfigAsync;
+    const workspaceConfig = await WorkspaceConfig.WatchFrom({ workspaceDirpath: root, bfspMode: BFSP_MODE.DEV }, logger)
+      .workspaceConfigAsync;
 
     const initLoggerKit = workspacePanel.createLoggerKit({ name: "#init", order: 0 });
     if (

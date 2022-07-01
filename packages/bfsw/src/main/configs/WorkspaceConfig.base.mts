@@ -11,6 +11,9 @@ import {
   watchViteConfig,
   SharedAsyncIterable,
   SharedFollower,
+  $BfspProjectConfig,
+  $BfspEnvConfig,
+  BFSP_MODE,
 } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
 import EventEmitter from "node:events";
 import path from "node:path";
@@ -22,8 +25,17 @@ import { WorkspaceTsConfig } from "./workspaceTsConfig.mjs";
 export type $ProjectConfigStreams = ReturnType<WorkspaceConfigBase["_createProjectConfigStreams"]>;
 export type $ProjectConfigStreamsMap = Map<string, $ProjectConfigStreams>;
 
+export type $WorkspaceEnvConfig = {
+  workspaceDirpath: string;
+  bfspMode: BFSP_MODE;
+};
+
 export class WorkspaceConfigBase {
-  constructor(readonly root: string, protected _config: Bfsw.Workspace, protected _logger: PKGM.TuiLogger) {
+  constructor(
+    readonly envConfig: $WorkspaceEnvConfig,
+    protected _config: Bfsw.Workspace,
+    protected _logger: PKGM.TuiLogger
+  ) {
     // buildService.watcher.watchWorkspace(() => this._reload());
     this._refreshProjectConfigStreamsMap(_config);
   }
@@ -34,6 +46,9 @@ export class WorkspaceConfigBase {
 
   get projects() {
     return this._config.projects;
+  }
+  get root() {
+    return this.envConfig.workspaceDirpath;
   }
 
   /**
@@ -67,7 +82,10 @@ export class WorkspaceConfigBase {
       }
 
       /// 生成流，更新流数据
-      const projectConfigStreams = this._projectConfigStreamsMap.forceGet(projectRoot);
+      const projectConfigStreams = this._projectConfigStreamsMap.forceGet({
+        projectDirpath: projectRoot,
+        mode: this.envConfig.bfspMode,
+      });
       projectConfigStreamsMap.set(projectRoot, projectConfigStreams);
 
       /// 更新配置
@@ -126,36 +144,39 @@ export class WorkspaceConfigBase {
   }
 
   protected _projectConfigStreamsMap = EasyMap.from({
-    creater: (projectRoot: string) => this._createProjectConfigStreams(projectRoot),
+    transformKey(key) {
+      return `${key.mode}+${key.projectDirpath}`;
+    },
+    creater: (bfspEnvConfig: $BfspEnvConfig) => this._createProjectConfigStreams(bfspEnvConfig),
   });
   /**
    * 为单个bfsp项目生成配置流
    */
-  protected _createProjectConfigStreams(projectRoot: string) {
+  protected _createProjectConfigStreams(bfspEnvConfig: $BfspEnvConfig) {
     const userConfigFollower = new SharedFollower<$BfspUserConfig>();
     const userConfigStream = new SharedAsyncIterable<$BfspUserConfig>(userConfigFollower);
-    const tsConfigStream = watchTsConfig(projectRoot, userConfigStream, {
+    const tsConfigStream = watchTsConfig(bfspEnvConfig, userConfigStream, {
       write: true,
       logger: this._logger,
     });
-    const viteConfigStream = watchViteConfig(projectRoot, userConfigStream, tsConfigStream);
+    const viteConfigStream = watchViteConfig(bfspEnvConfig, userConfigStream, tsConfigStream);
 
-    const packageJsonStream = watchPackageJson(projectRoot, userConfigStream, tsConfigStream, {
+    const packageJsonStream = watchPackageJson(bfspEnvConfig, userConfigStream, tsConfigStream, {
       write: true,
     });
 
-    const gitIgnoreStream = watchGitIgnore(projectRoot, userConfigStream, {
+    const gitIgnoreStream = watchGitIgnore(bfspEnvConfig, userConfigStream, {
       write: true,
     });
 
-    const npmIgnoreStream = watchNpmIgnore(projectRoot, userConfigStream, {
+    const npmIgnoreStream = watchNpmIgnore(bfspEnvConfig, userConfigStream, {
       write: true,
     });
 
     let _watchDeps: ReturnType<WorkspaceConfigBase["_doWatchDeps"]> | undefined;
 
     return {
-      projectRoot,
+      bfspEnvConfig,
       userConfigFollower,
       userConfigStream,
       viteConfigStream,
@@ -164,7 +185,7 @@ export class WorkspaceConfigBase {
       gitIgnoreStream,
       npmIgnoreStream,
       getDepsInstallStream: () => {
-        return (_watchDeps ??= this._doWatchDeps(projectRoot, packageJsonStream)).stream;
+        return (_watchDeps ??= this._doWatchDeps(bfspEnvConfig, packageJsonStream)).stream;
       },
       stopAll() {
         userConfigStream.stop();
@@ -230,10 +251,11 @@ export class WorkspaceConfigBase {
     ));
   }
 
-  private _doWatchDeps(projectRoot: string, packageJsonStream: SharedAsyncIterable<$PackageJson>) {
+  private _doWatchDeps(bfspEnvConfig: $BfspEnvConfig, packageJsonStream: SharedAsyncIterable<$PackageJson>) {
     const { _unitunifyPackageJson } = this;
+    const { projectDirpath } = bfspEnvConfig;
 
-    const prefix = projectRoot + ":";
+    const prefix = projectDirpath + ":";
     const joinPackageJson = (packageJson: $PackageJson) => {
       _joinPrefix(prefix, packageJson.dependencies, _unitunifyPackageJson.dependencies);
       _joinPrefix(prefix, packageJson.devDependencies, _unitunifyPackageJson.devDependencies);

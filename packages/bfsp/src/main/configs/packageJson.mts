@@ -7,13 +7,14 @@ import { parseFormats, writeJsonConfig } from "../../sdk/toolkit/toolkit.fs.mjs"
 import { toPosixPath, truncateWords } from "../../sdk/toolkit/toolkit.path.mjs";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream.mjs";
 import { jsonClone } from "../../sdk/toolkit/toolkit.util.mjs";
+import { $BfspEnvConfig } from "../bfspConfig.mjs";
 import type { $BfspUserConfig } from "./bfspUserConfig.mjs";
 import { $TsConfig } from "./tsConfig.mjs";
 
 const debug = DevLogger("bfsp:config/package.json");
 // const format
 export const generatePackageJson = async (
-  projectDirpath: string,
+  bfspEnvConfig: $BfspEnvConfig,
   bfspUserConfig: $BfspUserConfig,
   tsConfig: $TsConfig,
   options: {
@@ -186,11 +187,12 @@ export type $PackageJson = typeof import("../../../assets/package.template.json"
   peerDependencies: Bfsp.Dependencies;
   optionalDependencies: Bfsp.Dependencies;
 };
-export const writePackageJson = (projectDirpath: string, packageJson: $PackageJson) => {
+export const writePackageJson = (bfspEnvConfig: $BfspEnvConfig, packageJson: $PackageJson) => {
+  const { projectDirpath } = bfspEnvConfig;
   return writeJsonConfig(path.resolve(projectDirpath, "package.json"), packageJson);
 };
 export const watchPackageJson = (
-  projectDirpath: string,
+  bfspEnvConfig: $BfspEnvConfig,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
   tsConfigStream: SharedAsyncIterable<$TsConfig>,
   options: {
@@ -198,6 +200,7 @@ export const watchPackageJson = (
     packageJsonInitPo?: BFChainUtil.PromiseMaybe<$PackageJson>;
   } = {}
 ) => {
+  const { projectDirpath } = bfspEnvConfig;
   const follower = new SharedFollower<$PackageJson>();
   const { write = false } = options;
 
@@ -210,7 +213,7 @@ export const watchPackageJson = (
 
     const bfspUserConfig = await bfspUserConfigStream.waitCurrent();
     const tsConfig = await tsConfigStream.waitCurrent();
-    const newPackageJson = await generatePackageJson(projectDirpath, bfspUserConfig, tsConfig);
+    const newPackageJson = await generatePackageJson(bfspEnvConfig, bfspUserConfig, tsConfig);
     if (isDeepStrictEqual(newPackageJson, curPackageJson)) {
       return;
     }
@@ -219,7 +222,7 @@ export const watchPackageJson = (
         debug.error("unable to write package.json: project maybe removed");
         return;
       }
-      await writePackageJson(projectDirpath, newPackageJson);
+      await writePackageJson(bfspEnvConfig, newPackageJson);
     }
     debug("packageJson changed");
     follower.push((curPackageJson = newPackageJson));

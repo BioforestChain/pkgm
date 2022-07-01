@@ -13,6 +13,7 @@ import { parseExports } from "../../sdk/toolkit/toolkit.mjs";
 import { fileIO, folderIO, parseFormats, DebounceLoadConfig } from "../../sdk/toolkit/toolkit.fs.mjs";
 import { SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream.mjs";
 import { printBuildResultWarnAndError } from "../../sdk/toolkit/toolkit.lang.mjs";
+import { $BfspEnvConfig } from "../bfspConfig.mjs";
 
 const debug = DevLogger("bfsp:config/#bfsp");
 
@@ -183,12 +184,13 @@ class ExtendsService {
 }
 
 export const watchBfspUserConfig = (
-  projectDirpath: string,
+  bfspEnvConfig: $BfspEnvConfig,
   options: {
     bfspUserConfigInitPo?: BFChainUtil.PromiseMaybe<$BfspUserConfig>;
     logger: PKGM.Logger;
   }
 ) => {
+  const { projectDirpath } = bfspEnvConfig;
   const follower = new SharedFollower<$BfspUserConfig>();
   const { logger } = options;
 

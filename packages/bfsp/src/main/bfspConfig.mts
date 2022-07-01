@@ -1,4 +1,4 @@
-import { getBfspUserConfig, watchBfspUserConfig } from "./configs/bfspUserConfig.mjs";
+import { $BfspUserConfig, getBfspUserConfig, watchBfspUserConfig } from "./configs/bfspUserConfig.mjs";
 import { $GitIgnore, generateGitIgnore, watchGitIgnore, writeGitIgnore } from "./configs/gitIgnore.mjs";
 import { $NpmIgnore, generateNpmIgnore, watchNpmIgnore, writeNpmIgnore } from "./configs/npmIgnore.mjs";
 import { $PackageJson, generatePackageJson, watchPackageJson, writePackageJson } from "./configs/packageJson.mjs";
@@ -10,6 +10,7 @@ export const enum BFSP_MODE {
   DEV = "dev",
   BUILD = "build",
   INIT = "init",
+  CLEAR = "clear",
 }
 export const getBfspProjectConfig = async (
   dirname = process.cwd(),
@@ -18,30 +19,39 @@ export const getBfspProjectConfig = async (
 ) => {
   const bfspUserConfig = await getBfspUserConfig(dirname, options);
 
-  const projectConfig = {
-    projectDirpath: dirname,
-    mode,
-    bfspUserConfig,
+  const projectConfig: $BfspProjectConfig = {
+    env: {
+      projectDirpath: dirname,
+      mode,
+    },
+    user: bfspUserConfig,
   };
   return projectConfig;
 };
-export type $BfspProjectConfig = Awaited<ReturnType<typeof getBfspProjectConfig>>;
+export type $BfspEnvConfig = {
+  projectDirpath: string;
+  mode: BFSP_MODE;
+};
+export type $BfspProjectConfig = {
+  env: $BfspEnvConfig;
+  user: $BfspUserConfig;
+};
 
 export const writeBfspProjectConfig = async (projectConfig: $BfspProjectConfig, options: { logger: PKGM.Logger }) => {
-  const { projectDirpath, bfspUserConfig } = projectConfig;
+  const { user: bfspUserConfig, env: bfspEnvConfig } = projectConfig;
 
-  const tsConfig = await generateTsConfig(projectDirpath, bfspUserConfig, options);
-  const viteConfig = await generateViteConfig(projectDirpath, bfspUserConfig, tsConfig);
+  const tsConfig = await generateTsConfig(bfspEnvConfig, bfspUserConfig, options);
+  const viteConfig = await generateViteConfig(bfspEnvConfig, bfspUserConfig, tsConfig);
 
-  const gitIgnorePo = generateGitIgnore(projectDirpath, bfspUserConfig.userConfig);
-  const npmIgnorePo = generateNpmIgnore(projectDirpath, bfspUserConfig.userConfig);
-  const packageJsonPo = generatePackageJson(projectDirpath, bfspUserConfig, tsConfig);
+  const gitIgnorePo = generateGitIgnore(bfspEnvConfig, bfspUserConfig.userConfig);
+  const npmIgnorePo = generateNpmIgnore(bfspEnvConfig, bfspUserConfig.userConfig);
+  const packageJsonPo = generatePackageJson(bfspEnvConfig, bfspUserConfig, tsConfig);
 
   const [_, gitIgnore, npmIgnore, packageJson] = await Promise.all([
-    writeTsConfig(projectDirpath, bfspUserConfig, tsConfig),
-    gitIgnorePo.then((gitIgnore) => writeGitIgnore(projectDirpath, gitIgnore).then(() => gitIgnore)),
-    npmIgnorePo.then((npmIgnore) => writeNpmIgnore(projectDirpath, npmIgnore).then(() => npmIgnore)),
-    packageJsonPo.then((packageJson) => writePackageJson(projectDirpath, packageJson).then(() => packageJson)),
+    writeTsConfig(bfspEnvConfig, bfspUserConfig, tsConfig),
+    gitIgnorePo.then((gitIgnore) => writeGitIgnore(bfspEnvConfig, gitIgnore).then(() => gitIgnore)),
+    npmIgnorePo.then((npmIgnore) => writeNpmIgnore(bfspEnvConfig, npmIgnore).then(() => npmIgnore)),
+    packageJsonPo.then((packageJson) => writePackageJson(bfspEnvConfig, packageJson).then(() => packageJson)),
   ]);
 
   return { viteConfig, tsConfig, gitIgnore, npmIgnore, packageJson };
@@ -59,30 +69,31 @@ export const watchBfspProjectConfig = (
     logger: PKGM.Logger;
   }
 ) => {
-  const { projectDirpath, bfspUserConfig } = projectConfig;
+  const { projectDirpath } = projectConfig.env;
+  const { user: bfspUserConfig, env: bfspEnvConfig } = projectConfig;
 
-  const userConfigStream = watchBfspUserConfig(projectDirpath, {
+  const userConfigStream = watchBfspUserConfig(bfspEnvConfig, {
     logger: options.logger,
     bfspUserConfigInitPo: bfspUserConfig,
   });
-  const tsConfigStream = watchTsConfig(projectDirpath, userConfigStream, {
+  const tsConfigStream = watchTsConfig(bfspEnvConfig, userConfigStream, {
     logger: options.logger,
     tsConfigInitPo: initConfigs.tsConfig,
     write: true,
   });
-  const viteConfigStream = watchViteConfig(projectDirpath, userConfigStream, tsConfigStream);
+  const viteConfigStream = watchViteConfig(bfspEnvConfig, userConfigStream, tsConfigStream);
 
-  const packageJsonStream = watchPackageJson(projectDirpath, userConfigStream, tsConfigStream, {
+  const packageJsonStream = watchPackageJson(bfspEnvConfig, userConfigStream, tsConfigStream, {
     write: true,
     packageJsonInitPo: initConfigs.packageJson,
   });
 
-  const gitIgnoreStream = watchGitIgnore(projectDirpath, userConfigStream, {
+  const gitIgnoreStream = watchGitIgnore(bfspEnvConfig, userConfigStream, {
     gitIgnoreInitPo: initConfigs.gitIgnore,
     write: true,
   });
 
-  const npmIgnoreStream = watchNpmIgnore(projectDirpath, userConfigStream, {
+  const npmIgnoreStream = watchNpmIgnore(bfspEnvConfig, userConfigStream, {
     npmIgnoreInitPo: initConfigs.npmIgnore,
     write: true,
   });
@@ -101,7 +112,7 @@ export const watchBfspProjectConfig = (
       return (_watchDepsStream ??= doWatchDeps(projectDirpath, packageJsonStream, {
         runInstall: true,
         runListGetter() {
-          const userConfig = projectConfig.bfspUserConfig.userConfig;
+          const userConfig = projectConfig.user.userConfig;
           return [userConfig.packageJson?.name ?? userConfig.name];
         },
       }));

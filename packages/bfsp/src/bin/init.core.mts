@@ -15,7 +15,7 @@ export const doInit = async (args: { root: string }, logger: PKGM.Logger) => {
     root,
     logger,
     rootPackageNameList: [
-      bfspProjectConfig.bfspUserConfig.userConfig.packageJson?.name ?? bfspProjectConfig.bfspUserConfig.userConfig.name,
+      bfspProjectConfig.user.userConfig.packageJson?.name ?? bfspProjectConfig.user.userConfig.name,
     ],
   }).afterDone;
 };

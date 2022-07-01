@@ -5,30 +5,33 @@ import { fileIO } from "../../sdk/toolkit/toolkit.fs.mjs";
 import { isEqualSet } from "../../sdk/toolkit/toolkit.lang.mjs";
 import { $BfspUserConfig } from "./bfspUserConfig.mjs";
 import { defaultIgnores, effectConfigIgnores } from "./commonIgnore.mjs";
+import { $BfspEnvConfig } from "../bfspConfig.mjs";
 
 export const defaultNpmIgnores = new Set(defaultIgnores);
 for (const item of ["tests", "dist", "build"]) {
   defaultNpmIgnores.add(item);
 }
 
-export const generateNpmIgnore = async (projectDirpath: string, config: Bfsp.UserConfig) => {
+export const generateNpmIgnore = async (env: $BfspEnvConfig, config: Bfsp.UserConfig) => {
   return effectConfigIgnores(defaultNpmIgnores, config.npmignore);
 };
 
 export type $NpmIgnore = Awaited<ReturnType<typeof generateNpmIgnore>>;
 
-export const writeNpmIgnore = (projectDirpath: string, npmIgnore: $NpmIgnore) => {
+export const writeNpmIgnore = (bfspEnvConfig: $BfspEnvConfig, npmIgnore: $NpmIgnore) => {
+  const { projectDirpath } = bfspEnvConfig;
   return fileIO.set(resolve(projectDirpath, ".npmignore"), Buffer.from([...npmIgnore].join("\n")));
 };
 const debug = DevLogger("bfsp:config/npmginore");
 export const watchNpmIgnore = (
-  projectDirpath: string,
+  bfspEnvConfig: $BfspEnvConfig,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
   options: {
     write?: boolean;
     npmIgnoreInitPo?: BFChainUtil.PromiseMaybe<$NpmIgnore>;
   } = {}
 ) => {
+  const { projectDirpath } = bfspEnvConfig;
   const follower = new SharedFollower<$NpmIgnore>();
   const { write = false } = options;
 
@@ -40,12 +43,12 @@ export const watchNpmIgnore = (
     }
 
     const bfspUserConfig = await bfspUserConfigStream.waitCurrent();
-    const newNpmIgnore = await generateNpmIgnore(projectDirpath, bfspUserConfig.userConfig);
+    const newNpmIgnore = await generateNpmIgnore(bfspEnvConfig, bfspUserConfig.userConfig);
     if (isEqualSet(newNpmIgnore, curNpmIgnore)) {
       return;
     }
     if (write) {
-      await writeNpmIgnore(projectDirpath, newNpmIgnore);
+      await writeNpmIgnore(bfspEnvConfig, newNpmIgnore);
     }
     debug("npmignore changed");
     follower.push((curNpmIgnore = newNpmIgnore));

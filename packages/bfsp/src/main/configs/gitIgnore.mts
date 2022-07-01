@@ -3,6 +3,7 @@ import { DevLogger } from "../../sdk/logger/logger.mjs";
 import { fileIO } from "../../sdk/toolkit/toolkit.fs.mjs";
 import { isEqualSet } from "../../sdk/toolkit/toolkit.lang.mjs";
 import { SharedAsyncIterable, SharedFollower, Loopable } from "../../sdk/toolkit/toolkit.stream.mjs";
+import { $BfspEnvConfig } from "../bfspConfig.mjs";
 import { $BfspUserConfig } from "./bfspUserConfig.mjs";
 import { defaultIgnores, effectConfigIgnores } from "./commonIgnore.mjs";
 
@@ -11,25 +12,27 @@ for (const item of ["package.json", "dist", "build"]) {
   defaultGitIgnores.add(item);
 }
 
-export const generateGitIgnore = async (projectDirpath: string, config: Bfsp.UserConfig) => {
+export const generateGitIgnore = async (env: $BfspEnvConfig, config: Bfsp.UserConfig) => {
   return effectConfigIgnores(defaultGitIgnores, config?.gitignore);
 };
 
 export type $GitIgnore = Awaited<ReturnType<typeof generateGitIgnore>>;
 
-export const writeGitIgnore = (projectDirpath: string, gitIgnore: $GitIgnore) => {
+export const writeGitIgnore = (bfspEnvConfig: $BfspEnvConfig, gitIgnore: $GitIgnore) => {
+  const { projectDirpath } = bfspEnvConfig;
   return fileIO.set(resolve(projectDirpath, ".gitignore"), Buffer.from([...gitIgnore].join("\n")));
 };
 
 const debug = DevLogger("bfsp:config/gitginore");
 export const watchGitIgnore = (
-  projectDirpath: string,
+  bfspEnvConfig: $BfspEnvConfig,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
   options: {
     write?: boolean;
     gitIgnoreInitPo?: BFChainUtil.PromiseMaybe<$GitIgnore>;
   } = {}
 ) => {
+  const { projectDirpath } = bfspEnvConfig;
   const follower = new SharedFollower<$GitIgnore>();
   const { write = false } = options;
 
@@ -41,12 +44,12 @@ export const watchGitIgnore = (
     }
 
     const bfspUserConfig = await bfspUserConfigStream.waitCurrent();
-    const newGitIgnore = await generateGitIgnore(projectDirpath, bfspUserConfig.userConfig);
+    const newGitIgnore = await generateGitIgnore(bfspEnvConfig, bfspUserConfig.userConfig);
     if (isEqualSet(newGitIgnore, curGitIgnore)) {
       return;
     }
     if (write) {
-      await writeGitIgnore(projectDirpath, newGitIgnore);
+      await writeGitIgnore(bfspEnvConfig, newGitIgnore);
     }
     debug("gitignore changed");
     follower.push((curGitIgnore = newGitIgnore));

@@ -1,5 +1,5 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
-import { defineCommand, linkBFChainPkgmModules } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import { BFSP_MODE, defineCommand, linkBFChainPkgmModules } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
 import path from "node:path";
 import { WorkspaceConfig } from "../main/configs/workspaceConfig.mjs";
 import { doCreateBfsw } from "./create.core.mjs";
@@ -42,7 +42,10 @@ export const createCommand = defineCommand(
     /// 创建核心文件
     await doCreateBfsw({ root: workspaceRoot, name: workspaceName, license: params.license }, ctx.logger);
 
-    const workspaceConfig = await WorkspaceConfig.From(workspaceRoot, ctx.logger);
+    const workspaceConfig = await WorkspaceConfig.From(
+      { workspaceDirpath: workspaceRoot, bfspMode: BFSP_MODE.CLEAR },
+      ctx.logger
+    );
     if (workspaceConfig === undefined) {
       throw new Error("#bfsw.ts load fail");
     }

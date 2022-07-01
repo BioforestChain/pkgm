@@ -47,7 +47,7 @@ export const buildCommand = defineCommand(
 
     const workspacePanel = TUI.getPanel("Workspaces");
     const logger = workspacePanel.logger;
-    const workspaceConfig = await WorkspaceConfig.From(root, logger);
+    const workspaceConfig = await WorkspaceConfig.From({ workspaceDirpath: root, bfspMode: BFSP_MODE.BUILD }, logger);
 
     const initLoggerKit = workspacePanel.createLoggerKit({ name: "#init", order: 0 });
     if (
@@ -175,9 +175,8 @@ export const projectBuild = async (options: {
   const bfspProjectConfig = await getBfspProjectConfig(projectRoot, BFSP_MODE.BUILD, { logger: buildLogger });
 
   // 填充 `extendsService` 內容
-  bfspProjectConfig.bfspUserConfig.extendsService.tsRefs = workspaceConfig!.states.calculateRefsByPath(projectRoot);
-  bfspProjectConfig.bfspUserConfig.extendsService.dependencies =
-    workspaceConfig!.states.calculateDepsByPath(projectRoot);
+  bfspProjectConfig.user.extendsService.tsRefs = workspaceConfig!.states.calculateRefsByPath(projectRoot);
+  bfspProjectConfig.user.extendsService.dependencies = workspaceConfig!.states.calculateDepsByPath(projectRoot);
   const subConfigs = await writeBfspProjectConfig(bfspProjectConfig, { logger: buildLogger });
   const buildResults = await doBuild({ bfspProjectConfig, subConfigs });
   if (!buildResults) {

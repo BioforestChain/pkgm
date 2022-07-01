@@ -12,6 +12,7 @@ import { getWatcher } from "../../sdk/toolkit/toolkit.watcher.mjs";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream.mjs";
 import { fileIO, folderIO, walkFiles, writeJsonConfig } from "../../sdk/toolkit/toolkit.fs.mjs";
 import { isTsFile, notGitIgnored, isBinFile, isTestFile, isTypeFile } from "../../sdk/toolkit/toolkit.lang.mjs";
+import { $BfspEnvConfig, $BfspProjectConfig, BFSP_MODE } from "../bfspConfig.mjs";
 const debug = DevLogger("bfsp:config/tsconfig");
 
 // export const getFilename = (somepath: string) => {
@@ -385,10 +386,11 @@ const _generateProject_Files = (tsFilesLists: TsFilesLists) => {
 };
 
 export const generateTsConfig = async (
-  projectDirpath: string,
+  bfspEnvConfig: $BfspEnvConfig,
   bfspUserConfig: $BfspUserConfig,
   options: { outDirRoot?: string; outDirName?: string; logger: PKGM.TuiLogger }
 ) => {
+  const { projectDirpath } = bfspEnvConfig;
   const allTsFileList = await walkFiles(projectDirpath, {
     dirFilter: async (fullDirpath) => await notGitIgnored(fullDirpath),
     skipSymLink: true,
@@ -460,7 +462,12 @@ export const generateTsConfig = async (
 };
 
 export type $TsConfig = Awaited<ReturnType<typeof generateTsConfig>>;
-export const writeTsConfig = async (projectDirpath: string, bfspUserConfig: $BfspUserConfig, tsConfig: $TsConfig) => {
+export const writeTsConfig = async (
+  bfspEnvConfig: $BfspEnvConfig,
+  bfspUserConfig: $BfspUserConfig,
+  tsConfig: $TsConfig
+) => {
+  const { projectDirpath } = bfspEnvConfig;
   const { outDir } = tsConfig.typingsJson.compilerOptions;
   const outDirInfo = path.parse(outDir);
 
@@ -472,17 +479,25 @@ export const writeTsConfig = async (projectDirpath: string, bfspUserConfig: $Bfs
   const typingsFilePath = resolve(projectDirpath, outDirInfo.dir, typingsFileName);
   const depRefs = await bfspUserConfig.extendsService.tsRefs;
 
-  bfspUserConfig.exportsDetail
   /// STEP 1: 将 typings.tsconfig.json 中的文件导出来
   {
-    const parseTypingFileToEsmPath = (filepath: string) =>
-      toPosixPath(path.join(outDirInfo.base, filepath.slice(0, -path.extname(filepath).length) + ".d.ts"));
     const typingsFileContent =
       `/// ▼▼▼AUTO GENERATE BY BFSP, DO NOT EDIT▼▼▼\n` +
       /// 加入本项目的 *.type.d.ts
       tsConfig.tsFilesLists.typeFiles
         .toArray()
-        .map((filepath) => `/// <reference path="${parseTypingFileToEsmPath(filepath)}" />`)
+        .map((filepath) => {
+          if (bfspEnvConfig.mode === BFSP_MODE.BUILD) {
+            /// build 模式引用编译出来的结果
+            const parseTypingFileToEsmPath = (filepath: string) =>
+              toPosixPath(path.join(outDirInfo.base, filepath.slice(0, -path.extname(filepath).length) + ".d.ts"));
+            return `/// <reference path="${parseTypingFileToEsmPath(filepath)}" />`;
+          } else if (bfspEnvConfig.mode === BFSP_MODE.DEV) {
+            /// dev 模式直接指向源代码
+            return `/// <reference path="${toPosixPath(path.relative(outDirInfo.dir, filepath))}" />`;
+          }
+          return "";
+        })
         .join("\n") +
       "\n" +
       /// 加入所依赖项目的 typings.d.ts（这个是给 ioslated.ts 的开发做服务的 ）
@@ -522,7 +537,7 @@ export const writeTsConfig = async (projectDirpath: string, bfspUserConfig: $Bfs
 };
 
 export const watchTsConfig = (
-  projectDirpath: string,
+  bfspEnvConfig: $BfspEnvConfig,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
   options: {
     tsConfigInitPo?: BFChainUtil.PromiseMaybe<$TsConfig>;
@@ -530,6 +545,7 @@ export const watchTsConfig = (
     logger: PKGM.Logger;
   }
 ) => {
+  const { projectDirpath } = bfspEnvConfig;
   const { write = false, logger } = options;
   const follower = new SharedFollower<$TsConfig>();
   const sai = new SharedAsyncIterable<$TsConfig>(follower);
@@ -543,7 +559,7 @@ export const watchTsConfig = (
     // const tsPathInfo = await multi.getTsConfigPaths(projectDirpath);
     if (tsConfig === undefined) {
       follower.push(
-        (tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(projectDirpath, bfspUserConfig, options)))
+        (tsConfig = await (options.tsConfigInitPo ?? generateTsConfig(bfspEnvConfig, bfspUserConfig, options)))
       );
     }
 
@@ -610,7 +626,7 @@ export const watchTsConfig = (
         debug("unable to write tsconfig: project maybe removed");
         return;
       }
-      await writeTsConfig(projectDirpath, bfspUserConfig, tsConfig);
+      await writeTsConfig(bfspEnvConfig, bfspUserConfig, tsConfig);
     }
 
     debug("tsconfig changed!!");

@@ -2,15 +2,17 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { DevLogger } from "../../sdk/logger/logger.mjs";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream.mjs";
+import { $BfspEnvConfig } from "../bfspConfig.mjs";
 import type { $BfspUserConfig } from "./bfspUserConfig.mjs";
 import type { $TsConfig } from "./tsConfig.mjs";
 const debug = DevLogger("bfsp:config/vite");
 
 export const generateViteConfig = async (
-  projectDirpath: string,
+  bfspEnvConfig: $BfspEnvConfig,
   bfspUserConfig: $BfspUserConfig,
   tsConfig: $TsConfig
 ) => {
+  const { projectDirpath } = bfspEnvConfig;
   const viteInput: {
     [entryAlias: string]: string;
   } = {};
@@ -55,10 +57,11 @@ export type $ViteConfig = Awaited<ReturnType<typeof generateViteConfig>>;
 // };
 
 export const watchViteConfig = (
-  projectDirpath: string,
+  bfspEnvConfig: $BfspEnvConfig,
   bfspUserConfigStream: SharedAsyncIterable<$BfspUserConfig>,
   tsConfigStream: SharedAsyncIterable<$TsConfig>
 ) => {
+  const { projectDirpath } = bfspEnvConfig;
   const follower = new SharedFollower<$ViteConfig>();
 
   let preViteConfig: $ViteConfig | undefined;
@@ -66,7 +69,7 @@ export const watchViteConfig = (
   const looper = Loopable("watch viteConfig", async () => {
     const bfspUserConfig = await bfspUserConfigStream.waitCurrent();
     const tsConfig = await tsConfigStream.waitCurrent();
-    const viteConfig = await generateViteConfig(projectDirpath, bfspUserConfig, tsConfig);
+    const viteConfig = await generateViteConfig(bfspEnvConfig, bfspUserConfig, tsConfig);
     if (isDeepStrictEqual(preViteConfig, viteConfig)) {
       return;
     }

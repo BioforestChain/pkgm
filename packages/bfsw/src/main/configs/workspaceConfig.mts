@@ -1,18 +1,18 @@
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
-import { WorkspaceConfigBase } from "./WorkspaceConfig.base.mjs";
+import { $WorkspaceEnvConfig, WorkspaceConfigBase } from "./WorkspaceConfig.base.mjs";
 import { LoadConfig } from "./WorkspaceConfig.loader.mjs";
 export * from "./WorkspaceConfig.base.mjs";
 export * from "./WorkspaceConfig.loader.mjs";
 
 export class WorkspaceConfig extends WorkspaceConfigBase {
-  static async From(workspaceRoot: string, logger: PKGM.Logger) {
-    const initConfig = await LoadConfig(workspaceRoot, { logger });
+  static async From(workspaceEnvConfig: $WorkspaceEnvConfig, logger: PKGM.Logger) {
+    const initConfig = await LoadConfig(workspaceEnvConfig.workspaceDirpath, { logger });
     if (initConfig !== undefined) {
-      const wc = new WorkspaceConfig(workspaceRoot, initConfig, logger);
+      const wc = new WorkspaceConfig(workspaceEnvConfig, initConfig, logger);
       return wc;
     }
   }
-  static WatchFrom(workspaceRoot: string, logger: PKGM.Logger) {
+  static WatchFrom(workspaceEnvConfig: $WorkspaceEnvConfig, logger: PKGM.Logger) {
     const ac = new AbortController();
     const wcPo = new PromiseOut<WorkspaceConfig>();
     wcPo.onSuccess((wc) => {
@@ -20,11 +20,11 @@ export class WorkspaceConfig extends WorkspaceConfigBase {
     });
 
     (async () => {
-      const initConfig = await LoadConfig(workspaceRoot, {
+      const initConfig = await LoadConfig(workspaceEnvConfig.workspaceDirpath, {
         signal: ac.signal,
         watch: (newConfig) => {
           if (wcPo.value === undefined) {
-            const wc = new WorkspaceConfig(workspaceRoot, newConfig, logger);
+            const wc = new WorkspaceConfig(workspaceEnvConfig, newConfig, logger);
             wcPo.resolve(wc);
           } else {
             const wc = wcPo.value;
@@ -39,7 +39,7 @@ export class WorkspaceConfig extends WorkspaceConfigBase {
       }
 
       if (initConfig !== undefined) {
-        const wc = new WorkspaceConfig(workspaceRoot, initConfig, logger);
+        const wc = new WorkspaceConfig(workspaceEnvConfig, initConfig, logger);
         wcPo.resolve(wc);
       }
     })();
