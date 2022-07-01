@@ -1,4 +1,5 @@
-import { toPosixPath, writeJsonConfig } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import { writeJsonConfig } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
+import { toPosixPath } from "@bfchain/pkgm-base/toolkit/toolkit.path.mjs";
 import path from "node:path";
 
 export class WorkspaceTsConfig {

@@ -1,5 +1,5 @@
 import path from "node:path";
-import type { BuildResult } from "@bfchain/pkgm-base/lib/esbuild.mjs";
+import type { BuildResult } from "../lib/esbuild.mjs";
 
 import { ignoresCache } from "./toolkit.fs.mjs";
 import { getTwoExtnames, $PathInfo, toPosixPath } from "./toolkit.path.mjs";

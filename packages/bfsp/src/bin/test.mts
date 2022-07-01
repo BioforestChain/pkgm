@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import cp from "node:child_process";
-import { require } from "../sdk/toolkit/toolkit.require.mjs";
+import { require } from "@bfchain/pkgm-base/toolkit/toolkit.require.mjs";
 export const doTest = async (options: {
   root?: string;
   tests?: string[];

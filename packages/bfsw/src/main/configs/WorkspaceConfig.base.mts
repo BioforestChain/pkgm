@@ -1,3 +1,4 @@
+import { SharedAsyncIterable, SharedFollower } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
 import { EasyMap } from "@bfchain/pkgm-base/util/extends_map.mjs";
 import {
   $BfspUserConfig,
@@ -9,8 +10,6 @@ import {
   watchPackageJson,
   watchTsConfig,
   watchViteConfig,
-  SharedAsyncIterable,
-  SharedFollower,
   $BfspProjectConfig,
   $BfspEnvConfig,
   BFSP_MODE,

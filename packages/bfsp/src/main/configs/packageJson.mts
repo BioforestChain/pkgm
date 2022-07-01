@@ -3,13 +3,14 @@ import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import packageTemplateJson from "../../../assets/package.template.json" assert { type: "json" };
 import { DevLogger } from "../../sdk/logger/logger.mjs";
-import { parseFormats, writeJsonConfig } from "../../sdk/toolkit/toolkit.fs.mjs";
-import { toPosixPath, truncateWords } from "../../sdk/toolkit/toolkit.path.mjs";
-import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream.mjs";
-import { jsonClone } from "../../sdk/toolkit/toolkit.util.mjs";
+import { writeJsonConfig } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
+import { toPosixPath, truncateWords } from "@bfchain/pkgm-base/toolkit/toolkit.path.mjs";
+import { Loopable, SharedAsyncIterable, SharedFollower } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
+import { jsonClone } from "@bfchain/pkgm-base/toolkit/toolkit.util.mjs";
 import { $BfspEnvConfig } from "../bfspConfig.mjs";
 import type { $BfspUserConfig } from "./bfspUserConfig.mjs";
 import { $TsConfig } from "./tsConfig.mjs";
+import { parseFormats } from "../../helper/js_format.mjs";
 
 const debug = DevLogger("bfsp:config/package.json");
 // const format

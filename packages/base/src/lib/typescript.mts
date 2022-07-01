@@ -1,4 +1,4 @@
-import { require } from "../toolkit/commonjs_require.mjs";
+import { require } from "../toolkit/toolkit.require.mjs";
 import path from "node:path";
 import type $Typescript from "typescript";
 import typescript from "typescript";

@@ -1,9 +1,7 @@
 import { EventEmitter } from "node:events";
 import { setTimeout as sleep } from "node:timers/promises";
-import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
-import "@bfchain/pkgm-base/util/typings.mjs";
-
-import { DevLogger } from "../logger/logger.mjs";
+import { PromiseOut } from "../util/extends_promise_out.mjs";
+import "../util/typings.mjs";
 
 //#region 扩展AsyncGenerator的原型链
 
@@ -212,9 +210,10 @@ type DoClose<T> = (reasons: Set<T | undefined>) => unknown;
 export const Closeable = <T1 = unknown, T2 = unknown>(
   title: string,
   fun: (reasons: Set<T1 | undefined>) => BFChainUtil.PromiseMaybe<DoClose<T2>>,
-  defaultDebounce?: number
+  defaultDebounce?: number,
+  debug?: (...args: unknown[]) => void
 ) => {
-  const debug = DevLogger("bfsp:toolkit/closeable/" + title);
+  // const debug = DevLogger("bfsp:toolkit/closeable/" + title);
   let aborter: DoClose<T2> | undefined;
   let closing = false;
   let starting = false;
@@ -252,7 +251,7 @@ export const Closeable = <T1 = unknown, T2 = unknown>(
       if (cmd === undefined) {
         break;
       }
-      debug("cmd", cmd, state);
+      debug?.("cmd", cmd, state);
       if (cmd === "open") {
         if (state === "closed") {
           state = "opening";

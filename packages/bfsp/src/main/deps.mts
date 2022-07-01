@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from "node:util";
 import { runYarn } from "../bin/yarn/runner.mjs";
 import { $PackageJson } from "./configs/packageJson.mjs";
 import { DevLogger } from "../sdk/logger/logger.mjs";
-import { Loopable, SharedAsyncIterable, SharedFollower } from "../sdk/toolkit/toolkit.stream.mjs";
+import { Loopable, SharedAsyncIterable, SharedFollower } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
 import { getTui } from "../sdk/tui/index.mjs";
 import { sleep } from "@bfchain/pkgm-base/util/extends_promise.mjs";
 

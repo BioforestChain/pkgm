@@ -1,18 +1,13 @@
-import path from "node:path";
-import { pathToFileURL, fileURLToPath } from "node:url";
-import { isDeepStrictEqual } from "node:util";
-import { ignore } from "@bfchain/pkgm-base/lib/ignore.mjs";
-import { existsSync, mkdirSync, statSync, readFileSync, rmdirSync, symlinkSync, unlinkSync } from "node:fs";
+/// <reference path="../../typings/index.d.ts"/>
+import { existsSync, mkdirSync, statSync } from "node:fs";
 import { copyFile, readdir, readFile, unlink, writeFile } from "node:fs/promises";
-import type { ModuleFormat } from "@bfchain/pkgm-base/lib/rollup.mjs";
-import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
+import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
+import { ignore } from "../lib/ignore.mjs";
 
-import { DevLogger } from "../logger/logger.mjs";
-import { getCircularReplacer } from "./toolkit.util.mjs";
-import { require } from "./toolkit.require.mjs";
 import type {} from "@bfchain/util";
-
-const log = DevLogger("toolkit");
+import { require } from "./toolkit.require.mjs";
+import { getCircularReplacer } from "./toolkit.util.mjs";
 
 /**
  * 一个通用的基于时间的缓存器
@@ -65,7 +60,6 @@ export abstract class CacheWritter<K, V> extends CacheGetter<K, V> {
         (cache !== undefined && now - cache.time < this.cacheTime && cache.value !== val) ||
         (this.has(key) && this.isEqual(key, val, await this.get(key)))
       ) {
-        log("ignore write file", key);
         return;
       }
       cache = this._cache.get(key)!;
@@ -244,21 +238,6 @@ class FileIoCache extends CacheWritter<string, Buffer> {
 export const fileIO = new FileIoCache();
 //#endregion
 
-const EXTENSION_MAP = {
-  es: ".mjs",
-  esm: ".mjs",
-  module: ".mjs",
-  cjs: ".cjs",
-  commonjs: ".cjs",
-  iife: ".js",
-};
-export const parseExtensionAndFormat = (format: ModuleFormat | Bfsp.Format) => {
-  if (typeof format === "object") {
-    return { format: format.format, extension: format.ext };
-  }
-  return { format: format, extension: ((EXTENSION_MAP as any)[format] || ".js") as Bfsp.JsFormat };
-};
-
 /**
  * 批量复制文件（夹）
  * @param src
@@ -272,157 +251,12 @@ export async function cpr(src: string, dest: string) {
   }
 }
 
-export const ALLOW_FORMATS = new Set<Bfsp.JsFormat>(["iife", "cjs", "esm"]);
-export const isAllowedJsFormat = (format: any): format is Bfsp.JsFormat => {
-  return ALLOW_FORMATS.has(format as any);
-};
-export const toAllowedJsFormat = (format: any) => {
-  return isAllowedJsFormat(format) ? format : undefined;
-};
-export const parseFormats = (formats: Bfsp.Format[] = []) => {
-  const feList = formats.map((f) => parseExtensionAndFormat(f)).filter((fe) => ALLOW_FORMATS.has(fe.format as any));
-  const feMap = new Map(feList.map((fe) => [fe.format + "/" + fe.extension, fe]));
-  const validFeList = [...feMap.values()];
-  if (validFeList.length === 0) {
-    validFeList.push(parseExtensionAndFormat("esm"));
-  }
-  return validFeList as {
-    format: Bfsp.JsFormat;
-    extension: Bfsp.JsExtension;
-  }[];
-};
-
-declare module "node:vm" {
-  class Module {
-    context: any;
-    namespace: any;
-    identifier: string;
-    status: "unlinked" | "linking" | "linked" | "evaluated" | "evaluating" | "errored";
-    error?: any;
-    evaluate(options?: { timeout?: number; breakOnSigint?: boolean }): Promise<void>;
-    link(linker: Linker): Promise<void>;
-  }
-
-  type Linker = (specifier: string, referencingModule: Module, extra: {}) => BFChainUtil.PromiseMaybe<Module>;
-  class SourceTextModule extends Module {
-    constructor(code: string, options: { content: any });
-    createCachedData(): Buffer;
-  }
-}
-
-export const $readFromMjs2 = async <T extends unknown>(filename: string, logger: PKGM.Logger, refresh?: boolean) => {
-  const { SourceTextModule, createContext, Module } = await import("node:vm");
-
-  /// 简单用logger覆盖console
-  const customConsole = Object.create(console);
-  customConsole.log = logger.log;
-  customConsole.info = logger.info;
-  customConsole.warn = logger.warn;
-  customConsole.error = logger.error;
-
-  const ctx = createContext({
-    console: customConsole,
-  });
-  const script = new SourceTextModule(readFileSync(filename, "utf-8"), { content: ctx });
-  await script.link(async (specifier) => {
-    const context = await import(specifier);
-    const module = new Module();
-    module.context = context;
-    return module;
-    throw new Error(`Unable to resolve dependency: ${specifier}`);
-  });
-  await script.evaluate();
-
-  const { default: config } = script.namespace;
-  return config as T;
-};
-
-export const $readFromMjs = async <T extends unknown>(filename: string, logger: PKGM.Logger, unlink?: boolean) => {
-  const url = pathToFileURL(filename);
-  url.searchParams.append("_", Date.now().toString());
-
-  try {
-    const { default: config } = await import(url.href);
-    return config as T;
-  } catch (err) {
-    logger.error(err);
-  } finally {
-    if (unlink) {
-      existsSync(filename) && unlinkSync(filename);
-    }
-  }
-};
-
-export const DebounceLoadConfig = <T extends unknown>(filepath: string, logger: PKGM.TuiLogger, debounce = 50) => {
-  // const debounce  = 50
-  type LoadConfigTask = {
-    status: "debounce" | "loading" | "end";
-    task: PromiseOut<T | undefined>;
-    fileContent: string;
-  };
-  const loadConfigTaskList: LoadConfigTask[] = [];
-  const loadConfig = async () => {
-    const preTask = loadConfigTaskList[loadConfigTaskList.length - 1];
-    /// 如果在 debounce 中，说明代码还没执行，同时这个返回值已经被别人接手返回了，所以直接返回空就行
-    if (preTask?.status === "debounce") {
-      return;
-    }
-
-    /// 否则直接创建一个新的任务
-    const newTask: LoadConfigTask = {
-      status: "debounce",
-      task: new PromiseOut(),
-      fileContent: "",
-    };
-    loadConfigTaskList.push(newTask);
-    setTimeout(async () => {
-      newTask.status = "loading";
-      /// 加载脚本内容
-      newTask.fileContent = readFileSync(filepath, "utf-8");
-      /// 和上一次对比，如果脚本内容一样，那么不需要执行，直接返回空
-      if (newTask.fileContent === preTask?.fileContent) {
-        newTask.task.resolve(undefined);
-        return;
-      }
-
-      const newConfig = await $readFromMjs<T>(filepath, logger, true);
-      newTask.status = "end";
-      newTask.task.resolve(newConfig);
-    }, debounce);
-    return newTask.task.promise;
-  };
-  return loadConfig;
-};
-
 export async function writeJsonConfig(filepath: string, config: any) {
   await folderIO.tryInit(path.dirname(filepath));
   // getCircularReplacer解决对象循环引用
   await fileIO.set(filepath, Buffer.from(JSON.stringify(config, getCircularReplacer(), 2)), true);
 }
 
-export const getBfspDir = () => {
-  const pkg = require.resolve("@bfchain/pkgm-bfsp/package.json");
-  return path.dirname(pkg);
-};
-
-export const getBfswDir = () => {
-  const pkg = require.resolve("@bfchain/pkgm-bfsw/package.json");
-  return path.dirname(pkg);
-};
-export const getBfspWorkerDir = () => {
-  return path.join(getBfspDir(), "build/worker");
-};
-export const getBfspPackageJson = () => {
-  return require("@bfchain/pkgm-bfsp/package.json");
-};
-export const getBfspVersion = () => {
-  const version = getBfspPackageJson().version;
-  return version as string;
-};
-
-export const getBfswPackageJson = () => {
-  return require("@bfchain/pkgm-bfsw/package.json");
-};
-export const getBfswVersion = () => {
-  return getBfswPackageJson().version;
-};
+// export const getWorkerDir = () => {
+//   return path.join(path.dirname(require.resolve("@bfchain/pkgm-base/package.json")), "build/worker");
+// };

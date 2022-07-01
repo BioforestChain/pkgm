@@ -1,4 +1,4 @@
-import { SharedAsyncIterable } from "../sdk/toolkit/toolkit.stream.mjs";
+import { SharedAsyncIterable } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
 import { $BfspUserConfig, getBfspUserConfig, watchBfspUserConfig } from "./configs/bfspUserConfig.mjs";
 import { $GitIgnore, generateGitIgnore, watchGitIgnore, writeGitIgnore } from "./configs/gitIgnore.mjs";
 import { $NpmIgnore, generateNpmIgnore, watchNpmIgnore, writeNpmIgnore } from "./configs/npmIgnore.mjs";

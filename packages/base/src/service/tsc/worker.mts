@@ -1,9 +1,9 @@
-import { getTscPath, $Typescript } from "@bfchain/pkgm-base/lib/typescript.mjs";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createContext, runInContext, Script } from "node:vm";
 import { isMainThread, parentPort } from "node:worker_threads";
-import { require } from "../../sdk/toolkit/toolkit.require.mjs";
+import { $Typescript, getTscPath } from "../../lib/typescript.mjs";
+import { require } from "../../toolkit/toolkit.require.mjs";
 
 export function doTsc() {
   const tscPath = getTscPath();

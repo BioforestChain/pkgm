@@ -1,5 +1,6 @@
-import { FbWatchmanClient, SubscribeOptions, WatchProjectResponse } from "@bfchain/pkgm-base/lib/fb-watchman.mjs";
-import { EasyMap } from "@bfchain/pkgm-base/util/extends_map.mjs";
+/// <reference path="../../typings/index.d.ts"/>
+import { FbWatchmanClient, SubscribeOptions, WatchProjectResponse } from "../lib/fb-watchman.mjs";
+import { EasyMap } from "../util/extends_map.mjs";
 import { createHash } from "node:crypto";
 
 let _wm: FbWatchmanClient | undefined;

@@ -1,8 +1,8 @@
 import { resolve } from "node:path";
 import { DevLogger } from "../../sdk/logger/logger.mjs";
-import { SharedAsyncIterable, SharedFollower, Loopable } from "../../sdk/toolkit/toolkit.stream.mjs";
-import { fileIO } from "../../sdk/toolkit/toolkit.fs.mjs";
-import { isEqualSet } from "../../sdk/toolkit/toolkit.lang.mjs";
+import { SharedAsyncIterable, SharedFollower, Loopable } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
+import { fileIO } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
+import { isEqualSet } from "@bfchain/pkgm-base/toolkit/toolkit.lang.mjs";
 import { $BfspUserConfig } from "./bfspUserConfig.mjs";
 import { defaultIgnores, effectConfigIgnores } from "./commonIgnore.mjs";
 import { $BfspEnvConfig } from "../bfspConfig.mjs";

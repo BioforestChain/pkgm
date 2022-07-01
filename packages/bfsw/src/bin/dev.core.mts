@@ -1,15 +1,10 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
+import { slash } from "@bfchain/pkgm-base/toolkit/toolkit.path.mjs";
+import { Closeable } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
 import { Aborter } from "@bfchain/pkgm-base/util/aborter.mjs";
 import { safePromiseOffThen, safePromiseThen } from "@bfchain/pkgm-base/util/extends_promise_safe.mjs";
-import {
-  Closeable,
-  createTscLogger,
-  DevLogger,
-  getTui,
-  slash,
-  doDevBfsp,
-  runTsc,
-} from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import { createTscLogger, DevLogger, getTui, doDevBfsp } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import { runTsc } from "@bfchain/pkgm-base/service/tsc/runner.mjs";
 import path from "node:path";
 import { WorkspaceConfig } from "../main/configs/workspaceConfig.mjs";
 

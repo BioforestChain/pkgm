@@ -1,7 +1,10 @@
-import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
-import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-import { getBfspWorkerDir } from "../../sdk/toolkit/toolkit.fs.mjs";
+import { PromiseOut } from "../../util/extends_promise_out.mjs";
+
+export const getTscWorkerMjsPath = () => {
+  return fileURLToPath(new URL("worker.mjs", import.meta.url));
+};
 
 export interface RunTscOption {
   projectMode?: boolean;
@@ -14,7 +17,7 @@ export interface RunTscOption {
   watch?: boolean;
 }
 export const runTsc = (opts: RunTscOption) => {
-  let workerMjsPath = path.join(getBfspWorkerDir(), "tsc.mjs");
+  const workerMjsPath = getTscWorkerMjsPath();
   const tscWorker = new Worker(workerMjsPath, {
     argv: [opts.projectMode ? "-p" : "--build", opts.tsconfigPath, opts.watch ? "-w" : ""].filter(
       Boolean /* 一定要过滤掉空字符串，否则可能会被识别成文件名 */

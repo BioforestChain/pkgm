@@ -1,7 +1,7 @@
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { DevLogger } from "../../sdk/logger/logger.mjs";
-import { Loopable, SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream.mjs";
+import { Loopable, SharedAsyncIterable, SharedFollower } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
 import { $BfspEnvConfig } from "../bfspConfig.mjs";
 import type { $BfspUserConfig } from "./bfspUserConfig.mjs";
 import type { $TsConfig } from "./tsConfig.mjs";

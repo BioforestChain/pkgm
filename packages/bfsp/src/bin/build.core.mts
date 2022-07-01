@@ -12,12 +12,12 @@ import { $TsConfig, generateTsConfig, writeTsConfig } from "../main/configs/tsCo
 import { generateViteConfig } from "../main/configs/viteConfig.mjs";
 import * as consts from "../main/consts.mjs";
 import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger.mjs";
-import { walkFiles, writeJsonConfig } from "../sdk/toolkit/toolkit.fs.mjs";
-import { toPosixPath } from "../sdk/toolkit/toolkit.path.mjs";
+import { walkFiles, writeJsonConfig } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
+import { toPosixPath } from "@bfchain/pkgm-base/toolkit/toolkit.path.mjs";
 import { getTui, PanelStatus } from "../sdk/tui/index.mjs";
-import { runTsc } from "./tsc/runner.mjs";
 import { ViteConfigFactory } from "./vite/configFactory.mjs";
 import { runYarn } from "./yarn/runner.mjs";
+import { runTsc } from "@bfchain/pkgm-base/service/tsc/runner.mjs";
 const debug = DevLogger("bfsp:bin/build");
 
 export const installBuildDeps = async (options: { root: string }) => {

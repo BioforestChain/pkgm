@@ -1,14 +1,9 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
 import { build, Loader, Plugin } from "@bfchain/pkgm-base/lib/esbuild.mjs";
-import {
-  createTsconfigForEsbuild,
-  DebounceLoadConfig,
-  DevLogger,
-  fileIO,
-  folderIO,
-  printBuildResultWarnAndError,
-  toPosixPath,
-} from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import { fileIO, folderIO } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
+import { printBuildResultWarnAndError } from "@bfchain/pkgm-base/toolkit/toolkit.lang.mjs";
+import { toPosixPath } from "@bfchain/pkgm-base/toolkit/toolkit.path.mjs";
+import { createTsconfigForEsbuild, DebounceLoadConfig, DevLogger } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync } from "node:fs";
 import path, { resolve } from "node:path";

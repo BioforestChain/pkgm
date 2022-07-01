@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { require } from "../toolkit/commonjs_require.mjs";
+import { require } from "../toolkit/toolkit.require.mjs";
 
 const walkFiles = (dir: string) => {
   for (const item of fs.readdirSync(dir)) {

@@ -1,5 +1,5 @@
 import { defineTest } from "../test.mjs";
-import { rearrange } from "../sdk/toolkit/toolkit.util.mjs";
+import { rearrange } from "@bfchain/pkgm-base/toolkit/toolkit.util.mjs";
 
 defineTest("rearrange less 1", async (t) => {
   const items2 = [] as number[][];

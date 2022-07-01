@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 import { userInfo } from "node:os";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { folderIO, writeJsonConfig } from "../sdk/toolkit/toolkit.fs.mjs";
+import { folderIO, writeJsonConfig } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
 import { ts } from "./fmt.core.mjs";
 
 export const doCreateBfsp = async (

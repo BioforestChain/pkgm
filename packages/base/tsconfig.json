@@ -17,7 +17,19 @@
     "src/lib/typescript.mts",
     "src/lib/vite.mts",
     "src/lib/yarn.mts",
-    "src/toolkit/commonjs_require.mts",
+    "src/service/tsc/runner.mts",
+    "src/service/tsc/worker.mts",
+    "src/service/yarn/runner.mts",
+    "src/service/yarn/worker.mts",
+    "src/toolkit/index.mts",
+    "src/toolkit/toolkit.mts",
+    "src/toolkit/toolkit.fs.mts",
+    "src/toolkit/toolkit.lang.mts",
+    "src/toolkit/toolkit.path.mts",
+    "src/toolkit/toolkit.stream.mts",
+    "src/toolkit/toolkit.require.mts",
+    "src/toolkit/toolkit.util.mts",
+    "src/toolkit/toolkit.watcher.mts",
     "src/util/concurrent_limitter.mts",
     "src/util/aborter.mts",
     "src/util/extends_map.mts",
@@ -30,6 +42,7 @@
     "src/vite-config-helper/index.mts",
     "src/vite-config-helper/inputOutput.mts",
     "src/vite-config-helper/shebang.mts",
+    "src/types.mts"
   ],
   "references": []
 }

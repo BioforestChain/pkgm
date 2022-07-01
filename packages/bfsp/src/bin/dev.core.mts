@@ -6,7 +6,7 @@ import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
 import { isDeepStrictEqual } from "node:util";
 import { $WatchBfspProjectConfig } from "../main/bfspConfig.mjs";
 import { createTscLogger, createViteLogger, DevLogger } from "../sdk/logger/logger.mjs";
-import { Closeable } from "../sdk/toolkit/toolkit.stream.mjs";
+import { Closeable } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
 import { $LoggerKit, getTui } from "../sdk/tui/index.mjs";
 import { ViteConfigFactory } from "./vite/configFactory.mjs";
 

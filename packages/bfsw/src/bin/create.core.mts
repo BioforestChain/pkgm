@@ -1,11 +1,10 @@
+import { folderIO, writeJsonConfig } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
+import { joinMonoName } from "@bfchain/pkgm-base/toolkit/toolkit.util.mjs";
 import {
   defaultIgnores,
   doCreateBfsp,
   doInitGit,
-  ts,
-  folderIO,
-  writeJsonConfig,
-  joinMonoName,
+  ts
 } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";

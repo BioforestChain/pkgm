@@ -5,7 +5,6 @@ import cp from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { Worker } from "node:worker_threads";
 
 export interface RunYarnOption {
   root: string;

@@ -1,6 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { gitignoreListCache } from "../sdk/toolkit/toolkit.fs.mjs";
+import { gitignoreListCache } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
 import { defineTest } from "../test.mjs";
 
 const __filename = fileURLToPath(import.meta.url);

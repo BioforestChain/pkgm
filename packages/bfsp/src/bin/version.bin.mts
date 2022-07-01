@@ -1,7 +1,7 @@
-import { defineCommand } from "../bin.mjs";
-import { getBfspPackageJson } from "../sdk/toolkit/toolkit.fs.mjs";
-import { helpOptions } from "./help.core.mjs";
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
+import { defineCommand } from "../bin.mjs";
+import { getBfspPackageJson } from "../helper/path_getter.mjs";
+import { helpOptions } from "./help.core.mjs";
 
 export const versionCommand = defineCommand(
   "version",

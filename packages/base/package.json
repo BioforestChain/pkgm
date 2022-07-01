@@ -85,6 +85,72 @@
         "default": "./dist/src/lib/yarn.mjs"
       }
     },
+    "./service/tsc/runner.mjs": {
+      "import": {
+        "types": "./dist/src/service/tsc/runner.d.mts",
+        "default": "./dist/src/service/tsc/runner.mjs"
+      }
+    },
+    "./service/yarn/runner.mjs": {
+      "import": {
+        "types": "./dist/src/service/yarn/runner.d.mts",
+        "default": "./dist/src/service/yarn/runner.mjs"
+      }
+    },
+    "./toolkit/index.mjs": {
+      "import": {
+        "types": "./dist/src/toolkit/index.d.mts",
+        "default": "./dist/src/toolkit/index.mjs"
+      }
+    },
+    "./toolkit/toolkit.mjs": {
+      "import": {
+        "types": "./dist/src/toolkit/toolkit.d.mts",
+        "default": "./dist/src/toolkit/toolkit.mjs"
+      }
+    },
+    "./toolkit/toolkit.fs.mjs": {
+      "import": {
+        "types": "./dist/src/toolkit/toolkit.fs.d.mts",
+        "default": "./dist/src/toolkit/toolkit.fs.mjs"
+      }
+    },
+    "./toolkit/toolkit.lang.mjs": {
+      "import": {
+        "types": "./dist/src/toolkit/toolkit.lang.d.mts",
+        "default": "./dist/src/toolkit/toolkit.lang.mjs"
+      }
+    },
+    "./toolkit/toolkit.path.mjs": {
+      "import": {
+        "types": "./dist/src/toolkit/toolkit.path.d.mts",
+        "default": "./dist/src/toolkit/toolkit.path.mjs"
+      }
+    },
+    "./toolkit/toolkit.stream.mjs": {
+      "import": {
+        "types": "./dist/src/toolkit/toolkit.stream.d.mts",
+        "default": "./dist/src/toolkit/toolkit.stream.mjs"
+      }
+    },
+    "./toolkit/toolkit.require.mjs": {
+      "import": {
+        "types": "./dist/src/toolkit/toolkit.require.d.mts",
+        "default": "./dist/src/toolkit/toolkit.require.mjs"
+      }
+    },
+    "./toolkit/toolkit.util.mjs": {
+      "import": {
+        "types": "./dist/src/toolkit/toolkit.util.d.mts",
+        "default": "./dist/src/toolkit/toolkit.util.mjs"
+      }
+    },
+    "./toolkit/toolkit.watcher.mjs": {
+      "import": {
+        "types": "./dist/src/toolkit/toolkit.watcher.d.mts",
+        "default": "./dist/src/toolkit/toolkit.watcher.mjs"
+      }
+    },
     "./util/concurrent_limitter.mjs": {
       "import": {
         "types": "./dist/src/util/concurrent_limitter.d.mts",
@@ -132,11 +198,19 @@
         "types": "./dist/src/vite-config-helper/index.d.mts",
         "default": "./dist/src/vite-config-helper/index.mjs"
       }
+    },
+    "./types": {
+      "import": {
+        "types": "./typings/index.d.ts",
+        "default": "./dist/src/type.mjs"
+      }
     }
   },
   "scripts": {
     "up": "yarn upgrade-interactive",
     "tsc": "tsc --build tsconfig.json -w",
+    "bin:dev": "vite build --watch --minify=false --mode=bin",
+    "bin:build": "vite build --minify=false --mode=bin",
     "test": "ava"
   },
   "dependencies": {

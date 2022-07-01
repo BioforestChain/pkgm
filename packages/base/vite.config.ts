@@ -6,7 +6,8 @@ defineInputConfig({
   name: "bin",
   outDir: "build",
   input: {
-    "bfsp.bin": "./dist/src/bin/bfsp.cmd.mjs",
+    "worker/tsc": "./dist/src/service/tsc/worker.mjs",
+    "worker/yarn": "./dist/src/service/yarn/worker.mjs",
   },
   default: true,
 });

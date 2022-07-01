@@ -1,12 +1,12 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
 import path from "node:path";
 import { defineCommand } from "../bin.mjs";
+import { toAllowedJsFormat } from "../helper/js_format.mjs";
 import {
   BFSP_MODE, getBfspProjectConfig, watchBfspProjectConfig,
   writeBfspProjectConfig
 } from "../main/bfspConfig.mjs";
 import { DevLogger } from "../sdk/logger/logger.mjs";
-import { toAllowedJsFormat } from "../sdk/toolkit/toolkit.fs.mjs";
 import { getTui } from "../sdk/tui/index.mjs";
 import { doDevBfsp } from "./dev.core.mjs";
 import { helpOptions } from "./help.core.mjs";

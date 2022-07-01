@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getExternalOption } from "../vite-config-helper/external.mjs";
-import { require } from "../toolkit/commonjs_require.mjs";
+import { require } from "../toolkit/toolkit.require.mjs";
 import { extension, libFormat } from "../vite-config-helper/extension.mjs";
 
 const walkFiles = (dir: string) => {

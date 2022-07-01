@@ -1,6 +1,6 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
-import { require } from "../toolkit/commonjs_require.mjs";
+import { require } from "../toolkit/toolkit.require.mjs";
 let yarnPath: string | undefined;
 export const getYarnPath = () => {
   if (yarnPath === undefined) {
@@ -9,4 +9,13 @@ export const getYarnPath = () => {
     yarnPath = path.join(path.dirname(packageJsonFile), packageJson.bin.yarn);
   }
   return yarnPath;
+};
+
+let yarnCli: { start: () => Promise<void> } | undefined;
+export const getYarnCli = () => {
+  if (yarnCli === undefined) {
+    const packageJsonFile = require.resolve("yarn/package.json");
+    yarnCli = require(path.join(path.dirname(packageJsonFile), "lib/cli.js"));
+  }
+  return yarnCli!;
 };

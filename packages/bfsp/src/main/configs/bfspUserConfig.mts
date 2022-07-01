@@ -1,5 +1,8 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
 import { build, Plugin } from "@bfchain/pkgm-base/lib/esbuild.mjs";
+import { fileIO, folderIO } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
+import { printBuildResultWarnAndError } from "@bfchain/pkgm-base/toolkit/toolkit.lang.mjs";
+import { SharedAsyncIterable, SharedFollower } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
@@ -7,13 +10,12 @@ import { tmpdir } from "node:os";
 import path, { resolve } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import bfspTsconfigJson from "../../../assets/tsconfig.bfsp.json" assert { type: "json" };
-import * as consts from "../consts.mjs";
+import { parseFormats } from "../../helper/js_format.mjs";
+import { DebounceLoadConfig } from "../../helper/js_loader.mjs";
 import { DevLogger } from "../../sdk/logger/logger.mjs";
-import { parseExports } from "../../sdk/toolkit/toolkit.mjs";
-import { fileIO, folderIO, parseFormats, DebounceLoadConfig } from "../../sdk/toolkit/toolkit.fs.mjs";
-import { SharedAsyncIterable, SharedFollower } from "../../sdk/toolkit/toolkit.stream.mjs";
-import { printBuildResultWarnAndError } from "../../sdk/toolkit/toolkit.lang.mjs";
 import { $BfspEnvConfig } from "../bfspConfig.mjs";
+import * as consts from "../consts.mjs";
+import { parseExports } from "./bfspUserConfig.parseExports.mjs";
 
 const debug = DevLogger("bfsp:config/#bfsp");
 

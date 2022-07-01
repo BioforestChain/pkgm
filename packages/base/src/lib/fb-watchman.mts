@@ -3,7 +3,7 @@ import { Client } from "fb-watchman";
 import { spawnSync } from "node:child_process";
 import { arch, platform } from "node:os";
 import path from "node:path";
-import { require } from "../toolkit/commonjs_require.mjs";
+import { require } from "../toolkit/toolkit.require.mjs";
 let watchmanBinaryPath: string | undefined;
 /**
  * 检测是否有全局安装watchman

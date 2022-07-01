@@ -1,4 +1,4 @@
-import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
+import { PromiseOut } from "../util/extends_promise_out.mjs";
 
 export const jsonClone = <T extends unknown>(obj: T) => JSON.parse(JSON.stringify(obj)) as T;
 
