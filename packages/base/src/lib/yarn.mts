@@ -46,6 +46,11 @@ const _initYarnCli = async (onData: (data: unknown) => void, onError: (err: unkn
       onError(e);
     }
   });
+  const _process_on_cache_: Array<BFChainUtil.AllArgument<typeof process.on>> = [];
+  process.on("newListener", (eventName: string, listener: (...args: any[]) => void) => {
+    _process_on_cache_.push([eventName, listener]);
+  });
+
   const packageJsonFile = require.resolve("yarn/package.json");
   const yarnPath = getYarnPath();
   process.argv = ["node", yarnPath, "--version"];
@@ -54,6 +59,13 @@ const _initYarnCli = async (onData: (data: unknown) => void, onError: (err: unkn
   /// 等待 yarn --version 返回
   await t.promise;
   const run = async (argv: string[]): Promise<void> => {
+    /// 清理所有的事件绑定
+    for (const args of _process_on_cache_) {
+      process.off(...args);
+    }
+    _process_on_cache_.length = 0;
+
+    /// 重新绑定指令
     process.argv = ["node", yarnPath, ...argv];
     try {
       await cli.default();
