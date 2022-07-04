@@ -67,7 +67,7 @@ export const doDevBfsw = async (args: { workspaceConfig: WorkspaceConfig; format
             }),
           }
         );
-        continue;
+
         const bfspLogger = bfspLoggerKit.logger;
         devBfsp.onStart(async () => {
           if (bfspLogger.hasLoading("doDev") === false) {

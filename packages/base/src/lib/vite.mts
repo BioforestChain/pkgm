@@ -1,9 +1,7 @@
 /// <reference path="../../typings/acorn-import-assertions.d.ts"/>
 import fs from "node:fs";
 import path from "node:path";
-import { getExternalOption } from "../vite-config-helper/external.mjs";
 import { require } from "../toolkit/toolkit.require.mjs";
-import { extension, libFormat } from "../vite-config-helper/extension.mjs";
 
 const walkFiles = (dir: string) => {
   for (const item of fs.readdirSync(dir)) {
@@ -51,23 +49,26 @@ export const defineViteStdoutApis = (apis: { writeLine: (log: string) => void; c
 
 export type { InlineConfig, LogErrorOptions, Logger, LoggerOptions, LogLevel, LogType } from "vite";
 
-import { importAssertionsPlugin } from "rollup-plugin-import-assert";
-import { importAssertions } from "acorn-import-assertions";
+// import { getExternalOption } from "../vite-config-helper/external.mjs";
+// import { extension, libFormat } from "../vite-config-helper/extension.mjs";
 
-export const genRollupOptions = async (input: { [name: string]: string }, dirname: string) => {
-  return {
-    preserveEntrySignatures: "strict",
-    external: await getExternalOption(dirname),
-    input: input,
-    output: {
-      /// 单个文件模块就算了
-      preserveModules: false, // Object.keys(input).length === 1 ? false : true,
-      manualChunks: undefined,
-      entryFileNames: `[name]${extension}`,
-      chunkFileNames: `chunk/[name]${extension}`,
-      format: libFormat,
-    },
-    acornInjectPlugins: [importAssertions],
-    plugins: [importAssertionsPlugin()],
-  };
-};
+// import { importAssertionsPlugin } from "rollup-plugin-import-assert";
+// import { importAssertions } from "acorn-import-assertions";
+
+// export const genRollupOptions = async (input: { [name: string]: string }, dirname: string) => {
+//   return {
+//     preserveEntrySignatures: "strict",
+//     external: await getExternalOption(dirname),
+//     input: input,
+//     output: {
+//       /// 单个文件模块就算了
+//       preserveModules: false, // Object.keys(input).length === 1 ? false : true,
+//       manualChunks: undefined,
+//       entryFileNames: `[name]${extension}`,
+//       chunkFileNames: `chunk/[name]${extension}`,
+//       format: libFormat,
+//     },
+//     acornInjectPlugins: [importAssertions],
+//     plugins: [importAssertionsPlugin()],
+//   };
+// };

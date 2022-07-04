@@ -30,7 +30,7 @@ import type { ExternalOption } from "rollup";
 //     .map((a: any) => [a.name, ...(a.children?.map((c: any) => c.name) ?? [])]);
 // };
 
-import { runYarnListProd } from "../service/yarn/runner.mjs";
+import { $YarnListRes, runYarnListProd } from "../service/yarn/runner.mjs";
 const getDepsInfo = async (cwd: string) => {
   const data = await runYarnListProd(cwd, { serviceId: "vite" });
   if (!data) {
@@ -45,63 +45,30 @@ const getDepsInfo = async (cwd: string) => {
 
 export const getExternalOption = async (
   dirname: string,
-  currentPkgName?: string
+  currentPkgName?: string,
+  depsInfo?: $YarnListRes | $YarnListRes.Tree
 ): Promise<ExternalOption | undefined> => {
-  const nodejsModules = new Set([
-    "assert",
-    "async_hooks",
-    "buffer",
-    "child_process",
-    "cluster",
-    "console",
-    "constants",
-    "crypto",
-    "dgram",
-    "diagnostics_channel",
-    "dns",
-    "domain",
-    "events",
-    "fs",
-    "http",
-    "http2",
-    "https",
-    "index",
-    "inspector",
-    "module",
-    "net",
-    "os",
-    "path",
-    "perf_hooks",
-    "process",
-    "punycode",
-    "querystring",
-    "readline",
-    "repl",
-    "stream",
-    "string_decoder",
-    "timers",
-    "tls",
-    "trace_events",
-    "tty",
-    "url",
-    "util",
-    "v8",
-    "vm",
-    "wasi",
-    "worker_threads",
-    "zlib",
-  ]);
-
-  const depsInfo = await getDepsInfo(dirname);
-  if (!depsInfo?.data) return;
   if (currentPkgName === undefined) {
     currentPkgName = JSON.parse(readFileSync(path.resolve(dirname, "package.json"), "utf-8")).name as string;
   }
-
   const allowExternals = new Set<string>([currentPkgName]);
-  for (const item of depsInfo.data.trees) {
-    const pkgName = item.name.match(/(.+?)@/)[1];
-    allowExternals.add(pkgName);
+
+  depsInfo ??= await getDepsInfo(dirname);
+  if (depsInfo) {
+    const saveItems = (item: $YarnListRes.Tree | $YarnListRes.Child) => {
+      const pkgName = item.name.match(/(.+?)@/)![1];
+      allowExternals.add(pkgName);
+      item.children?.forEach(saveItems);
+    };
+    if ("type" in depsInfo) {
+      /// RootObject
+      for (const item of depsInfo.data.trees) {
+        saveItems(item);
+      }
+    } else {
+      /// Tree
+      saveItems(depsInfo);
+    }
   }
   const disallowExternals = new Set(["@bfchain/pkgm-base", "@bfchain/pkgm-bfsp", "@bfchain/pkgm-bfsw"]);
 
@@ -166,12 +133,28 @@ export const getExternalOption = async (
     // }
     // console.log("include", source);
   };
-  // return (...args) => {
-  //   const res = ext(...args);
-  //   if (!res) {
-  //     console.log("inline source:", args[0]);
-  //   }
-  //   return res;
-  // };
+  return (...args) => {
+    const res = ext(...args);
+    if (
+      !res &&
+      /^[\.\/]+/.test(args[0]) === false &&
+      /^#/.test(args[0]) === false &&
+      path.normalize(args[0]).startsWith(dirname) === false
+    ) {
+      depsInfo;
+      allowExternals;
+      console.log("inline source:", args[0]);
+      throw new Error(
+        `missing dependencie of ${args[0]} from source-file: ${args[1] ? path.relative(dirname, args[1]) : "<null>"}`
+      );
+    }
+    return res;
+  };
   return ext;
 };
+
+const nodejsModules = new Set(
+  JSON.parse(
+    '["assert","async_hooks","buffer","child_process","cluster","console","constants","crypto","dgram","diagnostics_channel","dns","domain","events","fs","http","http2","https","index","inspector","module","net","os","path","perf_hooks","process","punycode","querystring","readline","repl","stream","string_decoder","timers","tls","trace_events","tty","url","util","v8","vm","wasi","worker_threads","zlib"]'
+  )
+);

@@ -5,6 +5,7 @@ import { DevLogger } from "../sdk/logger/logger.mjs";
 import { Loopable, SharedAsyncIterable, SharedFollower } from "@bfchain/pkgm-base/toolkit/toolkit.stream.mjs";
 import { getTui } from "../sdk/tui/index.mjs";
 import { sleep } from "@bfchain/pkgm-base/util/extends_promise.mjs";
+import { $YarnListRes } from "@bfchain/pkgm-base/service/yarn/runner.mjs";
 
 const debug = DevLogger("bfsp:deps");
 type DepsEventCallback = () => unknown;
@@ -25,13 +26,14 @@ export type $WatchDepsStream = ReturnType<typeof doWatchDeps>;
 export const doWatchDeps = (
   projectDirpath: string,
   packageJsonStream: SharedAsyncIterable</*$PackageJson:*/ any>,
-  options: { runInstall: boolean; runListGetter?: () => string[] }
+  options: { runInstall: boolean; rootPackageNameListGetter: () => string[] }
 ) => {
   const { runInstall = false } = options;
   let startInstallCb: DepsEventCallback | undefined;
   let preDeps: ReturnType<typeof comparablePackageJsonDependencies>;
-  type InstallDepsStates = "start" | "success" | "fail";
-  const follower = new SharedFollower<InstallDepsStates>();
+  const follower = new SharedFollower<
+    { state: "start" } | { state: "success"; info?: $YarnListRes } | { state: "fail" }
+  >();
   let stopper: (() => void) | undefined;
   const loopable = Loopable(
     "watch deps",
@@ -47,12 +49,12 @@ export const doWatchDeps = (
         debug(`deps changed: ${projectDirpath}`);
         const depsPanel = getTui().getPanel("Deps");
 
-        follower.push("start");
+        follower.push({ state: "start" });
         depsPanel.updateStatus("loading");
         const yarnTask = runYarn({
           root: projectDirpath,
           logger: depsPanel.depsLogger,
-          rootPackageNameList: options.runListGetter?.(),
+          rootPackageNameList: options.rootPackageNameListGetter(),
         });
         stopper = () => {
           offStopper();
@@ -61,13 +63,16 @@ export const doWatchDeps = (
           preDeps = undefined;
         };
         const offStopper = stream.onStop(stopper);
-
-        const isSuccess = await yarnTask.afterDone;
-
-        follower.push(isSuccess ? "success" : "fail");
-        depsPanel.updateStatus(isSuccess ? "success" : "error");
+        await yarnTask.afterDone;
+        if (yarnTask.success) {
+          follower.push({ state: "success", info: yarnTask.yarnListRes });
+          depsPanel.updateStatus("success");
+        } else {
+          follower.push({ state: "fail" });
+          depsPanel.updateStatus("error");
+        }
       } else {
-        follower.push("success");
+        follower.push({ state: "success" });
       }
     },
     100
@@ -85,7 +90,7 @@ export const doWatchDeps = (
     loopable.loop();
   }
 
-  const stream = new SharedAsyncIterable<InstallDepsStates>(follower);
+  const stream = new SharedAsyncIterable(follower);
 
   return stream;
 };

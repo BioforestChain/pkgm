@@ -1,5 +1,6 @@
 import { chalk } from "@bfchain/pkgm-base/lib/chalk.mjs";
 import { getYarnPath } from "@bfchain/pkgm-base/lib/yarn.mjs";
+import { $YarnListRes } from "@bfchain/pkgm-base/service/yarn/runner.mjs";
 import { PromiseOut } from "@bfchain/pkgm-base/util/extends_promise_out.mjs";
 import cp from "node:child_process";
 import fs from "node:fs";
@@ -67,7 +68,27 @@ export const linkBFChainPkgmModules = (root: string) => {
   }
 };
 
-export const runYarn = (args: RunYarnOption) => {
+export const runYarn: {
+  (args: RunYarnOption & Required<Pick<RunYarnOption, "rootPackageNameList">>):
+    | {
+        stop(): void;
+        afterDone: Promise<boolean>;
+        success: true;
+        yarnListRes: $YarnListRes.RootObject;
+      }
+    | {
+        stop(): void;
+        afterDone: Promise<boolean>;
+        success: false;
+        yarnListRes: undefined;
+      };
+  (args: RunYarnOption): {
+    stop(): void;
+    afterDone: Promise<boolean>;
+    success: boolean;
+    yarnListRes: $YarnListRes.RootObject | undefined;
+  };
+} = (args: RunYarnOption) => {
   let yarnRunSuccess = true;
   const donePo = new PromiseOut<boolean>();
   const ac = new AbortController();
@@ -76,6 +97,9 @@ export const runYarn = (args: RunYarnOption) => {
       ac.abort();
     },
     afterDone: donePo.promise,
+    success: false,
+    /**如果提供了rootPackageNameList对象，只要yarn install成功了，那么必然会有yarnListRes */
+    yarnListRes: undefined as $YarnListRes | undefined,
   };
 
   (() => {
@@ -196,7 +220,7 @@ export const runYarn = (args: RunYarnOption) => {
       /// 如果可以，打印出 yarn list
       const rootPackageNameList = args.rootPackageNameList;
       if (yarnRunSuccess && rootPackageNameList !== undefined) {
-        runYarnList({
+        ret.yarnListRes = await printYarnList({
           root,
           logger,
           rootPackageNameList,
@@ -204,12 +228,12 @@ export const runYarn = (args: RunYarnOption) => {
         });
       }
 
-      donePo.resolve(yarnRunSuccess);
+      donePo.resolve((ret.success = yarnRunSuccess));
       args.onExit?.(yarnRunSuccess);
     });
   })();
 
-  return ret;
+  return ret as never /* 前面已经有类型约束了，这里跟着走就行 */;
 };
 
 interface RunYarnListOption {
@@ -219,7 +243,7 @@ interface RunYarnListOption {
   signal: AbortSignal;
 }
 
-const runYarnList = (args: RunYarnListOption) => {
+const printYarnList = async (args: RunYarnListOption) => {
   const yarnPath = getYarnPath();
   const { logger } = args;
   logger.log.pin("yarn-list", "list deps...");
@@ -228,31 +252,30 @@ const runYarnList = (args: RunYarnListOption) => {
     env: {},
     signal: args.signal,
   });
-  listSpawn.stdout.on("data", (chunk) => {
+  for await (const chunk of listSpawn.stdout) {
     try {
-      const data = JSON.parse(String(chunk));
+      const data = JSON.parse(String(chunk)) as $YarnListRes;
       if (data.type === "tree" && data.data.type === "list") {
-        const trees: Tree[] = data.data.trees;
-        const treeMap = groupTree(trees);
+        const trees = data.data.trees;
+        const group = groupTree(trees);
         const rootNames = new Set(args.rootPackageNameList);
-        const logs = logTree(treeMap, trees, (tree) => rootNames.has(tree.sname), args.rootPackageNameList);
+        const logs = logTree(
+          group.rootMap,
+          group.allList,
+          (tree) => rootNames.has(tree.sname),
+          args.rootPackageNameList
+        );
         logger.log.unpin("yarn-list");
         logger.clear();
         const title = chalk.cyanBright("Dependencies list by yarn");
         logger.log(title);
         logger.log(logs.join("\n"));
+        return data;
       }
-    } catch {}
-  });
-  return new Promise<boolean>((resolve) => {
-    listSpawn.once("exit", () => {
-      resolve(true);
-    });
-    /// 有signal的话，一定要提供 error 监听，否则会抛出异常到全局
-    listSpawn.once("error", () => {
-      resolve(false);
-    });
-  });
+    } catch (err) {
+      debugger;
+    }
+  }
 };
 
 type Tree = {
@@ -266,7 +289,7 @@ type Tree = {
 const logTree = (
   map: Map<string, Tree>,
   trees: Tree[],
-  isRoot = (tree: Tree) => true,
+  isRoot = (_tree: Tree) => true,
   rootPackageNameList: string[] = [],
   logs: string[] = [],
   prefix = "",
@@ -317,21 +340,27 @@ const logTree = (
   }
   return logs;
 };
-const groupTree = (trees: Tree[], map = new Map<string, Tree>()) => {
-  for (const tree of trees) {
-    const name_version = tree.name.match(/(@?[^@]+)@(.+)/);
-    if (name_version) {
-      tree.sname = name_version[1];
-      tree.rversion = name_version[2];
-      tree.version = tree.rversion.replace(/^\^|^\~/, "");
-      //   console.log(name_version);
+const groupTree = (trees: $YarnListRes.Tree[], rootMap = new Map<string, Tree>(), allList: Tree[] = []) => {
+  for (const item of trees) {
+    genTree(item, (tree) => {
+      allList.push(tree);
       if (tree.depth === 0) {
-        map.set(tree.sname, tree);
+        rootMap.set(tree.sname, tree);
       }
-    }
-    if (tree.children) {
-      groupTree(tree.children, map);
-    }
+    });
   }
-  return map;
+  return { rootMap, allList };
+};
+const genTree = (item: $YarnListRes.Tree | $YarnListRes.Child, onGen: (tree: Tree) => void) => {
+  const [_, sname, rversion] = item.name.match(/(.+)@(.+)/)!;
+  const tree: Tree = {
+    sname,
+    rversion,
+    version: rversion.replace(/^\^|^\~/, ""),
+    depth: item.depth,
+    name: item.name,
+    children: (item.children ?? []).map((c) => genTree(c, onGen)),
+  };
+  onGen(tree);
+  return tree;
 };

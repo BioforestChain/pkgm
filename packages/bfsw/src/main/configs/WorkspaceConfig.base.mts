@@ -243,7 +243,7 @@ export class WorkspaceConfigBase {
       new SharedAsyncIterable<$UnitunifyPackageJson>(this._watchDepsFollower),
       {
         runInstall: true,
-        runListGetter: () => {
+        rootPackageNameListGetter: () => {
           return this.projects.map((p) => p.packageJson?.name ?? p.name);
         },
       }

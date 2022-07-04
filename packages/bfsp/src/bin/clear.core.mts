@@ -16,6 +16,7 @@ export const doClearBfsp = async (args: { root: string }, logger: PKGM.Logger) =
     const packageJsonFilepath = path.join(root, "package.json");
     const gitignoreFilepath = path.join(root, ".gitignore");
     const npmignoreFilepath = path.join(root, ".npmignore");
+    const yarnLockFilepath = path.join(root, "yarn.lock");
     // yarn.lock 暂时不删除，如果要的话，需要把 node_modules 也一起删掉
     logger.info("removing config files");
     for (const filepath of [
@@ -25,6 +26,7 @@ export const doClearBfsp = async (args: { root: string }, logger: PKGM.Logger) =
       packageJsonFilepath,
       gitignoreFilepath,
       npmignoreFilepath,
+      yarnLockFilepath,
     ]) {
       fs.rmSync(filepath, { /* 避免文件不存在时也报错 */ force: true });
     }

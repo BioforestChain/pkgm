@@ -1,5 +1,6 @@
 import { $Typescript, getTypescript, transpileModule } from "@bfchain/pkgm-base/lib/typescript.mjs";
 import type { InlineConfig } from "@bfchain/pkgm-base/lib/vite.mjs";
+import { $YarnListRes } from "@bfchain/pkgm-base/service/yarn/runner.mjs";
 import { getExternalOption } from "@bfchain/pkgm-base/vite-config-helper/index.mjs";
 import fs from "node:fs";
 import path from "node:path";
@@ -20,8 +21,9 @@ export const ViteConfigFactory = async (options: {
   outRoot?: string;
   outSubPath?: string;
   logger: PKGM.Logger;
+  rootDepsInfo?: $YarnListRes;
 }) => {
-  const { userConfig, tsConfig, projectDirpath, viteConfig } = options;
+  const { userConfig, tsConfig, projectDirpath, viteConfig, rootDepsInfo } = options;
   const logger = options.logger;
 
   const fe = parseExtensionAndFormat(options.format ?? "esm");
@@ -59,7 +61,11 @@ export const ViteConfigFactory = async (options: {
                   return true;
                 }
               }
-            : await getExternalOption(projectDirpath, userConfig.name),
+            : await getExternalOption(
+                projectDirpath,
+                userConfig.name,
+                rootDepsInfo?.data.trees.find((t) => t.name.startsWith(userConfig.name + "@"))
+              ),
         input: viteConfig.viteInput,
         output: {
           preserveModules: true,

@@ -67,7 +67,7 @@ export const runYarnListProd = async (cwd: string, options: { serviceId?: string
     };
     const yarnWorker = await service.yarnWorkerPromise;
     yarnWorker.postMessage(msg);
-    let res: any;
+    let res: $YarnListRes | undefined;
     const onMessage = (backMsg: any) => {
       if (backMsg.type === "data") {
         try {
@@ -88,3 +88,33 @@ export const runYarnListProd = async (cwd: string, options: { serviceId?: string
     task.resolve();
   }
 };
+
+export type $YarnListRes = $YarnListRes.RootObject;
+
+export namespace $YarnListRes {
+  export interface Child {
+    name: string;
+    // color: string;
+    // shadow: boolean;
+    children?: Child[];
+    depth: undefined;
+  }
+
+  export interface Tree {
+    name: string;
+    children: Child[];
+    // hint?: any;
+    // color: string;
+    depth: number;
+  }
+
+  export interface Data {
+    type: "list";
+    trees: Tree[];
+  }
+
+  export interface RootObject {
+    type: "tree";
+    data: Data;
+  }
+}

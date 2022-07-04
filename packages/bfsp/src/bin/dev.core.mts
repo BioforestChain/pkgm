@@ -50,6 +50,12 @@ export const doDevBfsp = (
         const userConfig = await subStreams.userConfigStream.waitCurrent();
         const viteConfig = await subStreams.viteConfigStream.waitCurrent();
         const tsConfig = await subStreams.tsConfigStream.waitCurrent();
+        const depsInfo = await subStreams.getDepsInstallStream().waitCurrent();
+        /// 等待依赖成功安装
+        const rootDepsInfo = depsInfo.state === "success" ? depsInfo.info : undefined;
+        if (!rootDepsInfo) {
+          return;
+        }
 
         const viteConfigBuildOptions = {
           userConfig: userConfig.userConfig,
@@ -58,6 +64,7 @@ export const doDevBfsp = (
           tsConfig,
           format: format ?? userConfig.userConfig.formats?.[0],
           logger,
+          rootDepsInfo,
         };
         if (isDeepStrictEqual(viteConfigBuildOptions, preViteConfigBuildOptions)) {
           return;
@@ -143,7 +150,7 @@ export const doDevBfsp = (
   subStreams.userConfigStream.onNext(() => abortable.restart("userConfig changed"));
   subStreams.viteConfigStream.onNext(() => abortable.restart("viteConfig changed"));
   subStreams.tsConfigStream.onNext(() => abortable.restart("tsConfig changed"));
-  subStreams.getDepsInstallStream().onNext((state) => {
+  subStreams.getDepsInstallStream().onNext(({ state }) => {
     switch (state) {
       case "start":
         /// 开始安装依赖时，暂停编译，解除文件占用
@@ -160,7 +167,7 @@ export const doDevBfsp = (
   });
 
   /// 如果配置齐全，那么直接开始
-  if (subStreams.viteConfigStream.hasCurrent() && subStreams.getDepsInstallStream().current === "success") {
+  if (subStreams.viteConfigStream.hasCurrent() && subStreams.getDepsInstallStream().current?.state === "success") {
     abortable.start();
   }
 

@@ -113,7 +113,7 @@ export const watchBfspProjectConfig = (
     getDepsInstallStream() {
       return (_watchDepsStream ??= doWatchDeps(projectDirpath, packageJsonStream, {
         runInstall: true,
-        runListGetter() {
+        rootPackageNameListGetter() {
           const userConfig = projectConfig.user.userConfig;
           return [userConfig.packageJson?.name ?? userConfig.name];
         },
