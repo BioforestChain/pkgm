@@ -14,6 +14,7 @@ import {
   $BfspEnvConfig,
   BFSP_MODE,
 } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import { cacheGetter } from "@bfchain/util-decorator";
 import EventEmitter from "node:events";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
@@ -248,6 +249,13 @@ export class WorkspaceConfigBase {
         },
       }
     ));
+  }
+
+  watchDepsInstallStream(watcher: BFChainUtil.FirstArgument<WorkspaceConfigBase["_watchDepsStream"]["onNext"]>) {
+    if (this._watchDepsStream.hasCurrent()) {
+      watcher(this._watchDepsStream.current!);
+    }
+    return this._watchDepsStream.onNext(watcher);
   }
 
   private _doWatchDeps(bfspEnvConfig: $BfspEnvConfig, packageJsonStream: SharedAsyncIterable<$PackageJson>) {

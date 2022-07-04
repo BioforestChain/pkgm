@@ -1,6 +1,6 @@
 declare namespace PKGM {
-  type Print = (format?: any, ...param: any[]) => void;
-  type Pin = (label: string, format?: any, ...param: any[]) => void;
+  type Print = (format_or_msg?: any, ...param: any[]) => void;
+  type Pin = (label: string, format_or_msg?: any, ...param: any[]) => void;
   type UnPin = (label: string) => void;
   type Clear = () => void;
   type PipeFrom = (stream: import("node:stream").Readable) => void;

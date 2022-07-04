@@ -166,15 +166,34 @@ export const runBfswTsc = (workspaceConfig: WorkspaceConfig) => {
       })
       .join("\n");
   };
+  let started = false;
+  const firstStart = () => {
+    if (started) {
+      return false;
+    }
+    started = true;
+    workspaceConfig.removeProjectRootsStream.onNext((projectRoots) =>
+      doTsc.restart(formatProjectRoots(projectRoots, chalk.yellow("remove")))
+    );
+    workspaceConfig.addProjectRootsStream.onNext((projectRoots) =>
+      doTsc.restart(formatProjectRoots(projectRoots, chalk.green("add")))
+    );
+    if (workspaceConfig.projectConfigStreamsMapStream.hasCurrent()) {
+      doTsc.start();
+    }
+    return true;
+  };
+  tscPanel.logger.log.pin("waiting-install-deps", "waiting install dependencies");
+  workspaceConfig.watchDepsInstallStream((info) => {
+    if (info.state === "success") {
+      const isFirstStart = firstStart();
+      if (isFirstStart) {
+        tscPanel.logger.log.unpin("waiting-install-deps");
+      } else if (/* isFirstStart === false && */ workspaceConfig.projectConfigStreamsMapStream.hasCurrent()) {
+        doTsc.restart("deps installed");
+      }
+    }
+  });
 
-  workspaceConfig.removeProjectRootsStream.onNext((projectRoots) =>
-    doTsc.restart(formatProjectRoots(projectRoots, chalk.yellow("remove")))
-  );
-  workspaceConfig.addProjectRootsStream.onNext((projectRoots) =>
-    doTsc.restart(formatProjectRoots(projectRoots, chalk.green("add")))
-  );
-  if (workspaceConfig.projectConfigStreamsMapStream.hasCurrent()) {
-    doTsc.start();
-  }
   return doTsc;
 };
