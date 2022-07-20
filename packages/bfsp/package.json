@@ -48,7 +48,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsp": "./dist/src/bin/bfsp.cmd.mjs"
+    "bfsp": "./dist/src/bin.mjs"
   },
   "files": [
     "dist",
