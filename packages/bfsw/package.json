@@ -17,8 +17,8 @@
     },
     "./bfsw": {
       "import": {
-        "types": "./dist/src/bin/bfsw.bin.d.mts",
-        "default": "./dist/src/bin/bfsw.bin.mjs"
+        "types": "./dist/src/bin/bfsw.cmd.d.mts",
+        "default": "./dist/src/bin/bfsw.cmd.mjs"
       }
     },
     "./package.json": "./package.json"
