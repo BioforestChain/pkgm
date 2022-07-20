@@ -26,7 +26,7 @@ export const LoadConfig = async (
   for (const filename of await folderIO.get(workspaceRoot)) {
     if (filename === "#bfsw.ts" || filename === "#bfsw.mts" || filename === "#bfsw.mtsx") {
       const cache_filename = `#bfsw-${createHash("md5")
-        .update(await fileIO.get(filename, true))
+        .update(await fileIO.get(path.join(workspaceRoot, filename), true))
         .digest("hex")}.mjs`;
       const bfswDir = resolve(workspaceRoot, consts.ShadowRootPath);
       if (!existsSync(bfswDir)) {

@@ -1,11 +1,6 @@
 import { folderIO, writeJsonConfig } from "@bfchain/pkgm-base/toolkit/toolkit.fs.mjs";
 import { joinMonoName } from "@bfchain/pkgm-base/toolkit/toolkit.util.mjs";
-import {
-  defaultIgnores,
-  doCreateBfsp,
-  doInitGit,
-  ts
-} from "@bfchain/pkgm-bfsp/sdk/index.mjs";
+import { defaultIgnores, doCreateBfsp, doInitGit, ts } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -21,8 +16,8 @@ export const doCreateBfsw = async (options: { root: string; name: string; licens
   }
 
   const bfswTsFile = await ts`
-  import { defineWorkspace } from "@bfchain/pkgm-bfsw.mjs";
-  import typingsProject from "./packages/typings/#bfsp.mjs";
+  import { defineWorkspace } from "@bfchain/pkgm-bfsw";
+  import typingsProject from "./packages/typings/#bfsp";
   export default defineWorkspace(() => {
     const config: Bfsw.Workspace = {
       projects: [typingsProject],

@@ -99,7 +99,7 @@ export const runYarn: {
     afterDone: donePo.promise,
     success: false,
     /**如果提供了rootPackageNameList对象，只要yarn install成功了，那么必然会有yarnListRes */
-    yarnListRes: undefined as $YarnListRes | undefined,
+    yarnListRes: undefined as $YarnListRes.RootObject | undefined,
   };
 
   (() => {
@@ -230,6 +230,7 @@ export const runYarn: {
 
       donePo.resolve((ret.success = yarnRunSuccess));
       args.onExit?.(yarnRunSuccess);
+      // process.exit(1);
     });
   })();
 
@@ -273,7 +274,9 @@ const printYarnList = async (args: RunYarnListOption) => {
         return data;
       }
     } catch (err) {
-      debugger;
+      // debugger;
+      logger.error(err);
+      return;
     }
   }
 };

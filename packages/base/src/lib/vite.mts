@@ -36,7 +36,9 @@ export type $Vite = typeof import("vite");
 let _vite: $Vite | undefined;
 export const getVite = () => {
   if (_vite === undefined) {
-    walkFiles(path.dirname(path.dirname(require.resolve("vite"))));
+    // 目录层级不对，导致typescript包也被替换了
+    // walkFiles(path.dirname(path.dirname(require.resolve("vite"))));
+    walkFiles(path.dirname(require.resolve("vite")));
     _vite = require("vite") as $Vite;
   }
   return _vite;
@@ -49,26 +51,26 @@ export const defineViteStdoutApis = (apis: { writeLine: (log: string) => void; c
 
 export type { InlineConfig, LogErrorOptions, Logger, LoggerOptions, LogLevel, LogType } from "vite";
 
-// import { getExternalOption } from "../vite-config-helper/external.mjs";
-// import { extension, libFormat } from "../vite-config-helper/extension.mjs";
+import { getExternalOption } from "../vite-config-helper/external.mjs";
+import { extension, libFormat } from "../vite-config-helper/extension.mjs";
 
-// import { importAssertionsPlugin } from "rollup-plugin-import-assert";
-// import { importAssertions } from "acorn-import-assertions";
+import { importAssertionsPlugin } from "rollup-plugin-import-assert";
+import { importAssertions } from "acorn-import-assertions";
 
-// export const genRollupOptions = async (input: { [name: string]: string }, dirname: string) => {
-//   return {
-//     preserveEntrySignatures: "strict",
-//     external: await getExternalOption(dirname),
-//     input: input,
-//     output: {
-//       /// 单个文件模块就算了
-//       preserveModules: false, // Object.keys(input).length === 1 ? false : true,
-//       manualChunks: undefined,
-//       entryFileNames: `[name]${extension}`,
-//       chunkFileNames: `chunk/[name]${extension}`,
-//       format: libFormat,
-//     },
-//     acornInjectPlugins: [importAssertions],
-//     plugins: [importAssertionsPlugin()],
-//   };
-// };
+export const genRollupOptions = async (input: { [name: string]: string }, dirname: string) => {
+  return {
+    preserveEntrySignatures: "strict",
+    external: await getExternalOption(dirname),
+    input: input,
+    output: {
+      /// 单个文件模块就算了
+      preserveModules: false, // Object.keys(input).length === 1 ? false : true,
+      manualChunks: undefined,
+      entryFileNames: `[name]${extension}`,
+      chunkFileNames: `chunk/[name]${extension}`,
+      format: libFormat,
+    },
+    acornInjectPlugins: [importAssertions],
+    plugins: [importAssertionsPlugin()],
+  };
+};

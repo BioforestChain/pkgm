@@ -70,7 +70,7 @@
   "devDependencies": {
     "@bfchain/pkgm-base": "file:../base",
     "@types/node": "^17.0.0",
-    "vite": "^2.9.13",
+    "vite": "^3.0.2",
     "yarn": "^1.22.17"
   },
   "engines": {

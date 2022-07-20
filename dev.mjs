@@ -30,8 +30,8 @@ async function* GenerateDevTask(packages) {
 async function run() {
   const packages = [
     { dir: "./", name: "tsc" },
-    { dir: "packages/bfsp", name: "dev" },
-    { dir: "packages/bfsw", name: "dev" },
+    { dir: "packages/bfsp", name: "tsc" },
+    { dir: "packages/bfsw", name: "tsc" },
   ].sort((a, b) => a.dir.localeCompare(b.dir));
 
   for await (const x of GenerateDevTask(packages)) {

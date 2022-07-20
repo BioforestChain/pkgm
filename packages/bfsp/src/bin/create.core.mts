@@ -21,7 +21,7 @@ export const doCreateBfsp = async (
   logger.log(`creating files`);
   await writeJsonConfig(path.join(root, "package.json"), packageJson);
   const bfspTsFile = await ts`
-  import { defineConfig } from "@bfchain/pkgm-bfsp.mjs";
+  import { defineConfig } from "@bfchain/pkgm-bfsp";
   export default defineConfig((info) => {
   const config: Bfsp.UserConfig = {
     name: ${JSON.stringify(name)},

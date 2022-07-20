@@ -144,8 +144,8 @@ export const ViteConfigFactory = async (options: {
 
         return {
           name: "moduleSuffixes replace",
-          async resolveId(source: string, importer: string, options: any) {
-            if (source.startsWith("./")) {
+          async resolveId(source: string, importer: string | undefined, options: any) {
+            if (source.startsWith("./") && importer) {
               const id = path.resolve(importer, "." + source);
 
               if (keys.includes(id) && moduleSuffixes && moduleSuffixes?.[id]?.[0]) {
