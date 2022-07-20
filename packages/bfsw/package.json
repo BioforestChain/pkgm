@@ -24,7 +24,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsw": "./build/bfsw.bin.mjs"
+    "bfsw": "./dist/src/bin/bfsw.cmd.mjs"
   },
   "files": [
     "dist",

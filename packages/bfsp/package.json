@@ -39,10 +39,16 @@
         "default": "./dist/src/sdk/tui/internalPanels.mjs"
       }
     },
+    "./bfsp": {
+      "import": {
+        "types": "./dist/src/bin/bfsp.cmd.d.mts",
+        "default": "./dist/src/bin/bfsp.cmd.mjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "bin": {
-    "bfsp": "./build/bfsp.bin.mjs"
+    "bfsp": "./dist/src/bin/bfsp.cmd.mjs"
   },
   "files": [
     "dist",
