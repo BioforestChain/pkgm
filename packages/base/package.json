@@ -85,6 +85,12 @@
         "default": "./dist/src/lib/yarn.mjs"
       }
     },
+    "./lib/terser.mjs": {
+      "import": {
+        "types": "./dist/src/lib/terser.d.mts",
+        "default": "./dist/src/lib/terser.mjs"
+      }
+    },
     "./service/tsc/runner.mjs": {
       "import": {
         "types": "./dist/src/service/tsc/runner.d.mts",
@@ -225,7 +231,8 @@
     "tslib": "^2.3.1",
     "typescript": "^4.7.2",
     "vite": "^3.0.2",
-    "yarn": "^1.22.17"
+    "yarn": "^1.22.17",
+    "terser": "^5.14.1"
   },
   "optionalDependencies": {
     "@bfchain/watchman-binary-darwin-x64": "2022.06.27",

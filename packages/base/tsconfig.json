@@ -2,7 +2,7 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist/",
-    "baseUrl": "./",
+    "baseUrl": "./"
   },
   "files": [
     "src/lib/blessed.mts",
@@ -17,6 +17,7 @@
     "src/lib/typescript.mts",
     "src/lib/vite.mts",
     "src/lib/yarn.mts",
+    "src/lib/terser.mts",
     "src/service/tsc/runner.mts",
     "src/service/tsc/worker.mts",
     "src/service/yarn/runner.mts",

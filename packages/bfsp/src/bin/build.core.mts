@@ -170,6 +170,9 @@ const buildSingle = async (options: {
 
     //#region 编译typescript，生成 typings
     {
+      flag(`generate typings`);
+      await runBuildTsc({ root, tscLogger });
+      success(`generated typings`);
       /// 修复 typings 文件的导入
       const tscSafeRoot = path.resolve(buildOutDir, TYPINGS_DIR);
 
@@ -190,7 +193,7 @@ const buildSingle = async (options: {
         const p = path.resolve(buildOutDir, exp[x].types);
 
         let contents = readFileSync(p, { encoding: "utf-8" });
-        const rp = path.relative(p, path.resolve(buildOutDir, TYPINGS_DIR, "refs.d.ts"));
+        const rp = path.relative(p, path.resolve(buildOutDir, TYPINGS_DIR, "typings.d.ts"));
         const refSnippet = `///<reference path="${toPosixPath(rp)}" />${os.EOL}`;
         if (!contents.startsWith(refSnippet)) {
           writeFileSync(p, refSnippet + contents, { encoding: "utf-8" });
