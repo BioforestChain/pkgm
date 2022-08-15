@@ -52,7 +52,7 @@ export const doInitGit = (root: string, logger: PKGM.Logger) => {
     logger.warn.pipeFrom(g.stdout);
     logger.error.pipeFrom(g.stderr);
     return new Promise<number>((resolve) => {
-      g.on("exit", (code) => {
+      g.on("exit", (code: number) => {
         resolve(code ?? 0);
       });
     });

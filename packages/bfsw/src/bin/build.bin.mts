@@ -9,7 +9,7 @@ import {
   getBfspProjectConfig,
   getTui,
   linkBFChainPkgmModules,
-  writeBfspProjectConfig
+  writeBfspProjectConfig,
 } from "@bfchain/pkgm-bfsp/sdk/index.mjs";
 import { WorkspacesPanel } from "@bfchain/pkgm-bfsp/sdk/tui/internalPanels.mjs";
 import { existsSync, symlinkSync, unlinkSync } from "node:fs";

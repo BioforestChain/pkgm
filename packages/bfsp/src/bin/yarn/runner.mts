@@ -250,7 +250,7 @@ const printYarnList = async (args: RunYarnListOption) => {
   logger.log.pin("yarn-list", "list deps...");
   const listSpawn = cp.spawn("node", [yarnPath, "list", "--json"], {
     cwd: args.root,
-    env: {},
+    env: process.env,
     signal: args.signal,
   });
   for await (const chunk of listSpawn.stdout) {

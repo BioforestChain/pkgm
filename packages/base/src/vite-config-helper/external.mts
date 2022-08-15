@@ -9,7 +9,7 @@ import type { ExternalOption } from "rollup";
 // import { cpus } from "node:os";
 // const spawnYarnLimitter = new ConcurrentTaskLimitter(cpus().length);
 // const getDepsInfoOld = async (cwd: string) => {
-//   const task = await spawnYarnLimitter.genTask();
+//   const task = await YarnLimitter.genTask();
 //   try {
 //     const listSpawn = spawn("node", [getYarnPath(), "list", "--json", "--prod", "--cwd", cwd]);
 //     let outputs = "";
@@ -150,7 +150,6 @@ export const getExternalOption = async (
     }
     return res;
   };
-  return ext;
 };
 
 const nodejsModules = new Set(

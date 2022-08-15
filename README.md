@@ -14,17 +14,22 @@ pkgm 是一套用于 BFS 生态下应用开发的工具集。
 ### 单项目开发(bfsp)
 
 1. 全局安装 `@bfchain/pkgm`
+
    ```shell
    npm i -g @bfchain/pkgm
    # or
    yarn global add @bfchain/pkgm
    ```
+
 1. 创建项目
+
    ```shell
    bfsp create <projectName>
    ```
+
 1. 根据指令进入对应目录开始启动开发
-   ```
+
+   ```shell
    cd <projectName> && bfsp dev
    ```
 
@@ -33,10 +38,13 @@ pkgm 是一套用于 BFS 生态下应用开发的工具集。
 > 将多个项目组合在一起，联动编译。对应传统的`monorepo`开发风格
 
 1. 创建项目
+
    ```shell
    bfsw create <projectName>
    ```
+
 1. 根据指令进入对应目录开始启动开发
+
    ```shell
    cd <projectName> && bfsw dev
    ```

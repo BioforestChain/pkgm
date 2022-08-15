@@ -1,6 +1,6 @@
 {
   "name": "@bfchain/pkgm-bfsw",
-  "version": "2.8.0",
+  "version": "2.8.1",
   "description": "",
   "type": "module",
   "types": "./dist/src/main/index.d.mts",
@@ -47,8 +47,8 @@
   "author": "bnqkl",
   "license": "MIT",
   "dependencies": {
-    "@bfchain/pkgm-base": "^2.8.0",
-    "@bfchain/pkgm-bfsp": "^2.8.0"
+    "@bfchain/pkgm-base": "^2.8.1",
+    "@bfchain/pkgm-bfsp": "^2.8.1"
   },
   "devDependencies": {
     "@bfchain/pkgm-base": "file:../base",
