@@ -236,6 +236,7 @@
   },
   "optionalDependencies": {
     "@bfchain/watchman-binary-darwin-x64": "2022.06.27",
+    "@bfchain/watchman-binary-darwin-arm64": "link:../../watchman-binary/darwin/arm64",
     "@bfchain/watchman-binary-linux-x64": "2022.06.20",
     "@bfchain/watchman-binary-win32-x64": "2022.06.27"
   },

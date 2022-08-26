@@ -135,19 +135,19 @@ export const getExternalOption = async (
   };
   return (...args) => {
     const res = ext(...args);
-    if (
-      !res &&
-      /^[\.\/]+/.test(args[0]) === false &&
-      /^#/.test(args[0]) === false &&
-      path.normalize(args[0]).startsWith(dirname) === false
-    ) {
-      depsInfo;
-      allowExternals;
-      console.log("inline source:", args[0]);
-      throw new Error(
-        `missing dependencie of ${args[0]} from source-file: ${args[1] ? path.relative(dirname, args[1]) : "<null>"}`
-      );
-    }
+    // if (
+    //   !res &&
+    //   /^[\.\/]+/.test(args[0]) === false &&
+    //   /^#/.test(args[0]) === false &&
+    //   path.normalize(args[0]).startsWith(dirname) === false
+    // ) {
+    //   depsInfo;
+    //   allowExternals;
+    //   console.log("inline source:", args[0]);
+    //   throw new Error(
+    //     `missing dependencie of ${args[0]} from source-file: ${args[1] ? path.relative(dirname, args[1]) : "<null>"}`
+    //   );
+    // }
     return res;
   };
 };

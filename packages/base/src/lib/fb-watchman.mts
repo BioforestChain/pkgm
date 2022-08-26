@@ -9,7 +9,9 @@ let watchmanBinaryPath: string | undefined;
 /**
  * 检测是否有全局安装watchman
  */
-const localWatchmanVersion = spawnSync("watchman", ["--version"]).stdout?.toString();
+const localWatchmanVersion = spawnSync("watchman", ["--version"], {
+   env: process.env,
+}).stdout?.toString();
 /**
  * 没有全局安装，使用本地依赖的版本
  */
