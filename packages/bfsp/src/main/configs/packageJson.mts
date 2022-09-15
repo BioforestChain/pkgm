@@ -81,8 +81,8 @@ export const generatePackageJson = async (
         ),
         // types: `./${toPosixPath(path.join("./", input.replace(/\.ts$/, ".d.ts")))}`,
       },
-      hasCjs ? { require: getDistFilepath("cjs", output) } : {},
-      hasEsm ? { import: getDistFilepath("esm", output) } : {}
+      hasCjs ? { require: getDistFilepath("cjs", input.replace(/\.ts$/, "")) } : {},
+      hasEsm ? { import: getDistFilepath("esm", input.replace(/\.ts$/, "")) } : {}
     );
   }
   const defaultExportConfig = packageJson.exports["."];
