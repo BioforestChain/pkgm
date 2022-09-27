@@ -14,13 +14,14 @@
       "types": ""
     }
   },
+  "bin": {},
   "imports": {},
   "scripts": {
     "dev": "bfsp dev",
     "build": "bfsp build",
     "test": "bfsp test"
   },
-  "files": ["dist","typings"],
+  "files": ["dist", "typings"],
   "dependencies": {},
   "devDependencies": {
     "tslib": "^2.3.1"
